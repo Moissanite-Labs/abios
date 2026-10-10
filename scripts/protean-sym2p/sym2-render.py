@@ -19,29 +19,66 @@ from sym2_parse import (  # noqa: E402
 )
 
 
-def render_impl(expr):
-    # (20 unit (lo hi))
-    unit = UNITS.get(expr[1], str(expr[1]))
-    rng = expr[2]
-    return "implement %s %s-%s" % (unit, rng[0], rng[1])
+def frag(e):
+    """Render an expression or atom as an inline fragment."""
+    if isinstance(e, str):
+        return e[1:] if e.startswith("$") else e
+    if not e:
+        return ""
+    op = int(e[0])
+    args = e[1:]
+    if op == 20:
+        unit = UNITS.get(args[0], str(args[0]))
+        r = args[1]
+        if isinstance(r, list):
+            if r[0] == r[1]:
+                return "implement section %s" % frag(r[0])
+            return "implement sections %s-%s" % (frag(r[0]), frag(r[1]))
+        return "implement section %s" % frag(r)
+    if op == 21:
+        if args[0] == "*":
+            return "modify no existing paths"
+        return "modify no paths matching %s" % frag(args[0])
+    if op == 22:
+        return "%s exits %s on valid input, %s on invalid" % (
+            frag(args[0]), args[1], args[2])
+    if op == 30:
+        return "let %s = %s" % (args[0], frag(args[1]))
+    if op == 31:
+        s = "if %s then %s" % (frag(args[0]), frag(args[1]))
+        if args[2]:
+            s += ", otherwise %s" % frag(args[2])
+        return s
+    if op == 32:
+        return "for each %s in %s: %s" % (
+            args[0], frag(args[1]), frag(args[2]))
+    if op == 33:
+        return "[%s]" % ", ".join(frag(x) for x in args)
+    if op == 34:
+        return "%s < %s" % (frag(args[0]), frag(args[1]))
+    if op == 35:
+        return "%s = %s" % (frag(args[0]), frag(args[1]))
+    if op == 40:
+        role = ROLES.get(int(args[0]), str(args[0]))
+        return "spawn %s on thread %s to %s" % (
+            role, args[1], frag(args[2]))
+    return None
 
 
 def render_expr(expr):
+    """Render a top-level body expression as one English sentence."""
     op = int(expr[0])
+    args = expr[1:]
     if op == 10:
-        return "Scope: %s of %s." % (render_expr(expr[2]), expr[1])
-    if op == 20:
-        return render_impl(expr)
+        return "Scope: %s of %s." % (frag(args[1]), args[0])
     if op == 11:
-        inner = expr[1]
-        if inner[1] == "*":
-            return "Constraint: modify no existing paths."
-        return "Constraint: modify no paths matching %s." % inner[1]
+        return "Constraint: %s." % frag(args[0])
     if op == 12:
-        inner = expr[1]
-        return ("Acceptance: %s exits %s on valid input, %s on invalid."
-                % (inner[1], inner[2], inner[3]))
-    return None
+        return "Acceptance: %s." % frag(args[0])
+    s = frag(expr)
+    if s is None:
+        return None
+    return s[0].upper() + s[1:] + "."
 
 
 def render_packet(line):

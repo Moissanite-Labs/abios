@@ -98,9 +98,13 @@ class ValidateTest(unittest.TestCase):
         self.assertTrue(any("unknown opcode 99" in e for e in errs))
 
     def test_bad_range(self):
-        line = BRIEF_V2.replace("(20 sec (3 5))", "(20 sec 5)")
+        line = BRIEF_V2.replace("(20 sec (3 5))", "(20 sec (3 5 7))")
         errs = check_line(line, 1)
         self.assertTrue(any("range wants" in e for e in errs))
+
+    def test_single_atom_range_ok(self):
+        line = BRIEF_V2.replace("(20 sec (3 5))", "(20 sec 5)")
+        self.assertEqual(check_line(line, 1), [])
 
     def test_cf_out_of_range(self):
         line = BRIEF_V2.replace("|88|70|", "|101|70|", 1)
@@ -134,6 +138,89 @@ class ValidateTest(unittest.TestCase):
 
     def test_blank_lines_skipped(self):
         self.assertEqual(validate_lines(["", "   "]), [])
+
+
+REASON_V2 = ("2|r202|mr1|1|2|1|1|90|75|"
+             "(30 cov 62)(31 (34 $cov 70) (20 sec (6 6)) ())|1||0")
+SWARM_V2 = ("2|r203|mr1|1|7|1|1|90|80|"
+            "(32 s (33 3 4 5) (20 sec s))|0||0")
+DELEGATE_V2 = ("2|r204|mr1|1|4|11|1|85|70|"
+               "(40 2 b442 (20 sec (7 9)))|0|mr1:3|0")
+
+
+class ReasoningTest(unittest.TestCase):
+    def test_bind_if_validates(self):
+        self.assertEqual(check_line(REASON_V2, 1), [])
+
+    def test_bind_if_renders(self):
+        text, err = render_packet(REASON_V2)
+        self.assertIsNone(err)
+        self.assertIn("Let cov = 62.", text)
+        self.assertIn("If cov < 70 then implement section 6.", text)
+
+    def test_each_swarm_validates(self):
+        self.assertEqual(check_line(SWARM_V2, 1), [])
+
+    def test_each_swarm_renders(self):
+        text, err = render_packet(SWARM_V2)
+        self.assertIsNone(err)
+        self.assertIn("[coordinator -> swarm]", text)
+        self.assertIn("For each s in [3, 4, 5]: implement section s.", text)
+
+    def test_spawn_delegate_validates(self):
+        self.assertEqual(check_line(DELEGATE_V2, 1), [])
+
+    def test_spawn_delegate_renders(self):
+        text, err = render_packet(DELEGATE_V2)
+        self.assertIsNone(err)
+        self.assertIn("delegate r204 [coordinator -> scout]", text)
+        self.assertIn("Spawn builder on thread b442 to implement sections 7-9.",
+                      text)
+
+    def test_unbound_reference_fails(self):
+        line = REASON_V2.replace("(30 cov 62)", "")
+        errs = check_line(line, 1)
+        self.assertTrue(any("ERR:SCOPE" in e and "unbound" in e
+                            for e in errs))
+
+    def test_reference_before_bind_fails(self):
+        body = "(31 (34 $cov 70) (20 sec (6 6)) ())(30 cov 62)"
+        line = REASON_V2.split("|")
+        line[9] = body
+        errs = check_line("|".join(line), 1)
+        self.assertTrue(any("ERR:SCOPE" in e for e in errs))
+
+    def test_each_over_atom_fails(self):
+        line = SWARM_V2.replace("(33 3 4 5)", "5")
+        errs = check_line(line, 1)
+        self.assertTrue(any("each iterates" in e for e in errs))
+
+    def test_bind_name_must_be_symbol(self):
+        line = REASON_V2.replace("(30 cov 62)", "(30 $cov 62)")
+        errs = check_line(line, 1)
+        self.assertTrue(any("bind wants" in e for e in errs))
+
+    def test_spawn_bad_role_fails(self):
+        line = DELEGATE_V2.replace("(40 2 b442", "(40 9 b442")
+        errs = check_line(line, 1)
+        self.assertTrue(any("spawn wants" in e for e in errs))
+
+    def test_swarm_role_renders(self):
+        text, err = render_packet(SWARM_V2)
+        self.assertIsNone(err)
+        self.assertIn("swarm", text)
+
+    def test_ref_in_range_ok(self):
+        line = ("2|r203|mr1|1|7|1|1|90|80|"
+                "(32 s (33 3 4 5) (20 sec ($s $s)))|0||0")
+        self.assertEqual(check_line(line, 1), [])
+
+    def test_unbound_ref_in_range_fails(self):
+        line = ("2|r203|mr1|1|7|1|1|90|80|"
+                "(20 sec ($s $s))|0||0")
+        errs = check_line(line, 1)
+        self.assertTrue(any("ERR:SCOPE" in e and "unbound" in e
+                            for e in errs))
 
 
 class MigrateTest(unittest.TestCase):
