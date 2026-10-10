@@ -8,7 +8,8 @@ for the reviewing team to reshape before any merge.
 SYM-2P v1 speaks JSON but thinks in English. The packet fields are English
 prose inside string values: "scope: implement SYM-2P/1.0 sections 3-5 only".
 A receiver that is a model must parse human language to understand a machine
-message. That is the handicap.
+message. That is the handicap. The full intention is laid out in
+VISION.md.
 
 v2 moves the language to symbols. Packet content is codes, numbers, and
 structured expressions. English is a render target, not the source. A
@@ -27,21 +28,21 @@ There are no key names on the wire. Field order is fixed:
 V|ID|TK|F|T|A|ST|CF|CV|BODY|RQ|BASE|EXP
 ```
 
-| # | Field | Type | Meaning |
-|---|-------|------|---------|
-| 1 | V | literal `2` | wire version |
-| 2 | ID | token | packet id, e.g. `b441` |
-| 3 | TK | token | thread key |
-| 4 | F | integer | sender role code (section 3) |
-| 5 | T | integer | recipient role code (section 3) |
-| 6 | A | integer | act code (section 3) |
-| 7 | ST | integer | state code (section 3) |
-| 8 | CF | 0-100 | confidence |
-| 9 | CV | 0-100 | coverage |
-| 10 | BODY | s-expressions | symbolic payload, may be empty (section 4) |
-| 11 | RQ | integer | request code, 0 means none (section 3) |
-| 12 | BASE | token | base reference `id:ver`, empty means none |
-| 13 | EXP | integer | expiry in seconds, 0 means none |
+| #   | Field   | Type          | Meaning                                    |
+| --- | ------- | ------------- | ------------------------------------------ |
+| 1   | V       | literal `2`   | wire version                               |
+| 2   | ID      | token         | packet id, e.g. `b441`                     |
+| 3   | TK      | token         | thread key                                 |
+| 4   | F       | integer       | sender role code (section 3)               |
+| 5   | T       | integer       | recipient role code (section 3)            |
+| 6   | A       | integer       | act code (section 3)                       |
+| 7   | ST      | integer       | state code (section 3)                     |
+| 8   | CF      | 0-100         | confidence                                 |
+| 9   | CV      | 0-100         | coverage                                   |
+| 10  | BODY    | s-expressions | symbolic payload, may be empty (section 4) |
+| 11  | RQ      | integer       | request code, 0 means none (section 3)     |
+| 12  | BASE    | token         | base reference `id:ver`, empty means none  |
+| 13  | EXP     | integer       | expiry in seconds, 0 means none            |
 
 A token matches `[A-Za-z0-9][A-Za-z0-9_.:/-]*`. The BODY field never
 contains `|`.
@@ -53,50 +54,50 @@ and means unset. Unknown codes are invalid.
 
 Roles:
 
-| Code | Role |
-|------|------|
-| 1 | coordinator |
-| 2 | builder |
-| 3 | verifier |
-| 4 | scout |
-| 5 | critic |
-| 6 | operator (human) |
+| Code   | Role             |
+| ------ | ---------------- |
+| 1      | coordinator      |
+| 2      | builder          |
+| 3      | verifier         |
+| 4      | scout            |
+| 5      | critic           |
+| 6      | operator (human) |
 
 Acts:
 
-| Code | Act |
-|------|-----|
-| 1 | assign |
-| 2 | acknowledge |
-| 3 | assert |
-| 4 | update |
-| 5 | receipt |
-| 6 | challenge |
-| 7 | dispute |
-| 8 | authorize |
-| 9 | query |
-| 10 | inform |
+| Code   | Act         |
+| ------ | ----------- |
+| 1      | assign      |
+| 2      | acknowledge |
+| 3      | assert      |
+| 4      | update      |
+| 5      | receipt     |
+| 6      | challenge   |
+| 7      | dispute     |
+| 8      | authorize   |
+| 9      | query       |
+| 10     | inform      |
 
 States:
 
-| Code | State |
-|------|-------|
-| 1 | proposed |
-| 2 | accepted |
-| 3 | rejected |
-| 4 | verified |
-| 5 | open |
-| 6 | closed |
-| 7 | superseded |
-| 8 | expired |
+| Code   | State      |
+| ------ | ---------- |
+| 1      | proposed   |
+| 2      | accepted   |
+| 3      | rejected   |
+| 4      | verified   |
+| 5      | open       |
+| 6      | closed     |
+| 7      | superseded |
+| 8      | expired    |
 
 Requests (RQ):
 
-| Code | Meaning |
-|------|---------|
-| 0 | none |
-| 1 | acknowledgement required |
-| 2 | verification required |
+| Code   | Meaning                  |
+| ------ | ------------------------ |
+| 0      | none                     |
+| 1      | acknowledgement required |
+| 2      | verification required    |
 
 ## 4. Body language
 
@@ -108,20 +109,20 @@ expr := '(' op arg* ')'
 arg  := number | symbol | expr
 ```
 
-A symbol matches `[A-Za-z][A-Za-z0-9_/.]*` or is `*` (meaning all).
+A symbol matches `[A-Za-z][A-Za-z0-9_./-]*` or is `*` (meaning all).
 Numbers are unsigned integers.
 
 Operation codes:
 
-| Code | Operation | Shape | Meaning |
-|------|-----------|-------|---------|
-| 10 | scope | `(10 target impl)` | what the packet covers |
-| 11 | constraint | `(11 constraint)` | a hard limit |
-| 12 | accept | `(12 accept)` | acceptance criterion |
-| 20 | impl | `(20 unit range)` | implement a unit over a range |
-| 21 | nomod | `(21 paths)` | modify no paths |
-| 30 | sec | symbolic unit | sections, used inside `impl` |
-| 22 | exit | `(22 prog ok bad)` | program exits `ok` on valid input, `bad` on invalid |
+| Code   | Operation   | Shape              | Meaning                                             |
+| ------ | ----------- | ------------------ | --------------------------------------------------- |
+| 10     | scope       | `(10 target impl)` | what the packet covers                              |
+| 11     | constraint  | `(11 constraint)`  | a hard limit                                        |
+| 12     | accept      | `(12 accept)`      | acceptance criterion                                |
+| 20     | impl        | `(20 unit range)`  | implement a unit over a range                       |
+| 21     | nomod       | `(21 paths)`       | modify no paths                                     |
+| 30     | sec         | symbolic unit      | sections, used inside `impl`                        |
+| 22     | exit        | `(22 prog ok bad)` | program exits `ok` on valid input, `bad` on invalid |
 
 Example body:
 
@@ -163,7 +164,9 @@ error.
 script that turns the internal language into human syntax. Operators read
 the rendered form. Agents read the wire form. The renderer is
 informative, never normative: two renderers may word the same packet
-differently, but they MUST NOT change its meaning.
+differently, but they MUST NOT change its meaning. Wire parsing is shared
+with the validator through `sym2_parse.py` so the grammar lives in one
+place.
 
 ## 8. Density
 
@@ -184,12 +187,18 @@ smaller than the 481-byte v1 template.
 - v2 is a new wire version, not an upgrade path. A line starting with
   `2|` is v2; v1 lines are JSON objects.
 - The kit lock still pins v1.0.0 until this draft is accepted and merged.
-- v1-to-v2 translation tooling is left for the reviewing team.
+- v1-to-v2 translation tooling ships as `sym2-migrate.py`: structured
+  fields map through the registries, and English cond strings map
+  through known patterns. A cond with no known pattern fails loudly
+  rather than being guessed at.
 
 ## 10. Open items for reviewers
 
-- Opcode registry governance: who mints new codes, and what prevents
-  collisions across teams.
+- Opcode registry governance. Proposed policy: codes 1-99 are core and
+  owned by this spec. Codes 100-999 are domain extensions, allocated by
+  pull request with reviewer approval. No code is ever reused once
+  assigned. The registry lives in sections 3 and 4 of this draft, and
+  the renderer MUST cover every assigned code.
 - Whether the thread key (TK) should also be coded, or stay a token.
 - Transport signing (v1 open item O-1) is still open and carries over.
 - The renderer vocabulary will grow with the opcode registry. The two
