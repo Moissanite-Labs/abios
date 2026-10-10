@@ -138,8 +138,9 @@ Immutability and versioning at file level:
 
 1. `<id>.md` is version 1. A revision is written as `<id>.v<N>.md`, a new file,
    never an in-place edit of a published file (L-14).
-2. The revision's header carries `sup:["<id>"]`, or `sup:["<id>.v<N-1>"]` for
-   N greater than 1, and an incremented `v`.
+2. The revision's header carries `sup:["<id>"]`, or `sup:["<id>:v<N-1>"]` for
+   N greater than 1, and an incremented `v`. The bare `<id>` form denotes
+   version 1, per rule 4.
 3. Hash, lineage, and publication happen together. Only then is a short
    `update` or `assert` packet emitted naming the new ref, for example
    `{"a":"update","s":"e3:v3","rq":"rev","base":"e3:v2"}`.
