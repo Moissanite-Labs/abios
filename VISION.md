@@ -52,11 +52,15 @@ moves from the source to a render target.
    Then the lock moves. Correctly deferred.
 6. **Measurement.** The empirical question underneath all of this:
    does symbolic communication actually buy capability and
-   efficiency. Not delivered yet. The density figure measures
-   bytes, not capability. The highest-leverage next step is a
-   measurement harness: the same task set in v1 English and v2,
-   compared on tokens, latency, and task success. That turns the
-   repo from a format into the instrument.
+   efficiency. Delivered as a harness in the measurement PR, not as
+   an answer.
+   `bench/` holds a 10-task paired corpus (v1 English and v2 per
+   task), `sym2-bench.py` for machine metrics (3.1x fewer bytes than
+   compact v1 JSON, with parse latency negligible for both forms),
+   `EVAL.md` for the model A/B protocol, and `sym2-score.py` to score
+   runs. The harness does not run models itself. A real capability
+   claim still needs the eval run against models, reported with model
+   name, date, and scores.
 
 ## What stays
 
