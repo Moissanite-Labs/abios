@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>protean-sym2p | a versioned message language for agents</title>
-<meta name="description" content="SYM-2P is a versioned message language for AI agents: one canonical JSON packet per line over durable text artifacts, with a validator, templates, a worked example, and a fixture suite.">
-<meta property="og:title" content="protean-sym2p | a versioned message language for agents">
-<meta property="og:description" content="One canonical JSON packet per line over durable text artifacts. Ships the normative spec, a stdlib validator, packet templates, a worked example, and the fixture suite.">
+<title>protean-sym2p | a symbolic message language for agents</title>
+<meta name="description" content="SYM-2P v2.1: dense symbolic packets for AI agents. Positional fields, integer-coded registries, s-expression bodies, a reasoning dialect with binding and branching, a relay-protection edition with checksums, plus a translator into English and a measurement harness.">
+<meta property="og:title" content="protean-sym2p | a symbolic message language for agents">
+<meta property="og:description" content="v2.1 moves agent communication to symbols: dense packets, a reasoning dialect, relay corruption protection, and a harness that measures what the symbols buy.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://aska-digital.github.io/protean-sym2p/">
 <meta property="og:image" content="https://aska-digital.github.io/protean-sym2p/og-image.png">
@@ -72,6 +72,7 @@ nav.links a:hover{color:var(--accent-hot)}
 #stream-body .ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:fadein .4s ease}
 #stream-body .ok{color:var(--accent)}
 #stream-body .id{color:var(--accent-hot)}
+#stream-body .rcp{color:#e3a008}
 #stream-body .cursor{display:inline-block;width:9px;height:16px;background:var(--accent);
   vertical-align:-3px;animation:blink 1s steps(1) infinite;box-shadow:0 0 8px var(--accent)}
 @keyframes blink{50%{opacity:0}}
@@ -134,9 +135,10 @@ footer a{color:var(--muted)}
     <a class="brand" href="#">protean-<span>sym2p</span></a>
     <nav class="links">
       <a href="#need">Need it?</a>
-      <a href="#install">Install</a>
       <a href="#packet">The packet</a>
-      <a href="#validate">Validate</a>
+      <a href="#reasoning">Reasoning</a>
+      <a href="#rcp">Protection</a>
+      <a href="#measure">Measure</a>
       <a href="#open">Open items</a>
       <a href="https://github.com/aska-digital/protean-sym2p">GitHub</a>
     </nav>
@@ -147,16 +149,19 @@ footer a{color:var(--muted)}
   <div class="hero">
     <p class="kicker"><span class="pulse"></span>Protean Kit &middot; protocol ingredient</p>
     <h1>SYM-2P</h1>
-    <p class="tag">One canonical JSON packet per line.</p>
-    <p class="lede">SYM-2P is a versioned message language for AI agents. Agents write messages as JSON packets, one packet per line, inside plain text files that persist.</p>
-    <p class="lede">A validator checks every packet and reports problems with codes a script can read.</p>
-    <div class="meta"><b>v1.0.0</b> &middot; MIT &middot; Python &ge;3.9, stdlib only &middot; install makes zero network calls</div>
+    <p class="tag">The wire goes symbolic.</p>
+    <p class="lede">SYM-2P is a versioned message language for AI agents. v1 speaks JSON but thinks in English: prose sits inside string fields, and a model receiver must parse human language to understand a machine message.</p>
+    <p class="lede">v2 moves the language to symbols. Packets are dense positional lines: integer-coded roles, acts, and states with an s-expression body. English stops being the source and becomes a render target. A translator turns wire packets into human-readable English for operators.</p>
+    <p class="lede">v2.1 grows the language from task assignment to reasoning: bind names to values, branch on conditions, iterate over collections, dispatch subagents, and broadcast to a swarm, all in symbols.</p>
+    <p class="lede">v2-rcp adds relay corruption protection: a checksum field for packets crossing untrusted paths. And <code>bench/</code> measures what the symbols buy: a paired v1/v2 task corpus, a bench script, and a model eval protocol.</p>
+    <div class="meta"><b>v2.1 merged</b> &middot; v2-rcp edition &middot; measurement harness &middot; MIT &middot; Python &ge;3.9, stdlib only</div>
     <div class="cta">
-      <a class="btn primary" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC.md">Read the spec</a>
+      <a class="btn primary" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC-V2-DRAFT.md">Read the v2 spec</a>
       <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p">View on GitHub</a>
+      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC.md">v1 SPEC.md</a>
     </div>
     <div class="stream" aria-hidden="true">
-      <div class="stream-head"><span class="dots"><i></i><i></i><i></i></span>wire preview <span class="dim">// simulated packets</span></div>
+      <div class="stream-head"><span class="dots"><i></i><i></i><i></i></span>wire preview <span class="dim">// simulated v2 packets</span></div>
       <div id="stream-body"></div>
     </div>
   </div>
@@ -168,23 +173,165 @@ footer a{color:var(--muted)}
       <div class="card">
         <h3 class="use">Reach for it</h3>
         <ul>
-          <li>Two agents must exchange messages as one JSON packet per line inside text files that persist.</li>
-          <li>A receiver must validate a packet stream and get typed diagnostics, with exit code 0 for valid, 1 for invalid, 2 for usage or IO error.</li>
-          <li>A run needs routing-state rows checked. Install <code>protean-ops</code> alongside; the manifest recommends it.</li>
+          <li>Two agents must exchange messages as dense symbolic packets instead of English prose inside JSON.</li>
+          <li>Agents must reason in symbols: bind values, branch on conditions, iterate, fan work across a swarm, dispatch subagents.</li>
+          <li>Packets cross untrusted relays and need corruption detection: the v2-rcp edition adds a checksum field.</li>
+          <li>You want to measure the win: the bench runs a paired v1/v2 corpus and scores model evals.</li>
+          <li>An operator must read what the agents said. The translator renders wire packets into English, and the validator gives typed diagnostics.</li>
         </ul>
       </div>
       <div class="card">
         <h3 class="skip">Skip it</h3>
         <ul>
-          <li>The run depends on open items O-1 to O-9. Section 10 of the spec lists them as open and undecided.</li>
-          <li>Only record schemas and gates are needed. Those ship in <code>protean-ops</code>, not here.</li>
+          <li>The run needs proof of who sent a packet. The checksum detects corruption in transit. Transport signing (identity) is still a future protocol.</li>
+          <li>The kit lock must move to v2. The migration scaffold covers the worked examples only, so the lock stays on v1 until v2 is accepted.</li>
         </ul>
       </div>
     </div>
   </section>
 
-  <section id="install">
+  <section id="vision">
     <div class="secnum">02</div>
+    <h2>The vision</h2>
+    <p><span class="lead">The thesis.</span> Models are handicapped by being forced to reason and communicate in English. The thought structure used to process human language is antithetical to the one used for math, science, and code.</p>
+    <p><span class="lead">The bet.</span> Skip language-based processing where it is not needed. Let models reason and communicate in code, numbers, formulas, and symbols. Put a translator at the boundary that converts the internal language to human syntax for operators.</p>
+    <p><span class="lead">Where the work stands.</span></p>
+    <ul class="tight">
+      <li><span class="lead">Delivered.</span> The v2 wire format, the translator, the migration scaffold, the v2.1 reasoning dialect, the v2-rcp relay-protection edition, and the measurement harness.</li>
+      <li><span class="lead">Not delivered.</span> Transport signing (proof of identity) and kit adoption (deferred until v2 is accepted).</li>
+      <li><span class="lead">What stays.</span> English remains the render target for operators. Everything stays stdlib-only and offline-friendly. v1 stays normative until v2 is accepted.</li>
+    </ul>
+    <p>The full statement lives in <a href="https://github.com/aska-digital/protean-sym2p/blob/main/VISION.md">VISION.md</a>.</p>
+  </section>
+
+  <section id="packet">
+    <div class="secnum">03</div>
+    <h2>The packet</h2>
+    <p>One brief packet assigning work, on the wire (101 bytes):</p>
+    <pre><code>2|b441|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:v1|40</code></pre>
+    <p>The same brief as v1 JSON took 481 bytes. The v2 line takes 101: 4.8x denser.</p>
+    <p>Thirteen positional fields, no key names on the wire:</p>
+    <table>
+      <tr><th>#</th><th>Field</th><th>Contents</th></tr>
+      <tr><td>1</td><td><code>V</code></td><td>Wire version, literal <code>2</code></td></tr>
+      <tr><td>2</td><td><code>ID</code></td><td>Packet id</td></tr>
+      <tr><td>3</td><td><code>TK</code></td><td>Thread key. Threads are instance data, so keys stay tokens rather than codes.</td></tr>
+      <tr><td>4&ndash;7</td><td><code>F T A ST</code></td><td>Sender, recipient, act, state: integer codes from the registries</td></tr>
+      <tr><td>8&ndash;9</td><td><code>CF CV</code></td><td>Confidence and coverage, 0&ndash;100</td></tr>
+      <tr><td>10</td><td><code>BODY</code></td><td>Symbolic payload as s-expressions. Never contains <code>|</code>.</td></tr>
+      <tr><td>11</td><td><code>RQ</code></td><td>Request code, 0 means none</td></tr>
+      <tr><td>12</td><td><code>BASE</code></td><td>Base reference, empty means none</td></tr>
+      <tr><td>13</td><td><code>EXP</code></td><td>Expiry in seconds, 0 means none</td></tr>
+    </table>
+    <p><code>sym2-render.py</code> turns that line back into English for operators:</p>
+    <pre><code>assign b441 [coordinator -&gt; builder] (proposed) confidence 88, coverage 70
+Scope: implement sections 3-5 of sym-2p/1.0.
+Constraint: modify no existing paths.
+Acceptance: validator exits 0 on valid input, 1 on invalid.
+Requires: acknowledgement required.
+Base: mr1:v1.
+Expires in 40s.</code></pre>
+    <ul class="tight">
+      <li><span class="lead">One canonical encoding.</span> Symbols are case-folded to lowercase, so the same referent has exactly one valid encoding.</li>
+      <li><span class="lead">Governed registries.</span> Opcode ranges are spec-owned at 1&ndash;99 and PR-allocated at 100&ndash;999, with no reuse.</li>
+      <li><span class="lead">Shared grammar.</span> The renderer, validator, and migrator import one parser module. No duplicated grammar.</li>
+    </ul>
+  </section>
+
+  <section id="reasoning">
+    <div class="secnum">04</div>
+    <h2>The reasoning dialect</h2>
+    <p>v2.0 assigns tasks. v2.1 reasons. Seven new opcodes, two new acts, and a broadcast role turn the body language from fixed task shapes into a first reasoning dialect.</p>
+    <table>
+      <tr><th>Code</th><th>Op</th><th>Shape</th><th>Meaning</th></tr>
+      <tr><td><code>30</code></td><td>bind</td><td><code>(30 name expr)</code></td><td>Name a value. <code>$name</code> refers to it later.</td></tr>
+      <tr><td><code>31</code></td><td>if</td><td><code>(31 test then else)</code></td><td>Branch on a test. Else may be empty.</td></tr>
+      <tr><td><code>32</code></td><td>each</td><td><code>(32 var items body)</code></td><td>Do body for each item in a list.</td></tr>
+      <tr><td><code>33</code></td><td>list</td><td><code>(33 item*)</code></td><td>List literal.</td></tr>
+      <tr><td><code>34</code></td><td>lt</td><td><code>(34 a b)</code></td><td>a is less than b.</td></tr>
+      <tr><td><code>35</code></td><td>eq</td><td><code>(35 a b)</code></td><td>a equals b.</td></tr>
+      <tr><td><code>40</code></td><td>spawn</td><td><code>(40 role thread task)</code></td><td>Spawn a subagent explicitly.</td></tr>
+    </table>
+    <p>New registry codes: role <code>7</code> is <code>swarm</code> (broadcast to all members), act <code>11</code> is <code>delegate</code> (recipient spawns a subordinate), act <code>12</code> is <code>report</code> (a subordinate returns a result).</p>
+    <p>Bind a value, branch on it:</p>
+    <pre><code>(30 cov 62)(31 (34 $cov 70) (20 sec (6 6)) ())</code></pre>
+    <p>Renders as: <i>Let cov = 62. If cov &lt; 70 then implement section 6.</i></p>
+    <p>Fan work across the swarm:</p>
+    <pre><code>(32 s (33 3 4 5) (20 sec s))</code></pre>
+    <p>Renders as: <i>For each s in [3, 4, 5]: implement section s.</i></p>
+    <p>Dispatch a subagent:</p>
+    <pre><code>(40 2 b442 (20 sec (7 9)))</code></pre>
+    <p>Renders as: <i>Spawn builder on thread b442 to implement sections 7-9.</i></p>
+    <ul class="tight">
+      <li><span class="lead">Scope is checked.</span> A <code>$name</code> must resolve to a visible bind. The validator reports unbound references as <code>ERR:SCOPE</code>.</li>
+      <li><span class="lead">Deliberate limits.</span> No function definition, no recursion, single-expression branches. A first dialect, open for the next iteration.</li>
+    </ul>
+  </section>
+
+  <section id="rcp">
+    <div class="secnum">05</div>
+    <h2>Relay corruption protection</h2>
+    <p>Every wire version ships two editions. Bare v2 is the 13-field line, for trusted paths: one machine, one operator, one local relay. <span class="lead">v2-rcp</span> adds a 14th field, <code>SUM</code>, for packets crossing machines the sender does not fully trust.</p>
+    <p><code>SUM</code> is the first 16 hex characters of the sha256 of the canonical 13-field line. Seventeen bytes on the wire:</p>
+    <pre><code>2|b441|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:v1|40|0e003fac2df6829e</code></pre>
+    <ul class="tight">
+      <li><span class="lead">Sender picks per interaction.</span> No negotiation. Receivers accept both editions. An agent sends bare lines on trusted paths and switches to <code>-rcp</code> for relayed ones, paying the checksum cost only where corruption is possible.</li>
+      <li><span class="lead">Old readers fail loudly.</span> A validator written before this edition rejects a 14-field line with a shape error instead of misreading it.</li>
+      <li><span class="lead">Corruption, not identity.</span> The checksum detects corruption in transit. It does not prove who sent the packet. Full transport signing stays a separate future protocol.</li>
+    </ul>
+    <p><code>sym2-migrate.py --rcp</code> emits rcp lines, and the validator reports bad checksums as <code>ERR:RCP</code>.</p>
+  </section>
+
+  <section id="measure">
+    <div class="secnum">06</div>
+    <h2>Measure what the symbols buy</h2>
+    <p><code>bench/</code> turns the repo from a format into an instrument. It measures the empirical question underneath v2: does symbolic communication actually buy capability and efficiency.</p>
+    <table>
+      <tr><th>File</th><th>Contents</th></tr>
+      <tr><td><code>tasks.jsonl</code></td><td>10 paired tasks. Six comprehension tasks carry the same packet in v1 English and v2. Two render tasks (v2 to English). Two compile tasks (English to v2).</td></tr>
+      <tr><td><code>sym2-bench.py</code></td><td>Machine metrics: bytes and parse latency per form. Result: v2 is 3.1x smaller than compact v1 JSON. Parse latency is tens of microseconds either way.</td></tr>
+      <tr><td><code>EVAL.md</code></td><td>The model A/B protocol: fresh sessions per form, verbatim answers, how to read the scores.</td></tr>
+      <tr><td><code>sym2-score.py</code></td><td>Scores an answers file per task and per form (v1 vs v2).</td></tr>
+    </table>
+    <p>Stated plainly: the harness does not run models itself, and 10 hand-written tasks are a smoke test, not a benchmark. A real capability claim needs the eval run against models, reported with model name, date, and scores.</p>
+  </section>
+
+  <section id="translate">
+    <div class="secnum">07</div>
+    <h2>Translate and validate</h2>
+    <pre><code>python3 scripts/protean-sym2p/sym2-render.py &lt;packets.sym2&gt;
+python3 scripts/protean-sym2p/sym2-migrate.py &lt;packets.jsonl&gt;
+python3 scripts/protean-sym2p/sym2-migrate.py --rcp &lt;packets.jsonl&gt;
+python3 scripts/protean-sym2p/sym2-validate.py &lt;packets.sym2&gt;
+python3 tests/test_sym2.py</code></pre>
+    <p>The renderer reads the wire form. Operators read the rendered form. Agents read the wire form.</p>
+    <p>The migrator converts v1 JSON packets to v2 lines. It fails loudly where English has no symbolic pattern yet, and it covers the worked examples, not the full corpus. The <code>--rcp</code> flag emits the protected edition.</p>
+    <p>Exit code 0 means every line is valid. Exit code 1 means at least one is invalid, with a typed diagnostic (<code>ERR:SCOPE</code> for unbound references, <code>ERR:RCP</code> for bad checksums). Exit code 2 means a usage, IO, or configuration error.</p>
+    <ul class="tight">
+      <li><span class="lead">v2 test suite.</span> <code>tests/test_sym2.py</code> runs 50 stdlib-unittest tests: the wire parser, the renderer, the validator including negative cases, the reasoning dialect, the rcp edition, and the migration round trip.</li>
+      <li><span class="lead">v1 suite unchanged.</span> <code>tests/run-tests.py</code> passes every valid fixture and rejects every malformed, stale, duplicate, or protected-semantic fixture. Twenty invalid fixtures and four valid ones ship under <code>tests/fixtures/</code>.</li>
+      <li><span class="lead">Internal-name gate.</span> <code>gates/protean-sym2p/check-internal-names.py</code> blocks internal names from leaking into published artifacts.</li>
+    </ul>
+  </section>
+
+  <section id="ships">
+    <div class="secnum">08</div>
+    <h2>What ships</h2>
+    <table>
+      <tr><th>Path</th><th>Contents</th></tr>
+      <tr><td><code>SPEC-V2-DRAFT.md</code></td><td>The v2 specification: wire format, reasoning dialect, rcp edition</td></tr>
+      <tr><td><code>VISION.md</code></td><td>The thesis, the six-step plan, delivered vs future work</td></tr>
+      <tr><td><code>scripts/protean-sym2p/</code></td><td><code>sym2_parse.py</code> (shared wire parser), <code>sym2-render.py</code> (translator), <code>sym2-validate.py</code> (validator), <code>sym2-migrate.py</code> (v1 to v2, with <code>--rcp</code>). stdlib only.</td></tr>
+      <tr><td><code>templates/protean-sym2p/v2/</code></td><td>Brief, dispute, reasoning, swarm, and delegate packets: wire form plus rendered English</td></tr>
+      <tr><td><code>templates/protean-sym2p/v2-rcp/</code></td><td>Brief packet in the protected edition, generated by the tooling</td></tr>
+      <tr><td><code>bench/</code></td><td><code>tasks.jsonl</code> (10 paired tasks), <code>sym2-bench.py</code>, <code>sym2-score.py</code>, <code>EVAL.md</code>, <code>README.md</code></td></tr>
+      <tr><td><code>tests/test_sym2.py</code></td><td>50 stdlib-unittest tests: parser, renderer, validator, reasoning, rcp, migration</td></tr>
+      <tr><td><code>SPEC.md</code>, <code>skills/sym2p/</code>, <code>install.sh</code>, <code>gates/</code></td><td>The v1 release, still normative and unchanged</td></tr>
+    </table>
+  </section>
+
+  <section id="install">
+    <div class="secnum">09</div>
     <h2>Install</h2>
     <pre><code>bash install.sh --target &lt;dir&gt;
 bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
@@ -192,112 +339,32 @@ bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
     <p>It installs alone, resolving only its required dependencies. Optional relationships are reported, not fetched.</p>
   </section>
 
-  <section id="ships">
-    <div class="secnum">03</div>
-    <h2>What ships</h2>
-    <table>
-      <tr><th>Path</th><th>Contents</th></tr>
-      <tr><td><code>SPEC.md</code></td><td>The normative specification</td></tr>
-      <tr><td><code>skills/sym2p/</code></td><td>The usage skill</td></tr>
-      <tr><td><code>scripts/protean-sym2p/</code></td><td><code>sym-validate.py</code> and <code>sym-publish.py</code>, stdlib only</td></tr>
-      <tr><td><code>templates/protean-sym2p/</code></td><td>Canonical brief and receipt packets</td></tr>
-      <tr><td><code>examples/protean-sym2p/</code></td><td>The worked review, fix, verify, merge loop</td></tr>
-      <tr><td><code>AUDIT/protean-sym2p/</code></td><td>Evidence and provenance (never normative)</td></tr>
-      <tr><td><code>gates/protean-sym2p/</code></td><td>The leak gate and the blocklist</td></tr>
-    </table>
-  </section>
-
-  <section id="packet">
-    <div class="secnum">04</div>
-    <h2>The packet</h2>
-    <p>A brief packet assigning work, as shipped in <code>templates/</code>:</p>
-    <pre><code>{
-  "v": 2,
-  "id": "b441",
-  "tk": "mr1",
-  "prj": "sym2integration",
-  "f": "cos",
-  "t": "builder",
-  "a": "assign",
-  "s": "mr1",
-  "st": "proposed",
-  "cf": 88,
-  "cov": 70,
-  "cond": [
-    "scope: implement SYM-2P/1.0 sections 3-5 only",
-    "constraint: no existing path may be modified",
-    "acceptance: validator exits 0 on valid fixtures, non-zero on invalid"
-  ],
-  "rq": "ack",
-  "base": "mr1:v1",
-  "exp": 40,
-  "ext": { "sym2p": { "rev": "1.0" } }
-}</code></pre>
-    <ul class="tight">
-      <li><span class="lead">Fixed header.</span> The header uses an exact field set in a fixed order (spec section 3).</li>
-      <li><span class="lead">Versioned objects.</span> Objects are written once and versioned in place (section 4).</li>
-      <li><span class="lead">Defined failure handling.</span> Duplicates, stale references, and failures have defined handling (section 5).</li>
-      <li><span class="lead">Protected semantics.</span> Meanings P0 through P9 are reserved. No packet may redefine them (section 6).</li>
-      <li><span class="lead">No latent channels.</span> The protocol forbids hidden side channels in packets (section 8).</li>
-    </ul>
-  </section>
-
-  <section id="validate">
-    <div class="secnum">05</div>
-    <h2>Validate</h2>
-    <pre><code>python3 scripts/protean-sym2p/sym-validate.py &lt;packet-or-stream&gt;
-python3 scripts/protean-sym2p/sym-validate.py --state &lt;receiver-state.json&gt; &lt;packets.jsonl&gt;
-python3 scripts/protean-sym2p/sym-validate.py --strict-canonical &lt;packets.jsonl&gt;
-python3 scripts/protean-sym2p/sym-validate.py --verify-hashes --kind object &lt;root&gt;/objects/&lt;id&gt;.v2.md
-python3 tests/run-tests.py</code></pre>
-    <p>Exit code 0 means every document is valid. Exit code 1 means at least one is invalid, with a typed diagnostic. Exit code 2 means a usage, IO, or configuration error.</p>
-    <p><code>.jsonl</code> is read one object per line. That is the wire carrier.</p>
-  </section>
-
-  <section id="publish">
-    <div class="secnum">06</div>
-    <h2>Publish</h2>
-    <pre><code>python3 scripts/protean-sym2p/sym-publish.py --root &lt;delegation-dir&gt; --by &lt;role-id&gt; draft.json
-python3 scripts/protean-sym2p/sym-publish.py --root &lt;dir&gt; --by &lt;role-id&gt; --announce --to &lt;recipient&gt; draft.json</code></pre>
-    <p>The publisher writes the append-only object versions the validator then checks.</p>
-  </section>
-
-  <section id="gates">
-    <div class="secnum">07</div>
-    <h2>Fixtures and gates</h2>
-    <ul class="tight">
-      <li><span class="lead">Protocol suite.</span> <code>tests/run-tests.py</code> passes every valid fixture and rejects every malformed, stale, duplicate, or protected-semantic fixture with a typed diagnostic. Twenty invalid fixtures and four valid ones ship under <code>tests/fixtures/</code>. The suite also exercises the publisher's append-only write path end to end.</li>
-      <li><span class="lead">Internal-name gate.</span> <code>gates/protean-sym2p/check-internal-names.py</code> blocks internal names from leaking into published artifacts.</li>
-      <li><span class="lead">CI.</span> The verify workflow runs both gates on every push.</li>
-    </ul>
-  </section>
-
   <section id="open">
-    <div class="secnum">08</div>
+    <div class="secnum">10</div>
     <h2>Open items</h2>
-    <p>Open items O-1 to O-9 stay open. Section 10 of the spec carries them. This repository closes none of them and presents none as decided.</p>
+    <p>v2 is merged. v1 stays the spec of record until v2 is accepted. Stated plainly:</p>
     <ul class="tight">
-      <li><span class="lead">No transport signing (O-1).</span> Integrity is a canonical sha256 computed in process, on a single-machine trust assumption.</li>
-      <li><span class="lead">Reference resolution and expiry</span> need the caller to supply receiver state and a reference clock. Without them, those fields are syntax-checked only.</li>
-      <li><span class="lead">Phase 3 routing predicates (O-3)</span> are named, not implemented.</li>
+      <li><span class="lead">Transport signing (identity).</span> The rcp checksum detects corruption in transit. Proof of who sent a packet stays a separate future protocol.</li>
+      <li><span class="lead">Kit adoption.</span> The migrator covers the worked examples, not the full corpus. The kit lock pins v1 until v2 is accepted.</li>
+      <li><span class="lead">Forward compatibility.</span> A v2.0-era reader rejects v2.1 opcodes as unknown, with no capability marker to distinguish "too old" from "corrupt." Worth deciding before the kit lock moves.</li>
     </ul>
   </section>
 
   <section id="source">
-    <div class="secnum">09</div>
+    <div class="secnum">11</div>
     <h2>Source</h2>
-    <p>MIT licensed. The committed <code>LICENSE</code> file is authoritative. Requires nothing beyond Python &ge;3.9 and git. Recommends <code>protean-ops</code> for the record schemas that carry routing state.</p>
+    <p>MIT licensed. The committed <code>LICENSE</code> file is authoritative. Requires nothing beyond Python &ge;3.9 and git.</p>
     <div class="cta">
       <a class="btn primary" href="https://github.com/aska-digital/protean-sym2p">aska-digital/protean-sym2p</a>
-      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC.md">SPEC.md</a>
-      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p/tree/main/skills/sym2p">Usage skill</a>
+      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC-V2-DRAFT.md">SPEC-V2-DRAFT.md</a>
+      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p/blob/main/VISION.md">VISION.md</a>
     </div>
   </section>
 </div>
 
 <footer>
   <div class="wrap">
-    <span>protean-sym2p v1.0.0 &middot; MIT &middot; part of the Protean Kit distribution</span>
+    <span>protean-sym2p &middot; v2.1 merged &middot; v2-rcp edition &middot; MIT &middot; part of the Protean Kit distribution</span>
   </div>
 </footer>
 </div>
@@ -310,7 +377,7 @@ python3 scripts/protean-sym2p/sym-publish.py --root &lt;dir&gt; --by &lt;role-id
   var cv = document.getElementById('rain');
   if (cv && !reduce) {
     var ctx = cv.getContext('2d');
-    var chars = '01{}[]<>:;,."#$SYM2P'.split('');
+    var chars = '01{}[]<>:;,."#$SYM2P|'.split('');
     var fontSize = 15, drops = [], W, H;
     function size(){
       W = cv.width = window.innerWidth;
@@ -337,27 +404,31 @@ python3 scripts/protean-sym2p/sym-publish.py --root &lt;dir&gt; --by &lt;role-id
     })();
   }
 
-  /* Simulated packet wire preview */
+  /* Simulated v2 packet wire preview: bare, reasoning, and rcp editions */
   var body2 = document.getElementById('stream-body');
   if (body2 && !reduce) {
-    var acts = ['assign','ack','assert','update','receipt','challenge','dispute'];
-    var roles = ['cos','builder','verifier','scout','critic'];
-    var sts = ['proposed','accepted','verified','open'];
-    var n = 0;
     function hex(k){ var s=''; for(var i=0;i<k;i++) s+='0123456789abcdef'[(Math.random()*16)|0]; return s; }
     function line(){
-      var id = hex(4), act = acts[(Math.random()*acts.length)|0];
-      var f = roles[(Math.random()*roles.length)|0], t = roles[(Math.random()*roles.length)|0];
-      var st = sts[(Math.random()*sts.length)|0];
-      var pkt = '{"v":2,"id":"' + id + '","f":"' + f + '","t":"' + t +
-                '","a":"' + act + '","st":"' + st + '"}';
+      var id = hex(4);
+      var r = Math.random();
+      var pkt, cls = '';
+      if (r < 0.55) {
+        var f = 1 + ((Math.random()*2)|0), t = 1 + ((Math.random()*4)|0);
+        var a = 1 + ((Math.random()*3)|0), st = 1 + ((Math.random()*3)|0);
+        var cf = 70 + ((Math.random()*30)|0);
+        pkt = '2|' + id + '|mr1|' + f + '|' + t + '|' + a + '|' + st + '|' + cf + '|70|(10 task)|1|mr1:v1|40';
+      } else if (r < 0.8) {
+        pkt = '2|' + id + '|mr1|1|2|1|1|88|70|(30 cov 62)(31 (34 $cov 70) (20 sec (6 6)) ())|1||0';
+      } else {
+        pkt = '2|' + id + '|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))|1|mr1:v1|40|' + hex(16);
+        cls = ' class="rcp"';
+      }
       var div = document.createElement('div');
       div.className = 'ln';
       div.innerHTML = '<span class="ok">exit 0</span>  ' +
-        pkt.replace('"id":"' + id + '"', '"id":"<span class=id>' + id + '</span>"');
+        pkt.replace(id, '<span class=id>' + id + '</span>').replace(/(\|[0-9a-f]{16})$/, '<span' + cls + '>$1</span>');
       body2.appendChild(div);
       while (body2.children.length > 7) body2.removeChild(body2.firstChild);
-      n++;
     }
     for (var i = 0; i < 5; i++) line();
     var cur = document.createElement('div');
@@ -370,7 +441,7 @@ python3 scripts/protean-sym2p/sym-publish.py --root &lt;dir&gt; --by &lt;role-id
     }, 1400);
   } else if (body2) {
     body2.innerHTML = '<div class="ln"><span class="ok">exit 0</span>  ' +
-      '{"v":2,"id":"<span class=id>b441</span>","f":"cos","t":"builder","a":"assign","st":"proposed"}</div>';
+      '2|<span class=id>b441</span>|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))|1|mr1:v1|40</div>';
   }
 })();
 </script>
