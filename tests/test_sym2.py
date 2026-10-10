@@ -109,6 +109,11 @@ class ValidateTest(unittest.TestCase):
         errs = check_line(line, 1)
         self.assertTrue(any("ERR:CANON" in e for e in errs))
 
+    def test_tk_too_long(self):
+        line = BRIEF_V2.replace("|mr1|", "|" + "t" * 65 + "|", 1)
+        errs = check_line(line, 1)
+        self.assertTrue(any("TK longer than 64" in e for e in errs))
+
 
 class MigrateTest(unittest.TestCase):
     def test_brief_migrates(self):

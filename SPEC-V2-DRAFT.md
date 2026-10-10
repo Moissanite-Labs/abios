@@ -47,6 +47,10 @@ V|ID|TK|F|T|A|ST|CF|CV|BODY|RQ|BASE|EXP
 A token matches `[A-Za-z0-9][A-Za-z0-9_.:/-]*`. The BODY field never
 contains `|`.
 
+Thread keys stay tokens. Threads are instance data, not shared
+vocabulary: coding them would need per-thread allocation, which is a
+separate protocol. TK is limited to 64 characters.
+
 ## 3. Code registries
 
 Every categorical value is an integer. Code 0 is reserved in each registry
@@ -199,7 +203,9 @@ smaller than the 481-byte v1 template.
   pull request with reviewer approval. No code is ever reused once
   assigned. The registry lives in sections 3 and 4 of this draft, and
   the renderer MUST cover every assigned code.
-- Whether the thread key (TK) should also be coded, or stay a token.
+- Thread keys stay tokens per section 2. The ambiguity is resolved:
+  instance data is not coded.
 - Transport signing (v1 open item O-1) is still open and carries over.
+  Tracked as issue #15.
 - The renderer vocabulary will grow with the opcode registry. The two
   MUST stay in sync.

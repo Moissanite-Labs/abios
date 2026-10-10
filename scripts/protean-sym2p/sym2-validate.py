@@ -35,6 +35,8 @@ def check_line(line, lineno):
     for name, tok in (("ID", pid), ("TK", tk)):
         if not TOKEN.match(tok):
             err("TOKEN", "%s fails token pattern" % name)
+    if len(tk) > 64:
+        err("RANGE", "TK longer than 64 characters")
     if base and not BASE.match(base):
         err("TOKEN", "BASE is neither empty nor id:ver")
     nums = {}
