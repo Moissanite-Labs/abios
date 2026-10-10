@@ -16,8 +16,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sym2_parse import (  # noqa: E402
-    ACTS, BASE, RQS, ROLES, STATES, TOKEN, check_expr, parse_all,
-    split_fields,
+    ACTS, BASE, RQS, ROLES, STATES, TOKEN, check_expr, check_scope,
+    parse_all, split_fields,
 )
 
 
@@ -62,10 +62,16 @@ def check_line(line, lineno):
         if perr:
             err("BODY", perr)
         else:
+            shaped = True
             for e in exprs:
                 cerr = check_expr(e)
                 if cerr:
                     err("BODY", cerr)
+                    shaped = False
+            if shaped:
+                serr = check_scope(exprs)
+                if serr:
+                    err("SCOPE", serr)
     if re.search(r"\( | \)|  ", body):
         err("CANON", "BODY spacing is not canonical")
     return errs

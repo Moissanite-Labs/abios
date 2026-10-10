@@ -35,11 +35,14 @@ moves from the source to a render target.
    read the wire form. Delivered in PR #14.
 3. **Reasoning-trace packets.** The language grows from task
    assignment to thinking: agents reasoning with each other,
-   dispatching subagents, and coordinating swarms in symbols. Not
-   delivered yet. The current draft is a task-assignment language:
-   one sender, one recipient, no variable binding, no
-   multi-recipient dispatch. Stated plainly so the encoding work is
-   not mistaken for the reasoning work.
+   dispatching subagents, and coordinating swarms in symbols.
+   Delivered as v2.1 in the reasoning-extension PR: `bind`/`if`/
+   `each`/`list`/`lt`/`eq` for naming values, branching, and
+   iteration, with `$name` references checked by the validator;
+   role 7 `swarm` for broadcast; acts 11 `delegate` and 12
+   `report` plus op 40 `spawn` for subagent dispatch. Deliberate
+   limits for a first dialect: no function definition, no
+   recursion, single-expression branches (SPEC-V2-DRAFT.md §11).
 4. **Migration.** `sym2-migrate.py` converts v1 packets to v2,
    failing loudly where English has no symbolic pattern yet.
    Delivered as a scaffold in PR #14. It covers the worked

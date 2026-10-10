@@ -66,6 +66,7 @@ Roles:
 | 4      | scout            |
 | 5      | critic           |
 | 6      | operator (human) |
+| 7      | swarm (broadcast to all members) |
 
 Acts:
 
@@ -81,6 +82,8 @@ Acts:
 | 8      | authorize   |
 | 9      | query       |
 | 10     | inform      |
+| 11     | delegate (recipient spawns a subordinate for the task) |
+| 12     | report (a subordinate returns a result to its parent)  |
 
 States:
 
@@ -110,12 +113,13 @@ operation applied to arguments:
 
 ```
 expr := '(' op arg* ')'
-arg  := number | symbol | expr
+arg  := number | symbol | reference | expr
 ```
 
 A symbol matches `[A-Za-z][A-Za-z0-9_./-]*` or is `*` (meaning all).
 Symbols are case-sensitive. Core vocabulary is lowercase by convention.
-Numbers are unsigned integers.
+Numbers are unsigned integers. A reference is `$` followed by a symbol,
+for example `$cov`. It refers to a name bound by `bind` (section 11).
 
 Operation codes:
 
@@ -127,6 +131,13 @@ Operation codes:
 | 20     | impl        | `(20 unit range)`  | implement a unit over a range                       |
 | 21     | nomod       | `(21 paths)`       | modify no paths                                     |
 | 22     | exit        | `(22 prog ok bad)` | program exits `ok` on valid input, `bad` on invalid |
+| 30     | bind        | `(30 name expr)`   | name the value of expr for later reference          |
+| 31     | if          | `(31 test then else)` | branch on test (empty else allowed)         |
+| 32     | each        | `(32 var items body)` | do body for each item in a list                  |
+| 33     | list        | `(33 item*)`       | list literal                                        |
+| 34     | lt          | `(34 a b)`         | a is less than b                                    |
+| 35     | eq          | `(35 a b)`         | a equals b                                          |
+| 40     | spawn       | `(40 role thread task)` | spawn a subagent of role on thread             |
 
 Units such as `sec` are plain symbols, not opcodes. They appear as
 arguments, for example `(20 sec (3 5))`, never as expression heads.
@@ -214,3 +225,68 @@ output of `sym2-migrate.py` on the v1 template.
   Tracked as issue #15.
 - The renderer vocabulary will grow with the opcode registry. The two
   MUST stay in sync.
+
+## 11. Reasoning extension (v2.1)
+
+The base language (sections 3 and 4) assigns tasks. This extension adds
+the constructs for reasoning: naming values, branching on conditions,
+iterating over collections, addressing a swarm, and dispatching
+subagents. The wire version stays `2`. The extension is additive: every
+v2.0 packet is still valid.
+
+### 11.1 Binding and references
+
+`(30 name expr)` binds `name` to the value of `expr`. Later, `$name`
+refers to it. A `bind` name is visible to the top-level expressions
+that follow it in the body. Inside `if` branches and `each` bodies,
+bindings are local and do not leak outward. A `$name` with no visible
+binding is invalid; the validator reports it as `ERR:SCOPE`.
+
+```
+(30 cov 62)(31 (34 $cov 70) (20 sec (6 6)) ())
+```
+
+Read as: let cov be 62. If cov is less than 70, implement section 6.
+
+### 11.2 Iteration
+
+`(32 var items body)` evaluates `body` once per item, with `var` bound
+to the item. `items` is a `(33 ...)` list or a `$reference` to one.
+
+```
+(32 s (33 3 4 5) (20 sec s))
+```
+
+Read as: for each s in [3, 4, 5], implement section s.
+
+An `impl` range may be a single atom as well as a `(lo hi)` pair, so the
+loop variable can stand where a range bound stood. A pair `(x x)` means
+just `x`.
+
+### 11.3 Swarm broadcast
+
+Role 7 is `swarm`. A packet with T=7 is addressed to every member of
+the current thread. Combined with `each`, one packet can fan work out
+across the swarm.
+
+### 11.4 Subagent dispatch
+
+Act 11 (`delegate`) tells the recipient to spawn a subordinate for the
+body task. The body may name the spawn explicitly with `(40 role
+thread task)`, where `role` is a role code and `thread` is the new
+thread key. Act 12 (`report`) is the subordinate returning a result to
+its parent on the parent thread.
+
+```
+(40 2 b442 (20 sec (7 9)))
+```
+
+Read as: spawn a builder on thread b442 to implement sections 7 to 9.
+
+### 11.5 What this does not do
+
+The extension adds expression, not execution. There is no defined
+evaluation order beyond the reading order, no function definition, and
+no recursion. Branches hold single expressions. These are deliberate
+limits for a first reasoning dialect. They are open for the next
+iteration.
