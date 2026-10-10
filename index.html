@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>protean-sym2p | a versioned message language for agents</title>
+<meta name="description" content="SYM-2P is a versioned message language for AI agents: one canonical JSON packet per line over durable text artifacts, with a validator, templates, a worked example, and a fixture suite.">
+<meta property="og:title" content="protean-sym2p | a versioned message language for agents">
+<meta property="og:description" content="One canonical JSON packet per line over durable text artifacts. Ships the normative spec, a stdlib validator, packet templates, a worked example, and the fixture suite.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://aska-digital.github.io/protean-sym2p/">
+<meta property="og:image" content="https://aska-digital.github.io/protean-sym2p/og-image.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#0a0c10; --panel:#10141b; --line:#1e2530; --text:#e8ecf1; --muted:#9aa5b4;
+  --accent:#3fb950; --accent-dim:#1d3a26; --code:#0d1117;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.65}
+.wrap{max-width:880px;margin:0 auto;padding:0 24px}
+a{color:var(--accent)}
+header.nav{border-bottom:1px solid var(--line);padding:14px 0;position:sticky;top:0;
+  background:rgba(10,12,16,.92);backdrop-filter:blur(6px);z-index:10}
+header.nav .wrap{display:flex;align-items:center;gap:18px}
+.brand{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;
+  color:var(--text);text-decoration:none}
+.brand span{color:var(--accent)}
+nav.links{margin-left:auto;display:flex;gap:16px;font-size:14px}
+nav.links a{color:var(--muted);text-decoration:none}
+nav.links a:hover{color:var(--text)}
+.hero{padding:72px 0 48px}
+.kicker{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);
+  font-weight:600;margin:0 0 18px}
+.hero h1{font-size:56px;line-height:1.05;margin:0 0 6px;letter-spacing:-.02em}
+.hero .tag{font-size:24px;color:var(--text);margin:0 0 20px;font-weight:600}
+.hero p.lede{font-size:18px;color:var(--muted);max-width:640px;margin:0 0 8px}
+.meta{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--muted);
+  margin:26px 0;padding:14px 18px;background:var(--panel);border:1px solid var(--line);
+  border-radius:8px}
+.meta b{color:var(--accent);font-weight:600}
+.cta{margin-top:26px;display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-block;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;
+  font-size:15px}
+.btn.primary{background:var(--accent);color:#06130a}
+.btn.ghost{border:1px solid var(--line);color:var(--text)}
+.btn.ghost:hover{border-color:var(--accent)}
+section{padding:44px 0;border-top:1px solid var(--line)}
+.secnum{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);
+  font-size:14px;font-weight:700;letter-spacing:.12em}
+section h2{font-size:30px;margin:8px 0 18px;letter-spacing:-.01em}
+section p, section li{color:#c9d1dc}
+section p{margin:0 0 14px;max-width:680px}
+ul.tight{padding-left:22px;margin:0 0 14px}
+ul.tight li{margin-bottom:8px}
+ul.tight li::marker{color:var(--accent)}
+.lead{font-weight:600;color:var(--text)}
+pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:18px 20px;
+  overflow-x:auto;font-size:14px;line-height:1.6;margin:16px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+p code, li code, td code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+  padding:2px 7px;font-size:.88em;color:var(--accent);white-space:nowrap}
+pre code{background:none;border:none;padding:0;color:#d6dde6;white-space:pre}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:15px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+td{color:#c9d1dc}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+.card h3{margin:0 0 10px;font-size:16px}
+.card h3.use{color:var(--accent)}
+.card h3.skip{color:#e3a008}
+.card ul{margin:0;padding-left:20px}
+.card li{margin-bottom:8px;font-size:15px}
+.card li::marker{color:var(--accent)}
+footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+footer a{color:var(--muted)}
+@media(max-width:640px){
+  .hero h1{font-size:40px}
+  .grid2{grid-template-columns:1fr}
+  nav.links{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#">protean-<span>sym2p</span></a>
+    <nav class="links">
+      <a href="#need">Need it?</a>
+      <a href="#install">Install</a>
+      <a href="#packet">The packet</a>
+      <a href="#validate">Validate</a>
+      <a href="#open">Open items</a>
+      <a href="https://github.com/aska-digital/protean-sym2p">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <p class="kicker">Protean Kit &middot; protocol ingredient</p>
+    <h1>SYM-2P</h1>
+    <p class="tag">One canonical JSON packet per line.</p>
+    <p class="lede">SYM-2P is a versioned message language for AI agents. Agents write messages as JSON packets, one packet per line, inside plain text files that persist.</p>
+    <p class="lede">A validator checks every packet and reports problems with codes a script can read.</p>
+    <div class="meta"><b>v1.0.0</b> &middot; MIT &middot; Python &ge;3.9, stdlib only &middot; install makes zero network calls</div>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC.md">Read the spec</a>
+      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p">View on GitHub</a>
+    </div>
+  </div>
+
+  <section id="need">
+    <div class="secnum">01</div>
+    <h2>Do you need this?</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3 class="use">Reach for it</h3>
+        <ul>
+          <li>Two agents must exchange messages as one JSON packet per line inside text files that persist.</li>
+          <li>A receiver must validate a packet stream and get typed diagnostics, with exit code 0 for valid, 1 for invalid, 2 for usage or IO error.</li>
+          <li>A run needs routing-state rows checked. Install <code>protean-ops</code> alongside; the manifest recommends it.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 class="skip">Skip it</h3>
+        <ul>
+          <li>The run depends on open items O-1 to O-9. Section 10 of the spec lists them as open and undecided.</li>
+          <li>Only record schemas and gates are needed. Those ship in <code>protean-ops</code>, not here.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="secnum">02</div>
+    <h2>Install</h2>
+    <pre><code>bash install.sh --target &lt;dir&gt;
+bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
+    <p>Bash and coreutils only. Zero network calls. Every written path is printed, and no <code>--target</code> means no run. The dry run writes nothing.</p>
+    <p>It installs alone, resolving only its required dependencies. Optional relationships are reported, not fetched.</p>
+  </section>
+
+  <section id="ships">
+    <div class="secnum">03</div>
+    <h2>What ships</h2>
+    <table>
+      <tr><th>Path</th><th>Contents</th></tr>
+      <tr><td><code>SPEC.md</code></td><td>The normative specification</td></tr>
+      <tr><td><code>skills/sym2p/</code></td><td>The usage skill</td></tr>
+      <tr><td><code>scripts/protean-sym2p/</code></td><td><code>sym-validate.py</code> and <code>sym-publish.py</code>, stdlib only</td></tr>
+      <tr><td><code>templates/protean-sym2p/</code></td><td>Canonical brief and receipt packets</td></tr>
+      <tr><td><code>examples/protean-sym2p/</code></td><td>The worked review, fix, verify, merge loop</td></tr>
+      <tr><td><code>AUDIT/protean-sym2p/</code></td><td>Evidence and provenance (never normative)</td></tr>
+      <tr><td><code>gates/protean-sym2p/</code></td><td>The leak gate and the blocklist</td></tr>
+    </table>
+  </section>
+
+  <section id="packet">
+    <div class="secnum">04</div>
+    <h2>The packet</h2>
+    <p>A brief packet assigning work, as shipped in <code>templates/</code>:</p>
+    <pre><code>{
+  "v": 2,
+  "id": "b441",
+  "tk": "mr1",
+  "prj": "sym2integration",
+  "f": "cos",
+  "t": "builder",
+  "a": "assign",
+  "s": "mr1",
+  "st": "proposed",
+  "cf": 88,
+  "cov": 70,
+  "cond": [
+    "scope: implement SYM-2P/1.0 sections 3-5 only",
+    "constraint: no existing path may be modified",
+    "acceptance: validator exits 0 on valid fixtures, non-zero on invalid"
+  ],
+  "rq": "ack",
+  "base": "mr1:v1",
+  "exp": 40,
+  "ext": { "sym2p": { "rev": "1.0" } }
+}</code></pre>
+    <ul class="tight">
+      <li><span class="lead">Fixed header.</span> The header uses an exact field set in a fixed order (spec section 3).</li>
+      <li><span class="lead">Versioned objects.</span> Objects are written once and versioned in place (section 4).</li>
+      <li><span class="lead">Defined failure handling.</span> Duplicates, stale references, and failures have defined handling (section 5).</li>
+      <li><span class="lead">Protected semantics.</span> Meanings P0 through P9 are reserved. No packet may redefine them (section 6).</li>
+      <li><span class="lead">No latent channels.</span> The protocol forbids hidden side channels in packets (section 8).</li>
+    </ul>
+  </section>
+
+  <section id="validate">
+    <div class="secnum">05</div>
+    <h2>Validate</h2>
+    <pre><code>python3 scripts/protean-sym2p/sym-validate.py &lt;packet-or-stream&gt;
+python3 scripts/protean-sym2p/sym-validate.py --state &lt;receiver-state.json&gt; &lt;packets.jsonl&gt;
+python3 scripts/protean-sym2p/sym-validate.py --strict-canonical &lt;packets.jsonl&gt;
+python3 scripts/protean-sym2p/sym-validate.py --verify-hashes --kind object &lt;root&gt;/objects/&lt;id&gt;.v2.md
+python3 tests/run-tests.py</code></pre>
+    <p>Exit code 0 means every document is valid. Exit code 1 means at least one is invalid, with a typed diagnostic. Exit code 2 means a usage, IO, or configuration error.</p>
+    <p><code>.jsonl</code> is read one object per line. That is the wire carrier.</p>
+  </section>
+
+  <section id="publish">
+    <div class="secnum">06</div>
+    <h2>Publish</h2>
+    <pre><code>python3 scripts/protean-sym2p/sym-publish.py --root &lt;delegation-dir&gt; --by &lt;role-id&gt; draft.json
+python3 scripts/protean-sym2p/sym-publish.py --root &lt;dir&gt; --by &lt;role-id&gt; --announce --to &lt;recipient&gt; draft.json</code></pre>
+    <p>The publisher writes the append-only object versions the validator then checks.</p>
+  </section>
+
+  <section id="gates">
+    <div class="secnum">07</div>
+    <h2>Fixtures and gates</h2>
+    <ul class="tight">
+      <li><span class="lead">Protocol suite.</span> <code>tests/run-tests.py</code> passes every valid fixture and rejects every malformed, stale, duplicate, or protected-semantic fixture with a typed diagnostic. Twenty invalid fixtures and four valid ones ship under <code>tests/fixtures/</code>. The suite also exercises the publisher's append-only write path end to end.</li>
+      <li><span class="lead">Internal-name gate.</span> <code>gates/protean-sym2p/check-internal-names.py</code> blocks internal names from leaking into published artifacts.</li>
+      <li><span class="lead">CI.</span> The verify workflow runs both gates on every push.</li>
+    </ul>
+  </section>
+
+  <section id="open">
+    <div class="secnum">08</div>
+    <h2>Open items</h2>
+    <p>Open items O-1 to O-9 stay open. Section 10 of the spec carries them. This repository closes none of them and presents none as decided.</p>
+    <ul class="tight">
+      <li><span class="lead">No transport signing (O-1).</span> Integrity is a canonical sha256 computed in process, on a single-machine trust assumption.</li>
+      <li><span class="lead">Reference resolution and expiry</span> need the caller to supply receiver state and a reference clock. Without them, those fields are syntax-checked only.</li>
+      <li><span class="lead">Phase 3 routing predicates (O-3)</span> are named, not implemented.</li>
+    </ul>
+  </section>
+
+  <section id="source">
+    <div class="secnum">09</div>
+    <h2>Source</h2>
+    <p>MIT licensed. The committed <code>LICENSE</code> file is authoritative. Requires nothing beyond Python &ge;3.9 and git. Recommends <code>protean-ops</code> for the record schemas that carry routing state.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/aska-digital/protean-sym2p">aska-digital/protean-sym2p</a>
+      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC.md">SPEC.md</a>
+      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p/tree/main/skills/sym2p">Usage skill</a>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>protean-sym2p v1.0.0 &middot; MIT &middot; part of the Protean Kit distribution</span>
+  </div>
+</footer>
+
+</body>
+</html>
