@@ -104,7 +104,7 @@ performs zero network calls and fails closed when the cache entry is absent.
   and a reference clock. Without them, those fields are syntax-checked only, and
   the skill says so.
 - Phase 3 routing predicates are named and not implemented (O-3).
-- The protocol's routing semantics are described here; the record schemas that
+- The protocol's routing semantics are described here. The record schemas that
   carry routing state belong to `protean-ops`.
 
 ## License

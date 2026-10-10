@@ -20,13 +20,13 @@ entry per release: what changed, why, and how it was verified.
   `<root>/objects/` (correct) and then listed that directory anyway, so the
   documented first-use check failed with a spurious `ERR:SYN` while the same
   command without `--dry-run` succeeded. An absent store is now scanned as
-  empty; a store that exists but cannot be listed is still a finding. The
+  empty. A store that exists but cannot be listed is still a finding. The
   suite's `--dry-run` case reused a root an earlier case had already populated,
   so it never reached this path: `tests/run-tests.py` gains a first-use section
   that builds its own root with no `objects/` store.
-- **Verification:** `python3 tests/run-tests.py` — 80/80 cases (34 validator, 46
+- **Verification:** `python3 tests/run-tests.py`: 80/80 cases (34 validator, 46
   publisher) with every published file independently hash-verified under
-  `--verify-hashes`; the five first-use cases fail against the pre-fix publisher
+  `--verify-hashes`. The five first-use cases fail against the pre-fix publisher
   with the defect's own `ERR:SYN` diagnostic. Also
   `python3 gates/protean-sym2p/check-internal-names.py .` clean;
   `python3 -m unittest discover -s tests` OK. Full output in the pull request.
@@ -34,7 +34,7 @@ entry per release: what changed, why, and how it was verified.
   over the canonical compact `body`, the rule in
   `AUDIT/protean-sym2p/provenance.md` that `--verify-hashes` enforces), so a
   published file verifies against the shipped validator. Because the hash covers
-  the body, a caller-computed correct hash survives publication unchanged; header
+  the body, a caller-computed correct hash survives publication unchanged. Header
   fields stay outside the hash by design, which is why the publisher enforces
   `v`, `sup`, and `by` itself at write time. The suite pins that scope.
 - **Contract:** unchanged. No wire bytes, no enum, no key order, no gate, no
