@@ -173,8 +173,9 @@ The v1 brief packet template is 481 bytes. The same packet in v2:
 2|b441|mr1|1|2|1|1|88|70|(10 sym2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:1|40
 ```
 
-That line is 106 bytes. The density gain comes from three removals: key
-names, English prose, and JSON punctuation.
+That line is 99 bytes. The density gain comes from three removals: key
+names, English prose, and JSON punctuation. The same packet is 4.9x
+smaller than the 481-byte v1 template.
 
 ## 9. Migration
 
