@@ -134,7 +134,7 @@ arguments, for example `(20 sec (3 5))`, never as expression heads.
 Example body:
 
 ```
-(10 SYM-2P/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))
+(10 sym-2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))
 ```
 
 Read as: scope is SYM-2P/1.0, implement sections 3 to 5. It modifies no
@@ -180,7 +180,7 @@ place.
 The v1 brief packet template is 481 bytes. The same packet in v2:
 
 ```
-2|b441|mr1|1|2|1|1|88|70|(10 SYM-2P/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:v1|40
+2|b441|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:v1|40
 ```
 
 That line is 101 bytes. The density gain comes from three removals: key
@@ -198,7 +198,8 @@ output of `sym2-migrate.py` on the v1 template.
 - v1-to-v2 translation tooling ships as `sym2-migrate.py`: structured
   fields map through the registries, and English cond strings map
   through known patterns. A cond with no known pattern fails loudly
-  rather than being guessed at.
+  rather than being guessed at. Emitted symbols are case-folded to
+  lowercase, per the core-vocabulary convention in section 4.
 
 ## 10. Open items for reviewers
 

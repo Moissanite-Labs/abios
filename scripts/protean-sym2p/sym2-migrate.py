@@ -37,12 +37,13 @@ ACCEPT_RE = re.compile(r"^acceptance: (\S+) exits (\d+) on valid \S+, "
 def migrate_cond(cond):
     m = SCOPE_RE.match(cond)
     if m:
-        return "(10 %s (20 sec (%s %s)))" % (m.group(1), m.group(2), m.group(3))
+        target = m.group(1).lower()
+        return "(10 %s (20 sec (%s %s)))" % (target, m.group(2), m.group(3))
     if NOMOD_RE.match(cond):
         return "(11 (21 *))"
     m = ACCEPT_RE.match(cond)
     if m:
-        return "(12 (22 %s %s 1))" % (m.group(1), m.group(2))
+        return "(12 (22 %s %s 1))" % (m.group(1).lower(), m.group(2))
     return None
 
 

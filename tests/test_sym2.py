@@ -144,6 +144,12 @@ class MigrateTest(unittest.TestCase):
         self.assertTrue(out.endswith("|1|mr1:v1|40"))
         self.assertIn("(11 (21 *))", out)
 
+    def test_migrator_case_folds_symbols(self):
+        out, err = migrate(BRIEF_V1, 1)
+        self.assertIsNone(err)
+        self.assertIn("(10 sym-2p/1.0", out)
+        self.assertNotIn("SYM-2P", out)
+
     def test_migrated_validates(self):
         out, err = migrate(BRIEF_V1, 1)
         self.assertIsNone(err)
