@@ -114,6 +114,7 @@ arg  := number | symbol | expr
 ```
 
 A symbol matches `[A-Za-z][A-Za-z0-9_./-]*` or is `*` (meaning all).
+Symbols are case-sensitive. Core vocabulary is lowercase by convention.
 Numbers are unsigned integers.
 
 Operation codes:
@@ -125,13 +126,15 @@ Operation codes:
 | 12     | accept      | `(12 accept)`      | acceptance criterion                                |
 | 20     | impl        | `(20 unit range)`  | implement a unit over a range                       |
 | 21     | nomod       | `(21 paths)`       | modify no paths                                     |
-| 30     | sec         | symbolic unit      | sections, used inside `impl`                        |
 | 22     | exit        | `(22 prog ok bad)` | program exits `ok` on valid input, `bad` on invalid |
+
+Units such as `sec` are plain symbols, not opcodes. They appear as
+arguments, for example `(20 sec (3 5))`, never as expression heads.
 
 Example body:
 
 ```
-(10 sym2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))
+(10 SYM-2P/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))
 ```
 
 Read as: scope is SYM-2P/1.0, implement sections 3 to 5. It modifies no
@@ -177,12 +180,13 @@ place.
 The v1 brief packet template is 481 bytes. The same packet in v2:
 
 ```
-2|b441|mr1|1|2|1|1|88|70|(10 sym2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:1|40
+2|b441|mr1|1|2|1|1|88|70|(10 SYM-2P/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:v1|40
 ```
 
-That line is 99 bytes. The density gain comes from three removals: key
-names, English prose, and JSON punctuation. The same packet is 4.9x
-smaller than the 481-byte v1 template.
+That line is 101 bytes. The density gain comes from three removals: key
+names, English prose, and JSON punctuation. The same packet is 4.8x
+smaller than the 481-byte v1 template. The line above is the exact
+output of `sym2-migrate.py` on the v1 template.
 
 ## 9. Migration
 

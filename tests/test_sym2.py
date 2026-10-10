@@ -161,6 +161,22 @@ class MigrateTest(unittest.TestCase):
         self.assertIsNone(out)
         self.assertIn("unknown v1 role", err)
 
+    def test_pretty_printed_document(self):
+        import json
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".json",
+                                         delete=False) as fh:
+            json.dump(BRIEF_V1, fh, indent=2)
+            path = fh.name
+        try:
+            packets = _migrate_mod.read_packets(path)
+        finally:
+            os.unlink(path)
+        self.assertEqual(len(packets), 1)
+        out, err = migrate(packets[0][0], 1)
+        self.assertIsNone(err)
+        self.assertEqual(check_line(out, 1), [])
+
 
 class ParseTest(unittest.TestCase):
     def test_nested(self):

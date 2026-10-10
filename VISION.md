@@ -29,20 +29,31 @@ moves from the source to a render target.
 ## The plan
 
 1. **v2 wire format.** Dense, symbolic, validatable. Proposed in
-   SPEC-V2-DRAFT.md.
+   SPEC-V2-DRAFT.md. Delivered as a draft in PR #14.
 2. **The translator.** `sym2-render.py` turns packets into
    human-readable English. Operators read the rendered form. Agents
-   read the wire form.
+   read the wire form. Delivered in PR #14.
 3. **Reasoning-trace packets.** The language grows from task
    assignment to thinking: agents reasoning with each other,
-   dispatching subagents, and coordinating swarms in symbols.
+   dispatching subagents, and coordinating swarms in symbols. Not
+   delivered yet. The current draft is a task-assignment language:
+   one sender, one recipient, no variable binding, no
+   multi-recipient dispatch. Stated plainly so the encoding work is
+   not mistaken for the reasoning work.
 4. **Migration.** `sym2-migrate.py` converts v1 packets to v2,
    failing loudly where English has no symbolic pattern yet.
+   Delivered as a scaffold in PR #14. It covers the worked
+   examples, not the full corpus, so the kit lock cannot move on
+   it yet.
 5. **Kit adoption.** The Protean Kit pins v1 until v2 is accepted.
-   Then the lock moves.
+   Then the lock moves. Correctly deferred.
 6. **Measurement.** The empirical question underneath all of this:
    does symbolic communication actually buy capability and
-   efficiency. The repo is the instrument for finding out.
+   efficiency. Not delivered yet. The density figure measures
+   bytes, not capability. The highest-leverage next step is a
+   measurement harness: the same task set in v1 English and v2,
+   compared on tokens, latency, and task success. That turns the
+   repo from a format into the instrument.
 
 ## What stays
 

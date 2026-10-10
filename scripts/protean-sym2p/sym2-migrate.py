@@ -5,9 +5,12 @@ Structured fields map directly through the registries. The English
 cond strings map through known patterns; a cond that matches no known
 pattern fails loudly instead of being guessed at.
 
-Usage: sym2-migrate.py <v1-jsonl>
-Exit codes: 0 every line migrated, 1 at least one line unmigratable,
-2 usage, IO, or configuration error.
+Accepts a JSONL file (one packet per line) or a single JSON document,
+such as the repo's pretty-printed templates.
+
+Usage: sym2-migrate.py <v1-packets>
+Exit codes: 0 every packet migrated, 1 at least one packet
+unmigratable, 2 usage, IO, or configuration error.
 """
 import json
 import os
@@ -86,27 +89,45 @@ def migrate(obj, lineno):
     return "|".join(fields), None
 
 
-def main(argv):
-    if len(argv) != 2:
-        print("usage: sym2-migrate.py <v1-jsonl>", file=sys.stderr)
-        return 2
+def read_packets(path):
+    """Read v1 packets from a JSONL file or a single JSON document.
+
+    Returns a list of (obj, lineno) or raises ValueError on bad input.
+    """
+    with open(path) as fh:
+        raw = fh.read()
     try:
-        with open(argv[1]) as fh:
-            lines = fh.read().splitlines()
-    except OSError as ex:
-        print("cannot read %s: %s" % (argv[1], ex), file=sys.stderr)
-        return 2
-    bad = 0
-    for i, line in enumerate(lines, 1):
+        obj = json.loads(raw)
+        if isinstance(obj, dict):
+            return [(obj, 1)]
+    except json.JSONDecodeError:
+        pass
+    packets = []
+    for i, line in enumerate(raw.splitlines(), 1):
         line = line.strip()
         if not line:
             continue
         try:
-            obj = json.loads(line)
+            packets.append((json.loads(line), i))
         except json.JSONDecodeError as ex:
-            print("line %d: invalid JSON: %s" % (i, ex), file=sys.stderr)
-            bad += 1
-            continue
+            raise ValueError("line %d: invalid JSON: %s" % (i, ex))
+    return packets
+
+
+def main(argv):
+    if len(argv) != 2:
+        print("usage: sym2-migrate.py <v1-packets>", file=sys.stderr)
+        return 2
+    try:
+        packets = read_packets(argv[1])
+    except OSError as ex:
+        print("cannot read %s: %s" % (argv[1], ex), file=sys.stderr)
+        return 2
+    except ValueError as ex:
+        print(ex, file=sys.stderr)
+        return 2
+    bad = 0
+    for obj, i in packets:
         out, err = migrate(obj, i)
         if err:
             print(err, file=sys.stderr)
