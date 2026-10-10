@@ -51,6 +51,12 @@ nav.links a:hover{color:var(--accent-hot)}
   margin:26px 0;padding:14px 18px;background:var(--panel);border:1px solid var(--line);
   border-radius:8px;box-shadow:inset 0 0 24px rgba(63,185,80,.05)}
 .meta b{color:var(--accent);font-weight:600;text-shadow:0 0 8px rgba(63,185,80,.6)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:26px 0 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 14px;
+  text-align:center;box-shadow:inset 0 0 24px rgba(63,185,80,.05)}
+.stat b{display:block;font-size:30px;font-weight:800;color:var(--accent-hot);
+  text-shadow:0 0 14px rgba(63,185,80,.6);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.stat span{display:block;font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.4}
 .cta{margin-top:26px;display:flex;gap:12px;flex-wrap:wrap}
 .btn{display:inline-block;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:600;
   font-size:15px;transition:box-shadow .2s,transform .2s}
@@ -115,6 +121,7 @@ footer a{color:var(--muted)}
 @media(max-width:640px){
   .hero h1{font-size:48px}
   .grid2{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
   nav.links{display:none}
 }
 @media(prefers-reduced-motion:reduce){
@@ -149,11 +156,16 @@ footer a{color:var(--muted)}
   <div class="hero">
     <p class="kicker"><span class="pulse"></span>Protean Kit &middot; protocol ingredient</p>
     <h1>SYM-2P</h1>
-    <p class="tag">The wire goes symbolic.</p>
-    <p class="lede">SYM-2P is a versioned message language for AI agents. v1 speaks JSON but thinks in English: prose sits inside string fields, and a model receiver must parse human language to understand a machine message.</p>
-    <p class="lede">v2 moves the language to symbols. Packets are dense positional lines: integer-coded roles, acts, and states with an s-expression body. English stops being the source and becomes a render target. A translator turns wire packets into human-readable English for operators.</p>
-    <p class="lede">v2.1 grows the language from task assignment to reasoning: bind names to values, branch on conditions, iterate over collections, dispatch subagents, and broadcast to a swarm, all in symbols.</p>
-    <p class="lede">v2-rcp adds relay corruption protection: a checksum field for packets crossing untrusted paths. And <code>bench/</code> measures what the symbols buy: a paired v1/v2 task corpus, a bench script, and a model eval protocol.</p>
+    <p class="tag">Dense, validatable messages for AI agents.</p>
+    <p class="lede">SYM-2P is a symbolic message language for AI agents. It replaces English prose inside JSON with dense symbols: integer-coded roles, acts, and states in positional fields, with s-expression bodies. A translator at the boundary renders every packet back into English for operators.</p>
+    <p class="lede">What that buys you: packets 4.8x smaller than the v1 JSON they replace. A reasoning dialect that lets agents bind values, branch on conditions, iterate over collections, dispatch subagents, and broadcast to swarms. A relay-protection edition that checksums packets crossing untrusted paths.</p>
+    <p class="lede">And a measurement harness: a paired v1/v2 task corpus with a bench script and a model eval protocol, so the efficiency claim is measured rather than asserted.</p>
+    <div class="stats">
+      <div class="stat"><b>4.8x</b><span>denser than v1 JSON</span></div>
+      <div class="stat"><b>3.1x</b><span>smaller than compact v1, per bench</span></div>
+      <div class="stat"><b>50</b><span>stdlib-only tests</span></div>
+      <div class="stat"><b>0</b><span>network calls to install</span></div>
+    </div>
     <div class="meta"><b>v2.1 merged</b> &middot; v2-rcp edition &middot; measurement harness &middot; MIT &middot; Python &ge;3.9, stdlib only</div>
     <div class="cta">
       <a class="btn primary" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC-V2-DRAFT.md">Read the v2 spec</a>
@@ -296,8 +308,17 @@ Expires in 40s.</code></pre>
     <p>Stated plainly: the harness does not run models itself, and 10 hand-written tasks are a smoke test, not a benchmark. A real capability claim needs the eval run against models, reported with model name, date, and scores.</p>
   </section>
 
-  <section id="translate">
+  <section id="v1tov2">
     <div class="secnum">07</div>
+    <h2>From v1 to v2</h2>
+    <p>v1 speaks JSON but thinks in English: prose sits inside string fields, and a model receiver must parse human language to understand a machine message. That is the handicap the project starts from.</p>
+    <p>v2 moves the language to symbols. Packet content becomes codes, numbers, and structured expressions. English stops being the source and becomes a render target: a translator script converts packets to human-readable English for operators.</p>
+    <p>v2 keeps what worked in v1: one packet per line in durable text artifacts, a versioned wire format, and a validator with exit codes 0 (valid), 1 (invalid), 2 (usage or IO error).</p>
+    <p>v1 stays normative until v2 is accepted. The migrator converts v1 packets to v2 lines, failing loudly where English has no symbolic pattern yet. It covers the worked examples, not the full corpus, so the kit lock stays on v1 for now.</p>
+  </section>
+
+  <section id="translate">
+    <div class="secnum">08</div>
     <h2>Translate and validate</h2>
     <pre><code>python3 scripts/protean-sym2p/sym2-render.py &lt;packets.sym2&gt;
 python3 scripts/protean-sym2p/sym2-migrate.py &lt;packets.jsonl&gt;
@@ -315,7 +336,7 @@ python3 tests/test_sym2.py</code></pre>
   </section>
 
   <section id="ships">
-    <div class="secnum">08</div>
+    <div class="secnum">09</div>
     <h2>What ships</h2>
     <table>
       <tr><th>Path</th><th>Contents</th></tr>
@@ -331,7 +352,7 @@ python3 tests/test_sym2.py</code></pre>
   </section>
 
   <section id="install">
-    <div class="secnum">09</div>
+    <div class="secnum">10</div>
     <h2>Install</h2>
     <pre><code>bash install.sh --target &lt;dir&gt;
 bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
@@ -340,7 +361,7 @@ bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
   </section>
 
   <section id="open">
-    <div class="secnum">10</div>
+    <div class="secnum">11</div>
     <h2>Open items</h2>
     <p>v2 is merged. v1 stays the spec of record until v2 is accepted. Stated plainly:</p>
     <ul class="tight">
@@ -351,7 +372,7 @@ bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
   </section>
 
   <section id="source">
-    <div class="secnum">11</div>
+    <div class="secnum">12</div>
     <h2>Source</h2>
     <p>MIT licensed. The committed <code>LICENSE</code> file is authoritative. Requires nothing beyond Python &ge;3.9 and git.</p>
     <div class="cta">
