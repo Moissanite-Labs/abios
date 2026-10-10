@@ -16,8 +16,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sym2_parse import (  # noqa: E402
-    ACTS, BASE, RQS, ROLES, STATES, TOKEN, check_expr, check_scope,
-    parse_all, split_fields,
+    ACTS, BASE, RQS, ROLES, STATES, SUM, TOKEN, check_expr, check_scope,
+    parse_all, rcp_sum, split_fields,
 )
 
 
@@ -31,7 +31,8 @@ def check_line(line, lineno):
     if ferr:
         err("SHAPE", ferr)
         return errs
-    _, pid, tk, f, t, a, st, cf, cv, body, rq, base, exp = fields
+    bare = fields[:13]
+    _, pid, tk, f, t, a, st, cf, cv, body, rq, base, exp = bare
     for name, tok in (("ID", pid), ("TK", tk)):
         if not TOKEN.match(tok):
             err("TOKEN", "%s fails token pattern" % name)
@@ -74,6 +75,12 @@ def check_line(line, lineno):
                     err("SCOPE", serr)
     if re.search(r"\( | \)|  ", body):
         err("CANON", "BODY spacing is not canonical")
+    if len(fields) == 14 and not errs:
+        total = fields[13]
+        if not SUM.match(total):
+            err("RCP", "SUM is not 16 lowercase hex characters")
+        elif total != rcp_sum("|".join(bare)):
+            err("RCP", "SUM does not match the line")
     return errs
 
 

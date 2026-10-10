@@ -5,12 +5,14 @@ Both sym2-render.py and sym2-validate.py import from here so the wire
 grammar lives in exactly one place. Covers the base task language
 (opcodes 10-22) and the v2.1 reasoning extension (opcodes 30-40).
 """
+import hashlib
 import re
 
 TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]*$")
 BASE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]*:[A-Za-z0-9][A-Za-z0-9_.:/-]*$")
 SYM = re.compile(r"^(?:\*|[A-Za-z][A-Za-z0-9_./-]*)$")
 REF = re.compile(r"^\$[A-Za-z][A-Za-z0-9_./-]*$")
+SUM = re.compile(r"^[0-9a-f]{16}$")
 
 ROLES = {0: "reserved", 1: "coordinator", 2: "builder", 3: "verifier",
          4: "scout", 5: "critic", 6: "operator", 7: "swarm"}
@@ -25,6 +27,7 @@ UNITS = {"sec": "sections"}
 
 FIELD_NAMES = ["V", "ID", "TK", "F", "T", "A", "ST", "CF", "CV",
                "BODY", "RQ", "BASE", "EXP"]
+FIELD_NAMES_RCP = FIELD_NAMES + ["SUM"]
 
 
 def tokenize(text):
@@ -255,11 +258,24 @@ def _scan_one(e, bound):
     return None
 
 
+def rcp_sum(bare_line):
+    """Checksum for a v2-rcp line: first 16 hex chars of the sha256
+    of the canonical 13-field line, encoded UTF-8."""
+    return hashlib.sha256(bare_line.encode("utf-8")).hexdigest()[:16]
+
+
+def add_rcp(bare_line):
+    """Append the checksum field to a canonical bare v2 line."""
+    return bare_line + "|" + rcp_sum(bare_line)
+
+
 def split_fields(line):
-    """Split a v2 line into 13 fields. Returns (fields, error)."""
+    """Split a v2 line into fields. Bare v2 has 13 fields; v2-rcp has
+    14 (the 14th is the SUM checksum). Returns (fields, error)."""
     fields = line.split("|")
-    if len(fields) != 13:
-        return None, "want 13 fields, have %d" % len(fields)
+    if len(fields) not in (13, 14):
+        return None, "want 13 fields (bare) or 14 (rcp), have %d" % len(
+            fields)
     if fields[0] != "2":
         return None, "want wire version 2"
     return fields, None

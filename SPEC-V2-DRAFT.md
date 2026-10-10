@@ -22,7 +22,10 @@ versioned wire format, and a validator with exit codes 0 (valid), 1
 ## 2. Wire format
 
 One packet is one line. Fields are positional, separated by `|` (U+007C).
-There are no key names on the wire. Field order is fixed:
+There are no key names on the wire. Field order is fixed. A bare v2
+line carries 13 fields. A v2-rcp line carries 14. The extra field is
+the checksum defined in section 10. The edition shows in the field
+count, not in a version bump: V stays `2`.
 
 ```
 V|ID|TK|F|T|A|ST|CF|CV|BODY|RQ|BASE|EXP
@@ -43,6 +46,7 @@ V|ID|TK|F|T|A|ST|CF|CV|BODY|RQ|BASE|EXP
 | 11  | RQ      | integer       | request code, 0 means none (section 3)     |
 | 12  | BASE    | token         | base reference `id:ver`, empty means none  |
 | 13  | EXP     | integer       | expiry in seconds, 0 means none            |
+| 14  | SUM     | 16 hex, rcp only | checksum of the line (section 10)       |
 
 A token matches `[A-Za-z0-9][A-Za-z0-9_.:/-]*`. The BODY field never
 contains `|`.
@@ -153,24 +157,28 @@ existing paths. The validator exits 0 on valid input and 1 on invalid.
 
 ## 5. Canonical form
 
-- Exactly 13 `|`-separated fields.
+- Exactly 13 `|`-separated fields for bare v2, 14 for v2-rcp.
 - Integers carry no leading zeros.
 - Inside BODY, exactly one space separates elements. No space follows `(`
   or precedes `)`.
 - No leading or trailing whitespace on the line.
+- SUM is 16 lowercase hex characters: the first 16 hex characters of
+  the sha256 of the canonical 13-field line, encoded UTF-8.
 
 ## 6. Validation
 
 A v2 validator MUST reject a line when any of these hold, with a typed
 diagnostic:
 
-- Field count is not 13, or V is not `2`.
+- Field count is neither 13 (bare) nor 14 (rcp), or V is not `2`.
 - ID, TK, or BASE fail the token pattern. BASE is neither empty nor
   `id:ver` shaped.
 - F, T, A, ST, or RQ fall outside their registries.
 - CF or CV fall outside 0-100; EXP is negative.
 - BODY has unbalanced parentheses, an unknown opcode, or a malformed
   expression.
+- On a 14-field line: SUM is not 16 lowercase hex characters, or it
+  does not match the recomputed checksum of the first 13 fields.
 
 Exit codes follow v1: 0 means every line valid, 1 means at least one
 invalid with a typed diagnostic, 2 means usage, IO, or configuration
@@ -199,6 +207,9 @@ names, English prose, and JSON punctuation. The same packet is 4.8x
 smaller than the 481-byte v1 template. The line above is the exact
 output of `sym2-migrate.py` on the v1 template.
 
+The same packet as v2-rcp is 118 bytes: the 101-byte bare line plus
+the separator and the 16-character checksum.
+
 ## 9. Migration
 
 - v1 (SYM-2P/1.0) stays normative and untouched. This draft does not
@@ -212,19 +223,35 @@ output of `sym2-migrate.py` on the v1 template.
   rather than being guessed at. Emitted symbols are case-folded to
   lowercase, per the core-vocabulary convention in section 4.
 
-## 10. Open items for reviewers
+## 10. Editions: bare and -rcp
 
-- Opcode registry governance. Proposed policy: codes 1-99 are core and
-  owned by this spec. Codes 100-999 are domain extensions, allocated by
-  pull request with reviewer approval. No code is ever reused once
-  assigned. The registry lives in sections 3 and 4 of this draft, and
-  the renderer MUST cover every assigned code.
-- Thread keys stay tokens per section 2. The ambiguity is resolved:
-  instance data is not coded.
-- Transport signing (v1 open item O-1) is still open and carries over.
-  Tracked as issue #15.
-- The renderer vocabulary will grow with the opcode registry. The two
-  MUST stay in sync.
+Every wire version ships two editions. v2 ships bare v2 and v2-rcp.
+A future v3 would ship bare v3 and v3-rcp. The `-rcp` suffix marks
+relay corruption protection.
+
+Bare v2 is the 13-field line in section 2. It is the default. Use it
+where the medium is trusted: one machine, one operator, one local
+relay.
+
+v2-rcp adds the 14th field, SUM. Use it where a packet crosses
+machines the sender does not fully trust: multi-hop relay, shared
+queues, any path where a byte can change unnoticed.
+
+The sender picks the edition per interaction, based on the medium.
+There is no negotiation in this draft. A receiver accepts both
+editions. An agent that mostly talks on trusted paths sends bare
+lines and switches to -rcp for the relayed ones. It pays the
+checksum cost only where corruption is possible.
+
+SUM is the first 16 hex characters of the sha256 of the canonical
+13-field line, encoded UTF-8. The checksum detects corruption in
+transit. It does not prove who sent the packet. 16 characters keep
+the overhead small: 17 bytes on the wire. Full transport signing,
+which proves identity, stays a separate future protocol.
+
+A validator written before this section rejects a 14-field line with
+a shape error instead of misreading it. That is the intended
+behavior: old readers fail loudly on the new edition.
 
 ## 11. Reasoning extension (v2.1)
 
@@ -290,3 +317,19 @@ evaluation order beyond the reading order, no function definition, and
 no recursion. Branches hold single expressions. These are deliberate
 limits for a first reasoning dialect. They are open for the next
 iteration.
+
+## 12. Open items for reviewers
+
+- Opcode registry governance. Proposed policy: codes 1-99 are core and
+  owned by this spec. Codes 100-999 are domain extensions, allocated by
+  pull request with reviewer approval. No code is ever reused once
+  assigned. The registry lives in sections 3 and 4 of this draft, and
+  the renderer MUST cover every assigned code.
+- Thread keys stay tokens per section 2. The ambiguity is resolved:
+  instance data is not coded.
+- Transport signing (v1 open item O-1): the corruption-detection half
+  is delivered as the v2-rcp edition in section 10. Signing itself,
+  proof of identity across machines, stays open as a separate future
+  protocol.
+- The renderer vocabulary will grow with the opcode registry. The two
+  MUST stay in sync.

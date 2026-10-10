@@ -85,7 +85,8 @@ def render_packet(line):
     fields, err = split_fields(line)
     if err:
         return None, "not a v2 packet line (%s)" % err
-    _, pid, _tk, f, t, a, st, cf, cv, body, rq, base, exp = fields
+    rcp = len(fields) == 14
+    _, pid, _tk, f, t, a, st, cf, cv, body, rq, base, exp = fields[:13]
     try:
         f, t, a, st, rq = int(f), int(t), int(a), int(st), int(rq)
         cf, cv, exp = int(cf), int(cv), int(exp)
@@ -116,6 +117,8 @@ def render_packet(line):
         out.append("Base: %s." % base)
     if exp:
         out.append("Expires in %ds." % exp)
+    if rcp:
+        out.append("Relay corruption protection: on.")
     return "\n".join(out), None
 
 
