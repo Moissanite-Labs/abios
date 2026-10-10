@@ -45,6 +45,9 @@ def check_line(line, lineno):
         if not re.fullmatch(r"\d+", raw):
             err("TYPE", "%s is not an unsigned integer" % name)
             continue
+        if len(raw) > 1 and raw.startswith("0"):
+            err("CANON", "%s has leading zeros" % name)
+            continue
         nums[name] = int(raw)
     for name, reg, label in (("F", ROLES, "role"), ("T", ROLES, "role"),
                              ("A", ACTS, "act"), ("ST", STATES, "state"),
@@ -54,9 +57,7 @@ def check_line(line, lineno):
     for name in ("CF", "CV"):
         if name in nums and not 0 <= nums[name] <= 100:
             err("RANGE", "%s=%d outside 0-100" % (name, nums[name]))
-    if "|" in body:
-        err("SHAPE", "BODY contains the field separator")
-    elif body.strip():
+    if body.strip():
         exprs, perr = parse_all(body)
         if perr:
             err("BODY", perr)
@@ -70,6 +71,21 @@ def check_line(line, lineno):
     return errs
 
 
+def validate_lines(lines):
+    """Validate raw lines. Returns the list of diagnostics."""
+    errs = []
+    for i, raw in enumerate(lines, 1):
+        if not raw.strip():
+            continue
+        if raw != raw.strip():
+            errs.append("ERR:CANON line %d: leading or trailing whitespace"
+                        % i)
+            continue
+        for e in check_line(raw.strip(), i):
+            errs.append(e)
+    return errs
+
+
 def main(argv):
     if len(argv) != 2:
         print("usage: sym2-validate.py <packet-or-file>", file=sys.stderr)
@@ -80,16 +96,11 @@ def main(argv):
             lines = fh.read().splitlines()
     except OSError:
         lines = [src]
-    bad = 0
-    for i, line in enumerate(lines, 1):
-        line = line.strip()
-        if not line:
-            continue
-        for e in check_line(line, i):
-            print(e, file=sys.stderr)
-            bad += 1
-    if bad:
-        print("%d invalid line(s)" % bad, file=sys.stderr)
+    errs = validate_lines(lines)
+    for e in errs:
+        print(e, file=sys.stderr)
+    if errs:
+        print("%d invalid line(s)" % len(errs), file=sys.stderr)
         return 1
     print("all lines valid")
     return 0

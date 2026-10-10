@@ -30,6 +30,7 @@ check_expr = _sym2_parse.check_expr
 parse_all = _sym2_parse.parse_all
 render_packet = _render_mod.render_packet
 check_line = _validate_mod.check_line
+validate_lines = _validate_mod.validate_lines
 migrate = _migrate_mod.migrate
 
 BRIEF_V2 = ("2|b441|mr1|1|2|1|1|88|70|"
@@ -70,6 +71,12 @@ class RenderTest(unittest.TestCase):
         text, err = render_packet(line)
         self.assertIsNone(text)
         self.assertIn("unknown act code", err)
+
+    def test_unknown_opcode_named(self):
+        line = BRIEF_V2.replace("(10 sym2p/1.0", "(99 sym2p/1.0")
+        text, err = render_packet(line)
+        self.assertIsNone(text)
+        self.assertIn("unknown opcode 99", err)
 
 
 class ValidateTest(unittest.TestCase):
@@ -113,6 +120,20 @@ class ValidateTest(unittest.TestCase):
         line = BRIEF_V2.replace("|mr1|", "|" + "t" * 65 + "|", 1)
         errs = check_line(line, 1)
         self.assertTrue(any("TK longer than 64" in e for e in errs))
+
+    def test_leading_zeros_rejected(self):
+        line = BRIEF_V2.replace("|88|70|", "|088|70|", 1)
+        errs = check_line(line, 1)
+        self.assertTrue(any("ERR:CANON" in e and "leading zeros" in e
+                            for e in errs))
+
+    def test_trailing_whitespace_rejected(self):
+        errs = validate_lines([BRIEF_V2 + "  "])
+        self.assertTrue(any("ERR:CANON" in e and "whitespace" in e
+                            for e in errs))
+
+    def test_blank_lines_skipped(self):
+        self.assertEqual(validate_lines(["", "   "]), [])
 
 
 class MigrateTest(unittest.TestCase):

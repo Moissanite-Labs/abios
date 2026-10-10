@@ -66,8 +66,9 @@ def render_packet(line):
         if perr:
             return None, "body: " + perr
         for e in exprs:
-            if check_expr(e):
-                return None, "body: malformed expression"
+            cerr = check_expr(e)
+            if cerr:
+                return None, "body: " + cerr
             r = render_expr(e)
             if r is None:
                 return None, "body: cannot render expression"
