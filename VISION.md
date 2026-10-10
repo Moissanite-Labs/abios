@@ -72,6 +72,8 @@ moves from the source to a render target.
   into training. This repo covers the messages.
 - Registry governance: who mints codes and how collisions are
   prevented. Proposed in the v2 draft, decided by reviewers.
-- Transport signing (O-1): still open, tracked as issue #15.
+- Transport signing (O-1): the corruption-detection half is delivered
+  as the v2-rcp edition. Signing itself, proof of identity across
+  machines, stays open as a future protocol.
 - Whether the capability gain is real. That is what the instrument
   is for.

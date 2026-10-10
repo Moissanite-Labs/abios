@@ -223,6 +223,59 @@ class ReasoningTest(unittest.TestCase):
                             for e in errs))
 
 
+class RcpTest(unittest.TestCase):
+    def rcp(self, line=BRIEF_V2):
+        return _sym2_parse.add_rcp(line)
+
+    def test_rcp_line_validates(self):
+        self.assertEqual(check_line(self.rcp(), 1), [])
+
+    def test_bare_line_still_valid(self):
+        self.assertEqual(check_line(BRIEF_V2, 1), [])
+
+    def test_tampered_body_fails(self):
+        line = self.rcp().replace("|88|70|", "|88|71|", 1)
+        errs = check_line(line, 1)
+        self.assertTrue(any("ERR:RCP" in e and "does not match" in e
+                            for e in errs))
+
+    def test_tampered_sum_fails(self):
+        good = self.rcp()
+        flip = "0" if good[-1] != "0" else "1"
+        errs = check_line(good[:-1] + flip, 1)
+        self.assertTrue(any("ERR:RCP" in e and "does not match" in e
+                            for e in errs))
+
+    def test_bad_sum_shape(self):
+        errs = check_line(BRIEF_V2 + "|ZZZ", 1)
+        self.assertTrue(any("ERR:RCP" in e and "16 lowercase hex" in e
+                            for e in errs))
+
+    def test_uppercase_sum_rejected(self):
+        errs = check_line(BRIEF_V2 + "|0E003FAC2DF6829E", 1)
+        self.assertTrue(any("ERR:RCP" in e for e in errs))
+
+    def test_fifteen_fields_rejected(self):
+        errs = check_line(self.rcp() + "|extra", 1)
+        self.assertTrue(any("ERR:SHAPE" in e for e in errs))
+
+    def test_rcp_renders(self):
+        text, err = render_packet(self.rcp())
+        self.assertIsNone(err)
+        self.assertIn("Relay corruption protection: on.", text)
+
+    def test_migrate_rcp_flag(self):
+        out, err = _migrate_mod.migrate(BRIEF_V1, 1, rcp=True)
+        self.assertIsNone(err)
+        self.assertEqual(len(out.split("|")), 14)
+        self.assertEqual(check_line(out, 1), [])
+
+    def test_migrate_bare_default(self):
+        out, err = _migrate_mod.migrate(BRIEF_V1, 1)
+        self.assertIsNone(err)
+        self.assertEqual(len(out.split("|")), 13)
+
+
 class MigrateTest(unittest.TestCase):
     def test_brief_migrates(self):
         out, err = migrate(BRIEF_V1, 1)

@@ -8,7 +8,8 @@ pattern fails loudly instead of being guessed at.
 Accepts a JSONL file (one packet per line) or a single JSON document,
 such as the repo's pretty-printed templates.
 
-Usage: sym2-migrate.py <v1-packets>
+Usage: sym2-migrate.py [--rcp] <v1-packets>
+With --rcp, emitted lines carry the v2-rcp checksum field.
 Exit codes: 0 every packet migrated, 1 at least one packet
 unmigratable, 2 usage, IO, or configuration error.
 """
@@ -18,6 +19,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sym2_parse import add_rcp  # noqa: E402
 
 V1_ROLES = {"cos": 1, "builder": 2, "verifier": 3, "scout": 4,
             "critic": 5, "operator": 6}
@@ -53,7 +55,7 @@ def lookup(table, value, field):
     return table[value], None
 
 
-def migrate(obj, lineno):
+def migrate(obj, lineno, rcp=False):
     def fail(msg):
         return None, "line %d: %s" % (lineno, msg)
 
@@ -87,7 +89,10 @@ def migrate(obj, lineno):
               str(obj.get("cf", 0)), str(obj.get("cov", 0)),
               "".join(body), str(rq), str(obj.get("base", "")),
               str(obj.get("exp", 0))]
-    return "|".join(fields), None
+    line = "|".join(fields)
+    if rcp:
+        line = add_rcp(line)
+    return line, None
 
 
 def read_packets(path):
@@ -116,20 +121,22 @@ def read_packets(path):
 
 
 def main(argv):
-    if len(argv) != 2:
-        print("usage: sym2-migrate.py <v1-packets>", file=sys.stderr)
+    rcp = len(argv) == 3 and argv[1] == "--rcp"
+    if len(argv) != 2 and not rcp:
+        print("usage: sym2-migrate.py [--rcp] <v1-packets>", file=sys.stderr)
         return 2
+    src = argv[2] if rcp else argv[1]
     try:
-        packets = read_packets(argv[1])
+        packets = read_packets(src)
     except OSError as ex:
-        print("cannot read %s: %s" % (argv[1], ex), file=sys.stderr)
+        print("cannot read %s: %s" % (src, ex), file=sys.stderr)
         return 2
     except ValueError as ex:
         print(ex, file=sys.stderr)
         return 2
     bad = 0
     for obj, i in packets:
-        out, err = migrate(obj, i)
+        out, err = migrate(obj, i, rcp=rcp)
         if err:
             print(err, file=sys.stderr)
             bad += 1
