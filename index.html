@@ -157,6 +157,26 @@ footer a{color:var(--muted)}
 </header>
 
 <div class="wrap">
+<section id="why">
+    <div class="secnum">01</div>
+    <h2>Why symbols</h2>
+    <p><span class="lead">What it is.</span> SYM-2P is a message language for AI agents. Today agents talk to each other in English, usually wrapped in JSON.</p>
+    <p>SYM-2P replaces the English with symbols: roles, actions, and states become integers, fields become positions in a line, and payloads become s-expressions, a Lisp notation for nested structure. One brief packet is a single 101-byte line where the JSON version took 481.</p>
+    <p><span class="lead">Why it works.</span> Every word an agent emits costs tokens, and tokens cost money and time. Shorter messages are cheaper on every call, forever.</p>
+    <p>English is also ambiguous: two readers can disagree about what a sentence means, and no program can check a sentence the way it checks a number. Symbols are unambiguous by construction, so a validator can reject a malformed packet mechanically instead of misreading it.</p>
+    <p><span class="lead">Who reads what.</span> Machines read the wire. Humans never read the symbols directly: a translator renders every packet back into English for operators. Each side gets the language that suits it.</p>
+    <p><span class="lead">The first principles.</span></p>
+    <ol class="tight">
+      <li>Every token an agent emits costs money and latency. Shorter messages cut the cost of every interaction, permanently.</li>
+      <li>JSON repeats key names in every message. Positional fields delete the repetition. The schema lives in the code, not on the wire.</li>
+      <li>Prose can be parsed but not validated. A fixed grammar lets a validator reject malformed packets with typed diagnostics: <code>ERR:RCP</code> for a bad checksum, <code>ERR:SCOPE</code> for an unbound reference.</li>
+      <li>Agents reason, not just relay. The v2.1 dialect puts binding, branching, iteration, delegation, and swarm broadcast in the same symbolic language, so reasoning stays on the wire instead of being translated into English and back.</li>
+      <li>Packets cross untrusted relays. The v2-rcp edition appends a checksum field, so corruption is detected instead of passed on silently. The checksum costs 17 bytes, and senders skip it where the medium is trusted.</li>
+      <li>Efficiency claims need measurement. The harness ships a paired v1/v2 corpus, a bench script, and a model eval protocol, so the density win is measured rather than asserted.</li>
+    </ol>
+    <p><span class="lead">What implementing buys you.</span> Packets come out 4.8x denser than the v1 JSON they replace, and 3.1x smaller than compact v1 JSON across the bench corpus. Malformed packets are rejected with named errors instead of misread. Reasoning stays in symbols: bind, branch, iterate, delegate, spawn, broadcast. Corruption is detected on untrusted paths. Operators still read English.</p>
+    <p><span class="lead">What it does not buy you.</span> It carries no measured claim that agents produce better answers in symbols: the model A/B eval has not been run. The checksum detects corruption, not identity, so proof of who sent a packet stays a future protocol.</p>
+  </section>
   <div class="hero">
     <p class="kicker"><span class="pulse"></span>Protean Kit &middot; protocol ingredient</p>
     <h1>SYM-2P</h1>
@@ -182,26 +202,6 @@ footer a{color:var(--muted)}
     </div>
   </div>
 
-<section id="why">
-    <div class="secnum">01</div>
-    <h2>Why symbols</h2>
-    <p><span class="lead">What it is.</span> SYM-2P is a message language for AI agents. Today agents talk to each other in English, usually wrapped in JSON.</p>
-    <p>SYM-2P replaces the English with symbols: roles, actions, and states become integers, fields become positions in a line, and payloads become s-expressions, a Lisp notation for nested structure. One brief packet is a single 101-byte line where the JSON version took 481.</p>
-    <p><span class="lead">Why it works.</span> Every word an agent emits costs tokens, and tokens cost money and time. Shorter messages are cheaper on every call, forever.</p>
-    <p>English is also ambiguous: two readers can disagree about what a sentence means, and no program can check a sentence the way it checks a number. Symbols are unambiguous by construction, so a validator can reject a malformed packet mechanically instead of misreading it.</p>
-    <p><span class="lead">Who reads what.</span> Machines read the wire. Humans never read the symbols directly: a translator renders every packet back into English for operators. Each side gets the language that suits it.</p>
-    <p><span class="lead">The first principles.</span></p>
-    <ol class="tight">
-      <li>Every token an agent emits costs money and latency. Shorter messages cut the cost of every interaction, permanently.</li>
-      <li>JSON repeats key names in every message. Positional fields delete the repetition. The schema lives in the code, not on the wire.</li>
-      <li>Prose can be parsed but not validated. A fixed grammar lets a validator reject malformed packets with typed diagnostics: <code>ERR:RCP</code> for a bad checksum, <code>ERR:SCOPE</code> for an unbound reference.</li>
-      <li>Agents reason, not just relay. The v2.1 dialect puts binding, branching, iteration, delegation, and swarm broadcast in the same symbolic language, so reasoning stays on the wire instead of being translated into English and back.</li>
-      <li>Packets cross untrusted relays. The v2-rcp edition appends a checksum field, so corruption is detected instead of passed on silently. The checksum costs 17 bytes, and senders skip it where the medium is trusted.</li>
-      <li>Efficiency claims need measurement. The harness ships a paired v1/v2 corpus, a bench script, and a model eval protocol, so the density win is measured rather than asserted.</li>
-    </ol>
-    <p><span class="lead">What implementing buys you.</span> Packets come out 4.8x denser than the v1 JSON they replace, and 3.1x smaller than compact v1 JSON across the bench corpus. Malformed packets are rejected with named errors instead of misread. Reasoning stays in symbols: bind, branch, iterate, delegate, spawn, broadcast. Corruption is detected on untrusted paths. Operators still read English.</p>
-    <p><span class="lead">What it does not buy you.</span> It carries no measured claim that agents produce better answers in symbols: the model A/B eval has not been run. The checksum detects corruption, not identity, so proof of who sent a packet stays a future protocol.</p>
-  </section>
 
   <section id="need">
     <div class="secnum">02</div>
