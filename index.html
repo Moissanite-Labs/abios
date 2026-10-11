@@ -157,6 +157,32 @@ footer a{color:var(--muted)}
 </header>
 
 <div class="wrap">
+  <div class="hero">
+    <p class="kicker"><span class="pulse"></span>Protean Kit &middot; protocol ingredient</p>
+    <h1>SYM-2P</h1>
+    <p class="tag">Dense, checkable messages for AI agents.</p>
+    <p class="lede">AI agents talk to each other in English, usually wrapped in JSON. SYM-2P replaces the English with symbols: roles, actions, and states become numbers, fields become positions in a line, and payloads become s-expressions, a Lisp notation for nested structure.</p>
+    <p class="lede">Every word an agent writes costs tokens, and tokens cost money and time. English is also ambiguous: no program can check a sentence the way it checks a number. Symbols are cheaper and checkable. One brief packet is a 101-byte line where the JSON took 481.</p>
+    <p class="lede">Agents can reason in symbols too: bind values, branch on conditions, iterate, dispatch subagents, broadcast to swarms. A translator renders each packet into English for operators. A checksum edition protects packets crossing untrusted paths. One thing it doesn't claim: better answers. That eval hasn't been run.</p>
+    <div class="stats">
+      <div class="stat"><b>4.8x</b><span>denser than v1 JSON</span></div>
+      <div class="stat"><b>3.1x</b><span>smaller than compact v1, per bench</span></div>
+      <div class="stat"><b>50</b><span>stdlib-only tests</span></div>
+      <div class="stat"><b>0</b><span>network calls to install</span></div>
+    </div>
+    <div class="meta"><b>v2.1 merged</b> &middot; v2-rcp edition &middot; measurement harness &middot; MIT &middot; Python &ge;3.9, stdlib only</div>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC-V2-DRAFT.md">Read the v2 spec</a>
+      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p">View on GitHub</a>
+      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC.md">v1 SPEC.md</a>
+    </div>
+    <div class="stream" aria-hidden="true">
+      <div class="stream-head"><span class="dots"><i></i><i></i><i></i></span>wire preview <span class="dim">// simulated v2 packets</span></div>
+      <div id="stream-body"></div>
+    </div>
+  </div>
+
+
 <section id="why">
     <div class="secnum">01</div>
     <h2>Why symbols</h2>
@@ -177,31 +203,6 @@ footer a{color:var(--muted)}
     <p><span class="lead">What implementing buys you.</span> Packets come out 4.8x denser than the v1 JSON they replace, and 3.1x smaller than compact v1 JSON across the bench corpus. Malformed packets are rejected with named errors instead of misread. Reasoning stays in symbols: bind, branch, iterate, delegate, spawn, broadcast. Corruption is detected on untrusted paths. Operators still read English.</p>
     <p><span class="lead">What it does not buy you.</span> It carries no measured claim that agents produce better answers in symbols: the model A/B eval has not been run. The checksum detects corruption, not identity, so proof of who sent a packet stays a future protocol.</p>
   </section>
-  <div class="hero">
-    <p class="kicker"><span class="pulse"></span>Protean Kit &middot; protocol ingredient</p>
-    <h1>SYM-2P</h1>
-    <p class="tag">Dense, validatable messages for AI agents.</p>
-    <p class="lede">SYM-2P is a symbolic message language for AI agents. It replaces English prose inside JSON with dense symbols: integer-coded roles, acts, and states in positional fields, with s-expression bodies. A translator at the boundary renders every packet back into English for operators.</p>
-    <p class="lede">What that buys you: packets 4.8x smaller than the v1 JSON they replace. A reasoning dialect that lets agents bind values, branch on conditions, iterate over collections, dispatch subagents, and broadcast to swarms. A relay-protection edition that checksums packets crossing untrusted paths.</p>
-    <p class="lede">And a measurement harness: a paired v1/v2 task corpus with a bench script and a model eval protocol, so the efficiency claim is measured rather than asserted.</p>
-    <div class="stats">
-      <div class="stat"><b>4.8x</b><span>denser than v1 JSON</span></div>
-      <div class="stat"><b>3.1x</b><span>smaller than compact v1, per bench</span></div>
-      <div class="stat"><b>50</b><span>stdlib-only tests</span></div>
-      <div class="stat"><b>0</b><span>network calls to install</span></div>
-    </div>
-    <div class="meta"><b>v2.1 merged</b> &middot; v2-rcp edition &middot; measurement harness &middot; MIT &middot; Python &ge;3.9, stdlib only</div>
-    <div class="cta">
-      <a class="btn primary" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC-V2-DRAFT.md">Read the v2 spec</a>
-      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p">View on GitHub</a>
-      <a class="btn ghost" href="https://github.com/aska-digital/protean-sym2p/blob/main/SPEC.md">v1 SPEC.md</a>
-    </div>
-    <div class="stream" aria-hidden="true">
-      <div class="stream-head"><span class="dots"><i></i><i></i><i></i></span>wire preview <span class="dim">// simulated v2 packets</span></div>
-      <div id="stream-body"></div>
-    </div>
-  </div>
-
 
   <section id="need">
     <div class="secnum">02</div>
