@@ -92,6 +92,9 @@ section p{margin:0 0 14px;max-width:700px}
 ul.tight{padding-left:22px;margin:0 0 14px}
 ul.tight li{margin-bottom:8px}
 ul.tight li::marker{color:var(--accent)}
+ol.tight{padding-left:22px;margin:0 0 14px}
+ol.tight li{margin-bottom:8px}
+ol.tight li::marker{color:var(--accent);font-weight:700}
 .lead{font-weight:600;color:var(--text)}
 pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:18px 20px;
   overflow-x:auto;font-size:14px;line-height:1.6;margin:16px 0;
@@ -141,6 +144,7 @@ footer a{color:var(--muted)}
   <div class="wrap">
     <a class="brand" href="#">protean-<span>sym2p</span></a>
     <nav class="links">
+      <a href="#why">Why symbols</a>
       <a href="#need">Need it?</a>
       <a href="#packet">The packet</a>
       <a href="#reasoning">Reasoning</a>
@@ -178,8 +182,29 @@ footer a{color:var(--muted)}
     </div>
   </div>
 
-  <section id="need">
+<section id="why">
     <div class="secnum">01</div>
+    <h2>Why symbols</h2>
+    <p><span class="lead">What it is.</span> SYM-2P is a message language for AI agents. Today agents talk to each other in English, usually wrapped in JSON.</p>
+    <p>SYM-2P replaces the English with symbols: roles, actions, and states become integers, fields become positions in a line, and payloads become s-expressions, a Lisp notation for nested structure. One brief packet is a single 101-byte line where the JSON version took 481.</p>
+    <p><span class="lead">Why it works.</span> Every word an agent emits costs tokens, and tokens cost money and time. Shorter messages are cheaper on every call, forever.</p>
+    <p>English is also ambiguous: two readers can disagree about what a sentence means, and no program can check a sentence the way it checks a number. Symbols are unambiguous by construction, so a validator can reject a malformed packet mechanically instead of misreading it.</p>
+    <p><span class="lead">Who reads what.</span> Machines read the wire. Humans never read the symbols directly: a translator renders every packet back into English for operators. Each side gets the language that suits it.</p>
+    <p><span class="lead">The first principles.</span></p>
+    <ol class="tight">
+      <li>Every token an agent emits costs money and latency. Shorter messages cut the cost of every interaction, permanently.</li>
+      <li>JSON repeats key names in every message. Positional fields delete the repetition. The schema lives in the code, not on the wire.</li>
+      <li>Prose can be parsed but not validated. A fixed grammar lets a validator reject malformed packets with typed diagnostics: <code>ERR:RCP</code> for a bad checksum, <code>ERR:SCOPE</code> for an unbound reference.</li>
+      <li>Agents reason, not just relay. The v2.1 dialect puts binding, branching, iteration, delegation, and swarm broadcast in the same symbolic language, so reasoning stays on the wire instead of being translated into English and back.</li>
+      <li>Packets cross untrusted relays. The v2-rcp edition appends a checksum field, so corruption is detected instead of passed on silently. The checksum costs 17 bytes, and senders skip it where the medium is trusted.</li>
+      <li>Efficiency claims need measurement. The harness ships a paired v1/v2 corpus, a bench script, and a model eval protocol, so the density win is measured rather than asserted.</li>
+    </ol>
+    <p><span class="lead">What implementing buys you.</span> Packets come out 4.8x denser than the v1 JSON they replace, and 3.1x smaller than compact v1 JSON across the bench corpus. Malformed packets are rejected with named errors instead of misread. Reasoning stays in symbols: bind, branch, iterate, delegate, spawn, broadcast. Corruption is detected on untrusted paths. Operators still read English.</p>
+    <p><span class="lead">What it does not buy you.</span> It carries no measured claim that agents produce better answers in symbols: the model A/B eval has not been run. The checksum detects corruption, not identity, so proof of who sent a packet stays a future protocol.</p>
+  </section>
+
+  <section id="need">
+    <div class="secnum">02</div>
     <h2>Do you need this?</h2>
     <div class="grid2">
       <div class="card">
@@ -203,7 +228,7 @@ footer a{color:var(--muted)}
   </section>
 
   <section id="vision">
-    <div class="secnum">02</div>
+    <div class="secnum">03</div>
     <h2>The vision</h2>
     <p><span class="lead">The thesis.</span> Models are handicapped by being forced to reason and communicate in English. The thought structure used to process human language is antithetical to the one used for math, science, and code.</p>
     <p><span class="lead">The bet.</span> Skip language-based processing where it is not needed. Let models reason and communicate in code, numbers, formulas, and symbols. Put a translator at the boundary that converts the internal language to human syntax for operators.</p>
@@ -217,7 +242,7 @@ footer a{color:var(--muted)}
   </section>
 
   <section id="packet">
-    <div class="secnum">03</div>
+    <div class="secnum">04</div>
     <h2>The packet</h2>
     <p>One brief packet assigning work, on the wire (101 bytes):</p>
     <pre><code>2|b441|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:v1|40</code></pre>
@@ -251,7 +276,7 @@ Expires in 40s.</code></pre>
   </section>
 
   <section id="reasoning">
-    <div class="secnum">04</div>
+    <div class="secnum">05</div>
     <h2>The reasoning dialect</h2>
     <p>v2.0 assigns tasks. v2.1 reasons. Seven new opcodes, two new acts, and a broadcast role turn the body language from fixed task shapes into a first reasoning dialect.</p>
     <table>
@@ -281,7 +306,7 @@ Expires in 40s.</code></pre>
   </section>
 
   <section id="rcp">
-    <div class="secnum">05</div>
+    <div class="secnum">06</div>
     <h2>Relay corruption protection</h2>
     <p>Every wire version ships two editions. Bare v2 is the 13-field line, for trusted paths: one machine, one operator, one local relay. <span class="lead">v2-rcp</span> adds a 14th field, <code>SUM</code>, for packets crossing machines the sender does not fully trust.</p>
     <p><code>SUM</code> is the first 16 hex characters of the sha256 of the canonical 13-field line. Seventeen bytes on the wire:</p>
@@ -295,7 +320,7 @@ Expires in 40s.</code></pre>
   </section>
 
   <section id="measure">
-    <div class="secnum">06</div>
+    <div class="secnum">07</div>
     <h2>Measure what the symbols buy</h2>
     <p><code>bench/</code> turns the repo from a format into an instrument. It measures the empirical question underneath v2: does symbolic communication actually buy capability and efficiency.</p>
     <table>
@@ -309,7 +334,7 @@ Expires in 40s.</code></pre>
   </section>
 
   <section id="v1tov2">
-    <div class="secnum">07</div>
+    <div class="secnum">08</div>
     <h2>From v1 to v2</h2>
     <p>v1 speaks JSON but thinks in English: prose sits inside string fields, and a model receiver must parse human language to understand a machine message. That is the handicap the project starts from.</p>
     <p>v2 moves the language to symbols. Packet content becomes codes, numbers, and structured expressions. English stops being the source and becomes a render target: a translator script converts packets to human-readable English for operators.</p>
@@ -318,7 +343,7 @@ Expires in 40s.</code></pre>
   </section>
 
   <section id="translate">
-    <div class="secnum">08</div>
+    <div class="secnum">09</div>
     <h2>Translate and validate</h2>
     <pre><code>python3 scripts/protean-sym2p/sym2-render.py &lt;packets.sym2&gt;
 python3 scripts/protean-sym2p/sym2-migrate.py &lt;packets.jsonl&gt;
@@ -336,7 +361,7 @@ python3 tests/test_sym2.py</code></pre>
   </section>
 
   <section id="ships">
-    <div class="secnum">09</div>
+    <div class="secnum">10</div>
     <h2>What ships</h2>
     <table>
       <tr><th>Path</th><th>Contents</th></tr>
@@ -352,7 +377,7 @@ python3 tests/test_sym2.py</code></pre>
   </section>
 
   <section id="install">
-    <div class="secnum">10</div>
+    <div class="secnum">11</div>
     <h2>Install</h2>
     <pre><code>bash install.sh --target &lt;dir&gt;
 bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
@@ -361,7 +386,7 @@ bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
   </section>
 
   <section id="open">
-    <div class="secnum">11</div>
+    <div class="secnum">12</div>
     <h2>Open items</h2>
     <p>v2 is merged. v1 stays the spec of record until v2 is accepted. Stated plainly:</p>
     <ul class="tight">
@@ -372,7 +397,7 @@ bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
   </section>
 
   <section id="source">
-    <div class="secnum">12</div>
+    <div class="secnum">13</div>
     <h2>Source</h2>
     <p>MIT licensed. The committed <code>LICENSE</code> file is authoritative. Requires nothing beyond Python &ge;3.9 and git.</p>
     <div class="cta">
