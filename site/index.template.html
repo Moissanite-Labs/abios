@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>abios | Agent BIOS — token-aware agent messaging</title>
+<meta name="description" content="ABIOS/3: token-aware shared-state command wire with POST handshake, reproducible o200k benchmarks, and legacy ABIOS/1 (formerly SYM-2P) packet tooling.">
+<meta property="og:title" content="abios | Agent BIOS">
+<meta property="og:description" content="ABIOS compresses multi-turn agent command streams with an explicit POST handshake and honest decoder-setup accounting.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://moissanite-labs.github.io/abios/">
+<meta property="og:image" content="https://moissanite-labs.github.io/abios/og-image.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#05070a; --panel:rgba(13,18,24,.82); --line:#1d2b22; --text:#e8f2ec; --muted:#8fa398;
+  --accent:#3fb950; --accent-hot:#7dffa8; --code:#070b08;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.65;overflow-x:hidden}
+#rain{position:fixed;inset:0;z-index:0;opacity:.32;pointer-events:none}
+.scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.5;
+  background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.14) 2px 4px)}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 30%,transparent 55%,rgba(0,0,0,.55) 100%)}
+.page{position:relative;z-index:2}
+.wrap{max-width:920px;margin:0 auto;padding:0 24px}
+a{color:var(--accent)}
+header.nav{border-bottom:1px solid var(--line);padding:14px 0;position:sticky;top:0;
+  background:rgba(5,7,10,.88);backdrop-filter:blur(8px);z-index:10}
+header.nav .wrap{display:flex;align-items:center;gap:18px}
+.brand{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;
+  color:var(--text);text-decoration:none}
+.brand span{color:var(--accent);text-shadow:0 0 12px rgba(63,185,80,.8)}
+nav.links{margin-left:auto;display:flex;gap:16px;font-size:14px}
+nav.links a{color:var(--muted);text-decoration:none}
+nav.links a:hover{color:var(--accent-hot)}
+.hero{padding:84px 0 52px;position:relative}
+.kicker{font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);
+  font-weight:600;margin:0 0 18px;display:flex;align-items:center;gap:10px}
+.pulse{width:9px;height:9px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 10px var(--accent);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.hero h1{font-size:76px;line-height:1;margin:0 0 10px;letter-spacing:-.02em;font-weight:800;
+  text-shadow:0 0 24px rgba(63,185,80,.45),0 0 80px rgba(63,185,80,.2)}
+.hero .tag{font-size:26px;color:var(--text);margin:0 0 22px;font-weight:600}
+.hero p.lede{font-size:18px;color:var(--muted);max-width:660px;margin:0 0 8px}
+.meta{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--muted);
+  margin:26px 0;padding:14px 18px;background:var(--panel);border:1px solid var(--line);
+  border-radius:8px;box-shadow:inset 0 0 24px rgba(63,185,80,.05)}
+.meta b{color:var(--accent);font-weight:600;text-shadow:0 0 8px rgba(63,185,80,.6)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:26px 0 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 14px;
+  text-align:center;box-shadow:inset 0 0 24px rgba(63,185,80,.05)}
+.stat b{display:block;font-size:30px;font-weight:800;color:var(--accent-hot);
+  text-shadow:0 0 14px rgba(63,185,80,.6);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.stat span{display:block;font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.4}
+.cta{margin-top:26px;display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-block;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:600;
+  font-size:15px;transition:box-shadow .2s,transform .2s}
+.btn.primary{background:var(--accent);color:#04140a;box-shadow:0 0 20px rgba(63,185,80,.35)}
+.btn.primary:hover{box-shadow:0 0 34px rgba(63,185,80,.6);transform:translateY(-1px)}
+.btn.ghost{border:1px solid var(--line);color:var(--text)}
+.btn.ghost:hover{border-color:var(--accent);box-shadow:0 0 16px rgba(63,185,80,.25)}
+.stream{margin-top:34px;background:rgba(4,8,5,.9);border:1px solid var(--line);border-radius:10px;
+  overflow:hidden;box-shadow:0 0 30px rgba(63,185,80,.12),inset 0 0 40px rgba(63,185,80,.04)}
+.stream-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--accent);
+  letter-spacing:.14em;text-transform:uppercase}
+.stream-head .dots{display:flex;gap:6px}
+.stream-head .dots i{width:10px;height:10px;border-radius:50%;background:#233026;display:block}
+.stream-head .dots i:first-child{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.stream-head span.dim{color:var(--muted);letter-spacing:0;text-transform:none}
+#stream-body{padding:16px 18px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:13px;line-height:1.9;min-height:196px;color:#b9d4c2}
+#stream-body .ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:fadein .4s ease}
+#stream-body .ok{color:var(--accent)}
+#stream-body .id{color:var(--accent-hot)}
+#stream-body .rcp{color:#e3a008}
+#stream-body .cursor{display:inline-block;width:9px;height:16px;background:var(--accent);
+  vertical-align:-3px;animation:blink 1s steps(1) infinite;box-shadow:0 0 8px var(--accent)}
+@keyframes blink{50%{opacity:0}}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+section{padding:48px 0;border-top:1px solid var(--line);position:relative}
+.secnum{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);
+  font-size:14px;font-weight:700;letter-spacing:.14em;text-shadow:0 0 10px rgba(63,185,80,.7)}
+section h2{font-size:30px;margin:8px 0 18px;letter-spacing:-.01em}
+section p, section li{color:#c4d4c9}
+section p{margin:0 0 14px;max-width:700px}
+ul.tight{padding-left:22px;margin:0 0 14px}
+ul.tight li{margin-bottom:8px}
+ul.tight li::marker{color:var(--accent)}
+ol.tight{padding-left:22px;margin:0 0 14px}
+ol.tight li{margin-bottom:8px}
+ol.tight li::marker{color:var(--accent);font-weight:700}
+.lead{font-weight:600;color:var(--text)}
+pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:18px 20px;
+  overflow-x:auto;font-size:14px;line-height:1.6;margin:16px 0;
+  box-shadow:inset 0 0 30px rgba(63,185,80,.05)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+p code, li code, td code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+  padding:2px 7px;font-size:.88em;color:var(--accent-hot);white-space:nowrap}
+pre code{background:none;border:none;padding:0;color:#cfe3d6;white-space:pre}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:15px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+td{color:#c4d4c9}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;
+  transition:border-color .25s,box-shadow .25s;backdrop-filter:blur(4px)}
+.card:hover{border-color:rgba(63,185,80,.5);box-shadow:0 0 24px rgba(63,185,80,.15)}
+.card h3{margin:0 0 10px;font-size:16px}
+.card h3.use{color:var(--accent);text-shadow:0 0 10px rgba(63,185,80,.5)}
+.card h3.skip{color:#e3a008}
+.card ul{margin:0;padding-left:20px}
+.card li{margin-bottom:8px;font-size:15px}
+.card li::marker{color:var(--accent)}
+footer{border-top:1px solid var(--line);padding:28px 0 44px;color:var(--muted);font-size:14px;
+  position:relative;z-index:2}
+footer .wrap{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+footer a{color:var(--muted)}
+.return-link{position:fixed;left:18px;bottom:18px;z-index:2000;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;background:rgba(5,7,10,.88);border:1px solid var(--line);color:var(--text);font-weight:600;font-size:13px;letter-spacing:.02em;text-decoration:none;backdrop-filter:blur(8px);box-shadow:0 0 16px rgba(63,185,80,.12)}
+.return-link:hover{border-color:var(--accent);color:var(--accent-hot);box-shadow:0 0 24px rgba(63,185,80,.28)}
+.made-by{position:fixed;right:18px;bottom:18px;z-index:2000;margin:0;font-size:12px;color:var(--muted)}
+.made-by a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(63,185,80,.45)}
+.made-by a:hover{color:var(--accent-hot)}
+@media(max-width:640px){
+  .hero h1{font-size:48px}
+  .grid2{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  nav.links{display:none}
+  .return-link{left:12px;bottom:12px;padding:10px 14px}
+  .made-by{right:12px;bottom:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  #rain,.scanlines,.pulse{display:none}
+  #stream-body .cursor{animation:none}
+}
+</style>
+</head>
+<body>
+
+<canvas id="rain" aria-hidden="true"></canvas>
+<div class="scanlines" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<div class="page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html">abi<span>os</span></a>
+    <nav class="links">
+      <a href="#why-abios">Why ABIOS</a>
+      <a href="#abios">ABIOS/3</a>
+      <a href="spec-abios-3.html">Spec</a>
+      <a href="paper.html">Paper</a>
+      <a href="reproduce.html">Reproduce</a>
+      <a href="#legacy">Legacy</a>
+      <a href="https://github.com/Moissanite-Labs/abios">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero" id="top">
+    <p class="kicker"><span class="pulse"></span>Moissanite Labs &middot; Agent BIOS</p>
+    <h1>ABIOS</h1>
+    <p class="tag">Token-aware shared-state messaging for agents.</p>
+    <p class="lede"><strong>ABIOS/3</strong> compresses multi-turn forge command streams for tokenizer billing while keeping decode explicit. Each session opens with <strong>POST</strong>—a one-time handshake that exchanges decode-sufficient lexicon and schema before refs, deltas, or content-addressed lines (rule <strong>L-18</strong>: no latent channel).</p>
+    <p class="lede">Primary metric: <strong>o200k_base</strong> POST ack + decode-sufficient minimal setup + messages. On 11 synthetic lifecycle messages, ABIOS <strong>refs</strong> totals <strong>766</strong> tokens versus <strong>738</strong> compact JSON (with <code>action</code> field) and <strong>686</strong> lossless English; on 40- and 200-message transcripts refs totals beat JSON (<code>make bench</code> verifies committed tables).</p>
+    <p class="lede">This repo also ships legacy wire: <strong>ABIOS/1 (formerly SYM-2P)</strong> v1 JSON packets and superseded v2 dense experiments—documented under <a href="#legacy">Legacy</a>, not the forward path.</p>
+    <div class="stats">
+      <div class="stat"><b>766</b><span>ABIOS refs (11 msgs, POST + min setup + wire)</span></div>
+      <div class="stat"><b>738</b><span>compact JSON baseline</span></div>
+      <div class="stat"><b>POST</b><span>session handshake (counted in totals)</span></div>
+      <div class="stat"><b>0</b><span>hidden decoder cache</span></div>
+    </div>
+    <div class="meta"><b>ABIOS/3</b> &middot; <code>abios/3</code> profile &middot; legacy <code>sym3/1</code> alias &middot; MIT &middot; Python &ge;3.9</div>
+    <div class="cta">
+      <a class="btn primary" href="spec-abios-3.html">SPEC-ABIOS-3</a>
+      <a class="btn ghost" href="abios.html">ABIOS overview</a>
+      <a class="btn ghost" href="reproduce.html">Reproduce bench</a>
+      <a class="btn ghost" href="https://github.com/Moissanite-Labs/abios">GitHub</a>
+    </div>
+    <div class="stream" aria-hidden="true">
+      <div class="stream-head"><span class="dots"><i></i><i></i><i></i></span>wire preview <span class="dim">// ABIOS/3 + POST</span></div>
+      <div id="stream-body"></div>
+    </div>
+  </div>
+
+
+<section id="legacy">
+    <div class="secnum">01</div>
+    <h2>ABIOS/1 (formerly SYM-2P)</h2>
+    <p><span class="lead">History.</span> Before ABIOS/3, this repository shipped <strong>ABIOS/1 (formerly SYM-2P)</strong>: dense symbolic v2 wire and canonical JSON v1 packets for inter-agent traffic. That stack remains for compatibility (<code>scripts/protean-sym2p/</code>, wire field <code>ext.sym2p</code> unchanged).</p>
+    <p>Agents once replaced English+JSON with symbols: roles and acts as integers, positional fields, s-expression payloads. One brief v2 line could be ~101 bytes where JSON took 481—checkable by a stdlib validator, not ambiguous prose.</p>
+    <p><span class="lead">Why it works.</span> Every word an agent emits costs tokens, and tokens cost money and time. Shorter messages are cheaper on every call, forever.</p>
+    <p>English is also ambiguous: two readers can disagree about what a sentence means, and no program can check a sentence the way it checks a number. Symbols are unambiguous by construction, so a validator can reject a malformed packet mechanically instead of misreading it.</p>
+    <p><span class="lead">Who reads what.</span> Machines read the wire. Humans never read the symbols directly: a translator renders every packet back into English for operators. Each side gets the language that suits it.</p>
+    <p><span class="lead">The first principles.</span></p>
+    <ol class="tight">
+      <li>Every token an agent emits costs money and latency. Shorter messages cut the cost of every interaction, permanently.</li>
+      <li>JSON repeats key names in every message. Positional fields delete the repetition. The schema lives in the code, not on the wire.</li>
+      <li>Prose can be parsed but not validated. A fixed grammar lets a validator reject malformed packets with typed diagnostics: <code>ERR:RCP</code> for a bad checksum, <code>ERR:SCOPE</code> for an unbound reference.</li>
+      <li>Agents reason, not just relay. The v2.1 dialect puts binding, branching, iteration, delegation, and swarm broadcast in the same symbolic language, so reasoning stays on the wire instead of being translated into English and back.</li>
+      <li>Packets cross untrusted relays. The v2-rcp edition appends a checksum field, so corruption is detected instead of passed on silently. The checksum costs 17 bytes, and senders skip it where the medium is trusted.</li>
+      <li>Efficiency claims need measurement. The harness ships a paired v1/v2 corpus, a bench script, and a model eval protocol, so the density win is measured rather than asserted.</li>
+    </ol>
+    <p><span class="lead">What implementing buys you.</span> Packets come out 4.8x denser than the v1 JSON they replace, and 3.1x smaller than compact v1 JSON across the bench corpus. Malformed packets are rejected with named errors instead of misread. Reasoning stays in symbols: bind, branch, iterate, delegate, spawn, broadcast. Corruption is detected on untrusted paths. Operators still read English.</p>
+    <p><span class="lead">What it does not buy you.</span> It carries no measured claim that agents produce better answers in symbols: the model A/B eval has not been run. The checksum detects corruption, not identity, so proof of who sent a packet stays a future protocol.</p>
+  </section>
+
+  <section id="need">
+    <div class="secnum">02</div>
+    <h2>Do you need this?</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3 class="use">Reach for it</h3>
+        <ul>
+          <li>Two agents must exchange messages as dense symbolic packets instead of English prose inside JSON.</li>
+          <li>Agents must reason in symbols: bind values, branch on conditions, iterate, fan work across a swarm, dispatch subagents.</li>
+          <li>Packets cross untrusted relays and need corruption detection: the v2-rcp edition adds a checksum field.</li>
+          <li>You want to measure the win: the bench runs a paired v1/v2 corpus and scores model evals.</li>
+          <li>An operator must read what the agents said. The translator renders wire packets into English, and the validator gives typed diagnostics.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 class="skip">Skip it</h3>
+        <ul>
+          <li>The run needs proof of who sent a packet. The checksum detects corruption in transit. Transport signing (identity) is still a future protocol.</li>
+          <li>SYM-2P v2 dense wire is superseded for token efficiency; v1 JSON packets remain normative inter-agent traffic per <code>SPEC.md</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="vision">
+    <div class="secnum">03</div>
+    <h2>The vision</h2>
+    <p><span class="lead">The thesis.</span> Models are handicapped by being forced to reason and communicate in English. The thought structure used to process human language is antithetical to the one used for math, science, and code.</p>
+    <p><span class="lead">The bet.</span> Skip language-based processing where it is not needed. Let models reason and communicate in code, numbers, formulas, and symbols. Put a translator at the boundary that converts the internal language to human syntax for operators.</p>
+    <p><span class="lead">Where the work stands.</span></p>
+    <ul class="tight">
+      <li><span class="lead">Delivered.</span> The v2 wire format, the translator, the migration scaffold, the v2.1 reasoning dialect, the v2-rcp relay-protection edition, and the measurement harness.</li>
+      <li><span class="lead">Not delivered.</span> Transport signing (proof of identity) is tracked separately; SYM-2P v2 is not a kit migration target.</li>
+      <li><span class="lead">What stays.</span> English remains the render target for operators. Everything stays stdlib-only and offline-friendly. SYM-2P/1.0 stays the inter-agent packet profile.</li>
+    </ul>
+    <p>The full statement lives in <a href="https://github.com/Moissanite-Labs/abios/blob/main/VISION.md">VISION.md</a>.</p>
+  </section>
+
+  <section id="packet">
+    <div class="secnum">04</div>
+    <h2>The packet</h2>
+    <p>One brief packet assigning work, on the wire (101 bytes):</p>
+    <pre><code>2|b441|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:v1|40</code></pre>
+    <p>The same brief as v1 JSON took 481 bytes. The v2 line takes 101: 4.8x denser.</p>
+    <p>Thirteen positional fields, no key names on the wire:</p>
+    <table>
+      <tr><th>#</th><th>Field</th><th>Contents</th></tr>
+      <tr><td>1</td><td><code>V</code></td><td>Wire version, literal <code>2</code></td></tr>
+      <tr><td>2</td><td><code>ID</code></td><td>Packet id</td></tr>
+      <tr><td>3</td><td><code>TK</code></td><td>Thread key. Threads are instance data, so keys stay tokens rather than codes.</td></tr>
+      <tr><td>4&ndash;7</td><td><code>F T A ST</code></td><td>Sender, recipient, act, state: integer codes from the registries</td></tr>
+      <tr><td>8&ndash;9</td><td><code>CF CV</code></td><td>Confidence and coverage, 0&ndash;100</td></tr>
+      <tr><td>10</td><td><code>BODY</code></td><td>Symbolic payload as s-expressions. Never contains <code>|</code>.</td></tr>
+      <tr><td>11</td><td><code>RQ</code></td><td>Request code, 0 means none</td></tr>
+      <tr><td>12</td><td><code>BASE</code></td><td>Base reference, empty means none</td></tr>
+      <tr><td>13</td><td><code>EXP</code></td><td>Expiry in seconds, 0 means none</td></tr>
+    </table>
+    <p><code>sym2-render.py</code> turns that line back into English for operators:</p>
+    <pre><code>assign b441 [coordinator -&gt; builder] (proposed) confidence 88, coverage 70
+Scope: implement sections 3-5 of sym-2p/1.0.
+Constraint: modify no existing paths.
+Acceptance: validator exits 0 on valid input, 1 on invalid.
+Requires: acknowledgement required.
+Base: mr1:v1.
+Expires in 40s.</code></pre>
+    <ul class="tight">
+      <li><span class="lead">One canonical encoding.</span> Symbols are case-folded to lowercase, so the same referent has exactly one valid encoding.</li>
+      <li><span class="lead">Governed registries.</span> Opcode ranges are spec-owned at 1&ndash;99 and PR-allocated at 100&ndash;999, with no reuse.</li>
+      <li><span class="lead">Shared grammar.</span> The renderer, validator, and migrator import one parser module. No duplicated grammar.</li>
+    </ul>
+  </section>
+
+  <section id="reasoning">
+    <div class="secnum">05</div>
+    <h2>The reasoning dialect</h2>
+    <p>v2.0 assigns tasks. v2.1 reasons. Seven new opcodes, two new acts, and a broadcast role turn the body language from fixed task shapes into a first reasoning dialect.</p>
+    <table>
+      <tr><th>Code</th><th>Op</th><th>Shape</th><th>Meaning</th></tr>
+      <tr><td><code>30</code></td><td>bind</td><td><code>(30 name expr)</code></td><td>Name a value. <code>$name</code> refers to it later.</td></tr>
+      <tr><td><code>31</code></td><td>if</td><td><code>(31 test then else)</code></td><td>Branch on a test. Else may be empty.</td></tr>
+      <tr><td><code>32</code></td><td>each</td><td><code>(32 var items body)</code></td><td>Do body for each item in a list.</td></tr>
+      <tr><td><code>33</code></td><td>list</td><td><code>(33 item*)</code></td><td>List literal.</td></tr>
+      <tr><td><code>34</code></td><td>lt</td><td><code>(34 a b)</code></td><td>a is less than b.</td></tr>
+      <tr><td><code>35</code></td><td>eq</td><td><code>(35 a b)</code></td><td>a equals b.</td></tr>
+      <tr><td><code>40</code></td><td>spawn</td><td><code>(40 role thread task)</code></td><td>Spawn a subagent explicitly.</td></tr>
+    </table>
+    <p>New registry codes: role <code>7</code> is <code>swarm</code> (broadcast to all members), act <code>11</code> is <code>delegate</code> (recipient spawns a subordinate), act <code>12</code> is <code>report</code> (a subordinate returns a result).</p>
+    <p>Bind a value, branch on it:</p>
+    <pre><code>(30 cov 62)(31 (34 $cov 70) (20 sec (6 6)) ())</code></pre>
+    <p>Renders as: <i>Let cov = 62. If cov &lt; 70 then implement section 6.</i></p>
+    <p>Fan work across the swarm:</p>
+    <pre><code>(32 s (33 3 4 5) (20 sec s))</code></pre>
+    <p>Renders as: <i>For each s in [3, 4, 5]: implement section s.</i></p>
+    <p>Dispatch a subagent:</p>
+    <pre><code>(40 2 b442 (20 sec (7 9)))</code></pre>
+    <p>Renders as: <i>Spawn builder on thread b442 to implement sections 7-9.</i></p>
+    <ul class="tight">
+      <li><span class="lead">Scope is checked.</span> A <code>$name</code> must resolve to a visible bind. The validator reports unbound references as <code>ERR:SCOPE</code>.</li>
+      <li><span class="lead">Deliberate limits.</span> No function definition, no recursion, single-expression branches. A first dialect, open for the next iteration.</li>
+    </ul>
+  </section>
+
+  <section id="rcp">
+    <div class="secnum">06</div>
+    <h2>Relay corruption protection</h2>
+    <p>Every wire version ships two editions. Bare v2 is the 13-field line, for trusted paths: one machine, one operator, one local relay. <span class="lead">v2-rcp</span> adds a 14th field, <code>SUM</code>, for packets crossing machines the sender does not fully trust.</p>
+    <p><code>SUM</code> is the first 16 hex characters of the sha256 of the canonical 13-field line. Seventeen bytes on the wire:</p>
+    <pre><code>2|b441|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:v1|40|0e003fac2df6829e</code></pre>
+    <ul class="tight">
+      <li><span class="lead">Sender picks per interaction.</span> No negotiation. Receivers accept both editions. An agent sends bare lines on trusted paths and switches to <code>-rcp</code> for relayed ones, paying the checksum cost only where corruption is possible.</li>
+      <li><span class="lead">Old readers fail loudly.</span> A validator written before this edition rejects a 14-field line with a shape error instead of misreading it.</li>
+      <li><span class="lead">Corruption, not identity.</span> The checksum detects corruption in transit. It does not prove who sent the packet. Full transport signing stays a separate future protocol.</li>
+    </ul>
+    <p><code>sym2-migrate.py --rcp</code> emits rcp lines, and the validator reports bad checksums as <code>ERR:RCP</code>.</p>
+  </section>
+
+  <section id="abios">
+    <div class="secnum">07b</div>
+    <h2>ABIOS — token-aware sessions</h2>
+    <p><span class="lead">Canonical home.</span> ABIOS/3 (<code>SPEC-ABIOS-3.md</code>) compresses multi-message forge command streams for tokenizer billing while respecting rule <strong>L-18</strong> (no latent channel): decoder setup is explicit text, not a hidden cache. Sessions begin with <strong>POST</strong>, a one-time handshake that verifies decode-sufficient context before compressed traffic.</p>
+    <p>The v2 dense draft (<code>SPEC-V2-DRAFT.md</code>) is <strong>superseded</strong> for token efficiency (not a migration target). Measured on 11 messages (o200k, POST + min setup + messages): ABIOS <strong>refs</strong> <strong>766</strong> vs compact JSON <strong>738</strong>; v2 dense pilot total <strong>1415</strong> (external PR #6 constant); raw v2 wire <strong>3386</strong>.</p>
+    <table>
+      <tr><th>Transcript</th><th>Compact JSON</th><th>ABIOS refs</th><th>ABIOS adaptive</th></tr>
+      <tr><td>11 msgs</td><td>738</td><td><strong>766</strong></td><td>766</td></tr>
+      <tr><td>40 msgs</td><td>5570</td><td><strong>1990</strong></td><td>1990</td></tr>
+      <tr><td>200 msgs</td><td>28498</td><td><strong>7901</strong></td><td>7901</td></tr>
+    </table>
+    <p>Primary = POST ack + decode-sufficient setup (min) + messages. Full tables and baselines (TOON approx fallback <strong>809</strong>, Agora <strong>1027</strong> on 11 msgs) in the bench doc. Reproduce: <code>make bench</code>.</p>
+    <div class="cta">
+      <a class="btn primary" href="abios.html">ABIOS overview</a>
+      <a class="btn ghost" href="spec-abios-3.html">SPEC-ABIOS-3</a>
+      <a class="btn ghost" href="paper.html">Paper</a>
+      <a class="btn ghost" href="reproduce.html">Reproduce</a>
+    </div>
+  </section>
+
+  <section id="why-abios">
+    <div class="secnum">07c</div>
+    <h2>Why ABIOS?</h2>
+    <p>ABIOS stands for Agent BIOS. A BIOS is the layer that lets an operating system talk to hardware without knowing the details of each device. ABIOS plays that role for agents: a small, shared layer that lets one agent talk to another without either paying to restate everything they already share.</p>
+    <p>The name nods to IBM's Advanced BIOS. In April 1987, IBM shipped the Personal System/2 with its ROM BIOS split in two: CBIOS, which kept real-mode DOS working, and ABIOS, a new interface for multitasking, protected-mode operating systems like OS/2. ABIOS itself saw little use. Operating systems mostly brought their own drivers, and the Micro Channel machines it shipped on lost to the open ISA/EISA ecosystem.</p>
+    <p>The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mode remains a common lowest-common-denominator display mode. Its 6-pin mini-DIN keyboard and mouse connectors became the "PS/2 ports" found on PCs for decades. And it made the 1.44 MB 3.5-inch floppy the standard, the disk still drawn as the "save" icon. The name is for a forward-looking interface designed for multitasking systems before they were common. <strong>It does not claim ABIOS succeeded.</strong></p>
+    <p><span class="lead">POST.</span> Every PC runs POST (power-on self-test) at boot, before loading an operating system. In ABIOS, POST is the one-time session handshake: before references or deltas, peers exchange decode-sufficient minimal context. Those tokens count in every benchmark total.</p>
+    <p><span class="lead">Synbios.</span> ABIOS pairs with <a href="https://github.com/Moissanite-Labs/synbios">Synbios</a>, Moissanite Labs' agent-first collaboration hub, which integrates ABIOS natively.</p>
+    <p><span class="lead">Lineage.</span> ABIOS/3 is the token-aware redesign. ABIOS/1 (formerly SYM-2P) v2 dense wire tokenized worse than JSON (1,415 vs 738 o200k tokens on 11 messages with current baselines) and was dropped; v1 JSON packets remain documented as SYM-2P/1.0 in <code>SPEC.md</code>.</p>
+  </section>
+
+  <section id="measure">
+    <div class="secnum">07</div>
+    <h2>Measure what the symbols buy</h2>
+    <p><code>bench/</code> turns the repo from a format into an instrument. It measures the empirical question underneath v2: does symbolic communication actually buy capability and efficiency.</p>
+    <table>
+      <tr><th>File</th><th>Contents</th></tr>
+      <tr><td><code>tasks.jsonl</code></td><td>10 paired tasks. Six comprehension tasks carry the same packet in v1 English and v2. Two render tasks (v2 to English). Two compile tasks (English to v2).</td></tr>
+      <tr><td><code>sym2-bench.py</code></td><td>Machine metrics: bytes and parse latency per form. Result: v2 is 3.1x smaller than compact v1 JSON. Parse latency is tens of microseconds either way.</td></tr>
+      <tr><td><code>EVAL.md</code></td><td>The model A/B protocol: fresh sessions per form, verbatim answers, how to read the scores.</td></tr>
+      <tr><td><code>sym2-score.py</code></td><td>Scores an answers file per task and per form (v1 vs v2).</td></tr>
+    </table>
+    <p>Stated plainly: the harness does not run models itself, and 10 hand-written tasks are a smoke test, not a benchmark. A real capability claim needs the eval run against models, reported with model name, date, and scores.</p>
+  </section>
+
+  <section id="v1tov2">
+    <div class="secnum">08</div>
+    <h2>From v1 to v2</h2>
+    <p>v1 speaks JSON but thinks in English: prose sits inside string fields, and a model receiver must parse human language to understand a machine message. That is the handicap the project starts from.</p>
+    <p>v2 moves the language to symbols. Packet content becomes codes, numbers, and structured expressions. English stops being the source and becomes a render target: a translator script converts packets to human-readable English for operators.</p>
+    <p>v2 keeps what worked in v1: one packet per line in durable text artifacts, a versioned wire format, and a validator with exit codes 0 (valid), 1 (invalid), 2 (usage or IO error).</p>
+    <p>SYM-2P/1.0 stays the inter-agent packet profile. The v2 migrator remains a tooling experiment for worked examples; v2 dense wire is not a kit migration target.</p>
+  </section>
+
+  <section id="translate">
+    <div class="secnum">09</div>
+    <h2>Translate and validate</h2>
+    <pre><code>python3 scripts/protean-sym2p/sym2-render.py &lt;packets.sym2&gt;
+python3 scripts/protean-sym2p/sym2-migrate.py &lt;packets.jsonl&gt;
+python3 scripts/protean-sym2p/sym2-migrate.py --rcp &lt;packets.jsonl&gt;
+python3 scripts/protean-sym2p/sym2-validate.py &lt;packets.sym2&gt;
+python3 tests/test_sym2.py</code></pre>
+    <p>The renderer reads the wire form. Operators read the rendered form. Agents read the wire form.</p>
+    <p>The migrator converts v1 JSON packets to v2 lines. It fails loudly where English has no symbolic pattern yet, and it covers the worked examples, not the full corpus. The <code>--rcp</code> flag emits the protected edition.</p>
+    <p>Exit code 0 means every line is valid. Exit code 1 means at least one is invalid, with a typed diagnostic (<code>ERR:SCOPE</code> for unbound references, <code>ERR:RCP</code> for bad checksums). Exit code 2 means a usage, IO, or configuration error.</p>
+    <ul class="tight">
+      <li><span class="lead">v2 test suite.</span> <code>tests/test_sym2.py</code> runs 50 stdlib-unittest tests: the wire parser, the renderer, the validator including negative cases, the reasoning dialect, the rcp edition, and the migration round trip.</li>
+      <li><span class="lead">v1 suite unchanged.</span> <code>tests/run-tests.py</code> passes every valid fixture and rejects every malformed, stale, duplicate, or protected-semantic fixture. Twenty invalid fixtures and four valid ones ship under <code>tests/fixtures/</code>.</li>
+      <li><span class="lead">Internal-name gate.</span> <code>gates/protean-sym2p/check-internal-names.py</code> blocks internal names from leaking into published artifacts.</li>
+    </ul>
+  </section>
+
+  <section id="ships">
+    <div class="secnum">10</div>
+    <h2>What ships</h2>
+    <table>
+      <tr><th>Path</th><th>Contents</th></tr>
+      <tr><td><code>SPEC-V2-DRAFT.md</code></td><td>The v2 specification: wire format, reasoning dialect, rcp edition</td></tr>
+      <tr><td><code>VISION.md</code></td><td>The thesis, the six-step plan, delivered vs future work</td></tr>
+      <tr><td><code>scripts/protean-sym2p/</code></td><td><code>sym2_parse.py</code> (shared wire parser), <code>sym2-render.py</code> (translator), <code>sym2-validate.py</code> (validator), <code>sym2-migrate.py</code> (v1 to v2, with <code>--rcp</code>). stdlib only.</td></tr>
+      <tr><td><code>templates/protean-sym2p/v2/</code></td><td>Brief, dispute, reasoning, swarm, and delegate packets: wire form plus rendered English</td></tr>
+      <tr><td><code>templates/protean-sym2p/v2-rcp/</code></td><td>Brief packet in the protected edition, generated by the tooling</td></tr>
+      <tr><td><code>bench/</code></td><td><code>tasks.jsonl</code> (10 paired tasks), <code>sym2-bench.py</code>, <code>sym2-score.py</code>, <code>EVAL.md</code>, <code>README.md</code></td></tr>
+      <tr><td><code>tests/test_sym2.py</code></td><td>50 stdlib-unittest tests: parser, renderer, validator, reasoning, rcp, migration</td></tr>
+      <tr><td><code>SPEC.md</code>, <code>skills/sym2p/</code>, <code>install.sh</code>, <code>gates/</code></td><td>The v1 release, still normative and unchanged</td></tr>
+    </table>
+  </section>
+
+  <section id="install">
+    <div class="secnum">11</div>
+    <h2>Install</h2>
+    <pre><code>bash install.sh --target &lt;dir&gt;
+bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
+    <p>Bash and coreutils only. Zero network calls. Every written path is printed, and no <code>--target</code> means no run. The dry run writes nothing.</p>
+    <p>It installs alone, resolving only its required dependencies. Optional relationships are reported, not fetched.</p>
+  </section>
+
+  <section id="open">
+    <div class="secnum">12</div>
+    <h2>Open items</h2>
+    <p>SYM-2P v2 dense wire is superseded for token efficiency; SYM-2P/1.0 stays the inter-agent profile. Stated plainly:</p>
+    <ul class="tight">
+      <li><span class="lead">Transport signing (identity).</span> The rcp checksum detects corruption in transit. Proof of who sent a packet stays a separate future protocol.</li>
+      <li><span class="lead">Kit adoption.</span> ABIOS/3 is repo-only until the ingredient manifest lists it; SYM-2P v2 dense is not a migration target.</li>
+      <li><span class="lead">Forward compatibility.</span> A v2.0-era reader rejects v2.1 opcodes as unknown, with no capability marker to distinguish "too old" from "corrupt." Worth deciding before the kit lock moves.</li>
+    </ul>
+  </section>
+
+  <section id="source">
+    <div class="secnum">13</div>
+    <h2>Source</h2>
+    <p>MIT licensed. The committed <code>LICENSE</code> file is authoritative. Requires nothing beyond Python &ge;3.9 and git.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/Moissanite-Labs/abios">Moissanite-Labs/abios</a>
+      <a class="btn ghost" href="https://github.com/Moissanite-Labs/abios/blob/main/SPEC-V2-DRAFT.md">SPEC-V2-DRAFT.md</a>
+      <a class="btn ghost" href="https://github.com/Moissanite-Labs/abios/blob/main/VISION.md">VISION.md</a>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>abios &middot; ABIOS/3 &middot; MIT &middot; Moissanite Labs</span>
+  </div>
+</footer>
+</div>
+
+<a class="return-link" href="https://github.com/Moissanite-Labs">&#8592; Moissanite Labs</a>
+<p class="made-by"><a href="https://github.com/Moissanite-Labs/abios">abios</a> · Agent BIOS</p>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Matrix-style falling code rain */
+  var cv = document.getElementById('rain');
+  if (cv && !reduce) {
+    var ctx = cv.getContext('2d');
+    var chars = '01{}[]<>:;,."#$SYM2P|'.split('');
+    var fontSize = 15, drops = [], W, H;
+    function size(){
+      W = cv.width = window.innerWidth;
+      H = cv.height = window.innerHeight;
+      var cols = Math.ceil(W / fontSize);
+      drops = [];
+      for (var i = 0; i < cols; i++) drops.push(Math.random() * -60);
+    }
+    size();
+    window.addEventListener('resize', size);
+    var head = 'rgba(125,255,168,0.9)', body = 'rgba(63,185,80,0.55)';
+    (function draw(){
+      ctx.fillStyle = 'rgba(5,7,10,0.08)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.font = fontSize + 'px ui-monospace,Menlo,monospace';
+      for (var i = 0; i < drops.length; i++){
+        var ch = chars[(Math.random() * chars.length) | 0];
+        ctx.fillStyle = Math.random() < 0.04 ? head : body;
+        ctx.fillText(ch, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > H && Math.random() > 0.976) drops[i] = 0;
+        drops[i]++;
+      }
+      requestAnimationFrame(draw);
+    })();
+  }
+
+  /* Simulated v2 packet wire preview: bare, reasoning, and rcp editions */
+  var body2 = document.getElementById('stream-body');
+  if (body2 && !reduce) {
+    function hex(k){ var s=''; for(var i=0;i<k;i++) s+='0123456789abcdef'[(Math.random()*16)|0]; return s; }
+    function line(){
+      var id = hex(4);
+      var r = Math.random();
+      var pkt, cls = '';
+      if (r < 0.55) {
+        var f = 1 + ((Math.random()*2)|0), t = 1 + ((Math.random()*4)|0);
+        var a = 1 + ((Math.random()*3)|0), st = 1 + ((Math.random()*3)|0);
+        var cf = 70 + ((Math.random()*30)|0);
+        pkt = '2|' + id + '|mr1|' + f + '|' + t + '|' + a + '|' + st + '|' + cf + '|70|(10 task)|1|mr1:v1|40';
+      } else if (r < 0.8) {
+        pkt = '2|' + id + '|mr1|1|2|1|1|88|70|(30 cov 62)(31 (34 $cov 70) (20 sec (6 6)) ())|1||0';
+      } else {
+        pkt = '2|' + id + '|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))|1|mr1:v1|40|' + hex(16);
+        cls = ' class="rcp"';
+      }
+      var div = document.createElement('div');
+      div.className = 'ln';
+      div.innerHTML = '<span class="ok">exit 0</span>  ' +
+        pkt.replace(id, '<span class=id>' + id + '</span>').replace(/(\|[0-9a-f]{16})$/, '<span' + cls + '>$1</span>');
+      body2.appendChild(div);
+      while (body2.children.length > 7) body2.removeChild(body2.firstChild);
+    }
+    for (var i = 0; i < 5; i++) line();
+    var cur = document.createElement('div');
+    cur.innerHTML = '<span class="cursor"></span>';
+    body2.appendChild(cur);
+    setInterval(function(){
+      body2.removeChild(cur);
+      line();
+      body2.appendChild(cur);
+    }, 1400);
+  } else if (body2) {
+    body2.innerHTML = '<div class="ln"><span class="ok">exit 0</span>  ' +
+      '2|<span class=id>b441</span>|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))|1|mr1:v1|40</div>';
+  }
+})();
+</script>
+
+</body>
+</html>

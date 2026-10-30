@@ -1,14 +1,16 @@
 SYM-2P: a compact versioned agentic message language - one canonical JSON packet per line over durable text artifacts - with validator, enums, and fixtures.
 
-# protean-sym2p
+# abios
 
-The protocol ingredient of the Protean Kit distribution. It carries the
-normative specification, the stdlib validator, the packet templates, the worked
-example, and the fixture suite.
+**ABIOS** (Agent BIOS) is token-aware shared-state command wire for agents: profile **ABIOS/3** (`abios/3`), **POST** session handshake, reproducible benchmarks, and a reference implementation under `scripts/protean-abios/`.
+
+This repository also ships **ABIOS/1 (formerly SYM-2P)**: canonical JSON v1 packets, v2 dense wire experiments, stdlib validator, templates, and fixtures under `scripts/protean-sym2p/` (Protean Kit ingredient paths unchanged).
+
+**ABIOS/3** (`scripts/protean-abios/`, `SPEC-ABIOS-3.md`) is **repository-only** for now: it is not yet listed in `protean-ingredient.json` install targets or gates (see `tests/test_abios.py` locally).
 
 ## Do you need this?
 
-ROLE: The protocol ingredient of the Protean Kit distribution. It carries the normative SYM-2P specification, the stdlib validator, packet templates, a worked example, and the fixture suite.
+ROLE: Agent command wire (ABIOS/3) plus legacy inter-agent packets (ABIOS/1 / SYM-2P v1). Use ABIOS/3 when multi-turn forge or command streams are billed by tokenizer output and peers can share explicit decoder setup. Use v1 packets when you need `SPEC.md` JSON lines and `sym-validate.py`.
 
 USE WHEN:
 - Two agents must pass messages as one canonical JSON packet per line inside durable text artifacts, per `SPEC.md` section 1.
@@ -110,3 +112,51 @@ performs zero network calls and fails closed when the cache entry is absent.
 ## License
 
 MIT. The committed `LICENSE` file is authoritative.
+
+## ABIOS (Agent BIOS — token-aware command wire)
+
+**ABIOS/3** (`abios/3`, `SPEC-ABIOS-3.md`) is the canonical home for tokenizer-aware, shared-state command encoding alongside SYM-2P/1.0 packets. Reference code: `scripts/protean-abios/` (generic protocol); Synbios forge example schema: `scripts/protean-abios/schemas/synbios/`. Legacy wire profile id `sym3/1` remains a decode alias for `abios/3`.
+
+### Why ABIOS?
+
+ABIOS stands for Agent BIOS. A BIOS is the layer that lets an operating system talk to hardware without knowing the details of each device. ABIOS plays that role for agents: a small, shared layer that lets one agent talk to another without either paying to restate everything they already share.
+
+The name nods to IBM's Advanced BIOS ([IBM PS/2](https://en.wikipedia.org/wiki/IBM_PS/2), [Advanced BIOS](https://en.wikipedia.org/wiki/Advanced_BIOS)). In April 1987, IBM shipped the Personal System/2 with its ROM BIOS split in two: CBIOS, which kept real-mode DOS working, and ABIOS, a new interface for multitasking, protected-mode operating systems like OS/2. ABIOS itself saw little use. Operating systems mostly brought their own drivers, and the Micro Channel machines it shipped on lost to the open ISA/EISA ecosystem.
+
+The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mode remains a common lowest-common-denominator display mode. Its 6-pin mini-DIN keyboard and mouse connectors became the "PS/2 ports" found on PCs for decades. And it made the 1.44 MB 3.5-inch floppy the standard, the disk still drawn as the "save" icon. The name is for a forward-looking interface designed for multitasking systems before they were common. **It does not claim ABIOS succeeded.**
+
+**POST.** Every PC runs POST (power-on self-test) at boot, before loading an operating system: it checks the hardware and sets up what the system needs. In ABIOS, POST is the one-time session handshake. Before any references or deltas, the two agents exchange the minimal context the receiver needs to decode messages. POST's tokens are included in every benchmark total.
+
+**Synbios.** ABIOS pairs with [Synbios](https://github.com/Moissanite-Labs/synbios), Moissanite Labs' agent-first collaboration hub, which integrates ABIOS natively.
+
+**Lineage.** ABIOS/3 was previously SYM-2P. Version 3 is the token-aware, shared-state redesign; the dense symbolic codes of SYM-2P v2 tokenized worse than JSON (1,415 vs 682 o200k tokens) and were dropped. Historical SYM-2P/1.0 and the v2 draft packet layers keep their original names in this repository.
+
+| Path | Contents |
+|---|---|
+| `SPEC-ABIOS-3.md` | normative ABIOS/3 profile (POST handshake, decoder setup) |
+| `scripts/protean-abios/` | encoders, lexicon, POST, decoder context, bench harness |
+| `docs/abios-bench.md` | committed benchmark tables |
+| `bench/results/abios-bench.json` | golden JSON (`make bench` verifies) |
+| `paper/abios.md` | preprint source |
+| `docs/REPRODUCE.md` | reproduction instructions |
+
+### Headline results (primary: POST ack + minimal setup + messages, o200k_base)
+
+| Transcript | Compact JSON | Lossless English | ABIOS refs | ABIOS adaptive |
+| --- | ---: | ---: | ---: | ---: |
+| 11 messages | 738 | 686 | **766** | **766** |
+| 40 messages | 5570 | 5242 | **1990** | **1990** |
+| 200 messages | 28498 | 26754 | **7901** | **7901** |
+
+Also on 11 messages: TOON approx fallback **809**, Agora envelope **1027** (see `docs/abios-bench.md`). Compact JSON rows include an `action` field like ABIOS command names. **DOI: pending** (Zenodo deposit planned).
+
+**Caveats:** On 11 messages, ABIOS totals exceed compact JSON under this accounting; savings appear from longer transcripts (40/200 repeat many identical messages). Full lexicon setup exceeds JSON on very short sessions. `SPEC-V2-DRAFT.md` is superseded for token efficiency (v2 dense pilot total **1415** vs JSON **738** on 11 msgs with current baselines; raw v2 **3386**). SYM-2P v2 bench rows are external PR #6 constants.
+
+```bash
+python3 -m pip install -r requirements-bench.txt
+make bench          # verify committed tables (CI)
+make bench-write    # refresh golden files after intentional changes
+PYTHONPATH=scripts/protean-abios python3 -m unittest tests.test_abios -v
+```
+
+Site: https://moissanite-labs.github.io/abios/ (sources in `site/`; published from `gh-pages` branch).

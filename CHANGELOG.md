@@ -5,6 +5,36 @@ entry per release: what changed, why, and how it was verified.
 
 ## Unreleased
 
+- **What:** ABIOS/3 integration — `SPEC-ABIOS-3.md`, `scripts/protean-abios/` reference codec, `tests/test_abios.py`, golden bench (`make bench` / `bench/results/abios-bench.json`), paper source (`paper/abios.md`), GitHub Pages templates under `site/`. Leak gate scans `site/` again; ABIOS/3 is repo-only until the ingredient manifest lists it.
+- **Why:** Token-aware shared-state command encoding with honest POST + minimal-setup accounting; record SYM-2P v2 dense supersession and external PR #6 negative constants.
+- **Verified:** `python3 tests/run-tests.py`, `python3 -m unittest discover -s tests -v`, `make bench` (Python 3.11+ in CI via `bench/run-abios-bench.py`).
+
+- **What:** `scripts/protean-abios/schemas/` has one import root,
+  `scripts/protean-abios`. The unreferenced `schemas/synbios/sym2p/bench.py`
+  (the only module importing `synbios.*` from a second root) and its sole
+  helper, `codec.v1_size_breakdown`, are removed. `tests/test_abios.py` imports
+  every `schemas` module in an isolated interpreter with only that root on
+  `sys.path`.
+- **Why:** No single `PYTHONPATH` imported every module (#32). The live
+  SYM-2P v1 measurement is `scripts/protean-abios/bench.py`; the removed script
+  printed byte sizes for a v2 draft that no table, test, or document cites.
+- **Verified:** the new test fails with the removed module restored
+  (`ModuleNotFoundError: No module named 'synbios'`) and passes without it.
+
+- **What:** `scripts/protean-abios/comprehension.py` measures decode accuracy
+  from the POST handshake plus the wire lines (it previously sent the lines
+  with no decoder context), scores message-exact and field accuracy by
+  position, and can score a saved reply offline (`--predictions`) or print the
+  prompt (`--dry-run`). `paper/abios.md` narrows the comprehension section to
+  that one metric, drops the uncommitted multilingual-lexicon "negative
+  result", and states the sender-authentication gap (#24, #27).
+- **Why:** The paper described a harness that could not measure what it
+  claimed, and a result with no code or data behind it (#33).
+- **Verified:** `tests/test_abios.py` checks that the reference decoder
+  recovers every `lifecycle_11` message from the harness prompt alone for all
+  six encoders, that an oracle reply scores 1.0, and that wrong, missing, and
+  default-omitted predictions score as documented.
+
 - **What:** `scripts/protean-sym2p/sym-publish.py`, the write-once object
   publisher (stdlib only): it assigns `v`, `sup`, `hash`, `by`, and `at`,
   resolves the next version from `<root>/objects/` (never from the input), writes
