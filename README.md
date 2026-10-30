@@ -148,6 +148,8 @@ Also on 11 messages: TOON **805**, Agora envelope **1027** (see bench doc). **DO
 
 **Caveats:** Savings scale with session length and repeated content; full lexicon setup exceeds JSON on very short transcripts. `SPEC-V2-DRAFT.md` is superseded for token efficiency (v2 dense pilot total **1415** vs JSON **682** on 11 msgs; raw v2 **3386**). The bench row **English (lossless, key=value one-line)** is honestly labeled—it is not Chain-of-Draft terse prose and costs **691** vs **686** lossless English on 11 msgs.
 
+**Sealed sessions (sender authentication).** Plain POST and ABIOS lines prove nothing about who sent them. A sealed session (`SPEC-ABIOS-3.md` section 8.2, `scripts/protean-abios/auth.py`) binds a pre-shared HMAC-SHA-256 key and a fresh session id into POST, then authenticates lines with short seal lines (`~<tag>`) over a per-direction MAC chain, so replayed, reordered, dropped, or injected lines fail closed. It does not encrypt, and a shared key authenticates the key holders, not one agent. Measured token cost: `docs/abios-auth-bench.md`.
+
 ```bash
 python3 -m pip install -r requirements-bench.txt
 make bench          # verify committed tables (CI)

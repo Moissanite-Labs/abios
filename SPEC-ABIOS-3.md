@@ -199,6 +199,96 @@ The ack line MUST name profile `abios/3`. Implementations MAY accept legacy cont
 
 **Mismatch fallback.** If POST fails (digest, profile, or parse error), implementations MUST NOT assume shared context. They SHOULD fall back to plain compact JSON (or another agreed lossless carrier) for that session, or abort the session with an explicit error. They MUST NOT decode ABIOS lines with a guessed or partial lexicon.
 
+### 8.2 Sealed sessions — sender authentication (optional)
+
+A plain POST proves only that both peers hold the same decode context. A **sealed session** adds sender authenticity and integrity for the POST and for every later line. Use it when lines cross a trust boundary (a relay, a shared artifact store) where someone without the key can read, drop, reorder, replay, inject, or alter lines.
+
+**Keys.** The peers share a secret key `K` of at least 16 bytes (32 random bytes RECOMMENDED), named by a key id `kid` of 1 to 32 characters from `[A-Za-z0-9._-]`. Key distribution, storage, and rotation happen out of band. Any holder of `K` can produce valid seals, so use one key per peer pair: a key shared by a group authenticates the group, not the sender.
+
+**Sealed POST form.**
+
+```
+POST ok abios/3 <digest> auth=hs256 kid=<kid> sid=<sid> tag=<bits> seal=<n> mac=<mac>
+<decoder context body, as in 8.1>
+```
+
+The parameters appear exactly in this order, separated by single spaces, with no others:
+
+| Parameter | Meaning |
+|---|---|
+| `auth` | Algorithm. Only `hs256` (HMAC-SHA-256) is defined. |
+| `kid` | Key id. |
+| `sid` | 64-bit session id, unpadded base64url (11 characters), chosen fresh at random by the POST sender. MUST NOT be reused with the same key. |
+| `tag` | Tag length in bits for `mac` and every seal: `64`, `96`, or `128`, canonical decimal. |
+| `seal` | Maximum message lines per seal, `1` to `1024`, canonical decimal. |
+| `mac` | POST tag, unpadded base64url. |
+
+**Key schedule.** `LP(x)` is the 4-byte big-endian length of `x` followed by `x`. `H(k, x1, ..., xn)` is HMAC-SHA-256 with key `k` over `LP(x1) || ... || LP(xn)`. `trunc(x)` is the first `tag / 8` bytes of `x`, and `b64(x)` is unpadded base64url. Strings are UTF-8.
+
+1. `P` is the sealed POST as sent, with ` mac=<mac>` removed from the ack line: the ack line, LF, then the normalized body.
+2. Session key `S = H(K, "abios/3 seal hs256", kid, sid, SHA-256(P))`. Every later tag is thus bound to the exact decode context and parameters.
+3. `mac = b64(trunc(H(S, "post")))`.
+4. Direction keys `K_d = H(S, "dir", d)`, where `d` is `i` for lines from the POST sender and `r` for lines toward it.
+
+**MAC chain.** Each direction keeps a chain value `c`, starting at `c = H(K_d, "chain")`. For each message line `L` sent in that direction, in order, `c = H(K_d, c, L)`, where `L` excludes its line terminator. Two line forms carry tags:
+
+- **Seal line:** `~` followed by `b64(trunc(H(K_d, "seal", c)))`. It covers every message line since the previous seal.
+- **Close seal:** `~!` followed by `b64(trunc(H(K_d, "close", c)))`. It covers any pending lines and ends the direction.
+
+The chain makes the sequence number implicit, so no counter goes on the wire. ABIOS already needs ordered, complete delivery for refs and deltas (S-9, S-10, section 6). Seal lines are not command lines: in a sealed session a line beginning with `~` is a seal line, and no format tag may begin with `~`. Receivers remove seal lines before decoding, and seal lines never touch session state.
+
+**Sender rules.** Emit a seal after at most `seal` message lines. A sender MAY seal earlier to cut latency. A close seal MAY take the place of the last seal.
+
+**Receiver checks.** Receivers MUST verify, and fail closed on any failure:
+
+1. Sealed POST: the ack prefix and profile; parameter syntax, order, and canonical values; the digest against the body; a known `kid`; and `mac`, compared in constant time. Only then, check that `(kid, sid)` was not accepted before, and record it. Then run the 8.1 checks (c) and (d).
+2. Every seal and close seal matches the chain.
+3. A seal line has at least one pending message line to cover. A close seal may have none.
+4. At most `seal` message lines arrive without a seal.
+5. No line arrives after a close seal.
+6. A message line is decoded or acted on only after a seal covering it verifies. Lines still pending at the end of a stream are unauthenticated.
+
+Any failure ends the session. Receivers MUST NOT resynchronize. They treat the failure as a POST failure (8.1 mismatch fallback) and start again with a new POST and a new `sid`.
+
+**Replay and truncation.** Replaying, reordering, dropping, or injecting a line within a session breaks the chain. Reflecting a direction's lines back fails because direction keys differ. Against replay of a whole earlier session, receivers MUST keep the `(kid, sid)` pairs they accepted for as long as the key is valid; rotating keys bounds that record. Dropping the tail of a stream cannot be detected from tags alone, so a receiver that must know a stream is complete requires a close seal.
+
+**Downgrade.** A plain POST carries no authentication. Whether a peer must seal is local receiver policy, set per peer or per `kid`, and a receiver whose policy requires sealing MUST reject a plain POST. A receiver that does not implement this section rejects a sealed POST, because its ack line carries more than the digest. Sealed traffic therefore never decodes as plain.
+
+**Not provided.** Sealing does not provide confidentiality (lines stay plaintext) or non-repudiation (either key holder can produce any seal). It does not protect against a holder of `K`, and it does not distribute keys.
+
+**Cost.** Seal lines cost tokens. `docs/abios-auth-bench.md` reports the measured cost by tag size and seal interval. A larger `seal` spreads one tag over more lines, at the price of holding lines until the seal arrives.
+
+Reference: `scripts/protean-abios/auth.py` (`render_sealed_post`, `open_sealed_post`, `open_post`, `SealSender`, `SealReceiver`, `SidRegistry`).
+
+**Known-answer vector** (also in `tests/test_abios_auth.py`). `K` is the 32 bytes `00 01 02 ... 1f`, `kid=kat`, `sid=AAECAwQFBgc`, `tag=64`, `seal=2`, and the body is:
+
+```
+abios/3
+
+lexicon:
+{"concepts":{"cmd":{"task.transition":"st"},"status":{"done":"dn"}},"format_tags":{"refs":"E"}}
+schema:
+{"task.transition":["status","task_id"]}
+```
+
+The sealed POST ack line is:
+
+```
+POST ok abios/3 70a7903f8829ad8a auth=hs256 kid=kat sid=AAECAwQFBgc tag=64 seal=2 mac=gjzVQxegYR4
+```
+
+The initiator sends `Est dn t`, `Est wk t`, `Est dn t` and then closes. On the wire:
+
+```
+Est dn t
+Est wk t
+~RU3QhiHCSjY
+Est dn t
+~!u2hYxiVOkJ0
+```
+
+In the responder direction, one line `Est dn t` sealed at once is followed by `~Lds8ZfhwL-o`.
+
 ## 9. Generic protocol vs Synbios example schema
 
 | Generic (this spec) | Synbios example (`schemas/synbios/`) |
@@ -222,6 +312,8 @@ Implementations targeting another forge MUST ship their own `command_fields`, de
 
 Increment ABIOS profile when: format tag set changes, token grammar changes, default omission rules change, or content-ref algorithm changes. Lexicon-only token reassignment with unchanged grammar MAY bump lexicon `version` under the same `abios/N` if decoders accept both lexicons via setup; otherwise bump profile.
 
+Sealed sessions (8.2) are versioned by their `auth=` value and key-schedule label (`hs256`, `abios/3 seal hs256`). A new algorithm gets a new value and a new label; an existing value never changes meaning.
+
 ## 11. Conformance tests
 
 Normative reference suite: **`tests/test_abios.py`**, run via:
@@ -238,8 +330,9 @@ Requirements mirrored by tests:
 | Round-trip | All six encoders × lifecycles 11, 40, 200 messages |
 | Minimal context | Transcript decodes with **minimal** setup only (S-12) |
 | Lexicon stability | `generate_lexicon.py` reproduces committed `lexicon.json` byte-identical |
+| Sealed sessions | Known-answer vector, sealed round trip for every encoder, and every 8.2 receiver check (`tests/test_abios_auth.py`) |
 
-Bench regression (informative): `make bench` / `bench/run-abios-bench.py` compares totals to golden `bench/results/abios-bench.json`.
+Bench regression (informative): `make bench` / `bench/run-abios-bench.py` compares totals to golden `bench/results/abios-bench.json`, and sealed-session cost to `bench/results/abios-auth-bench.json`.
 
 ## 12. Acceptance criteria (ABIOS implementation)
 
@@ -253,10 +346,11 @@ Bench regression (informative): `make bench` / `bench/run-abios-bench.py` compar
 | C-6 | No dependency on hidden KV state, embeddings, or undeclared cross-process memory (L-18 / S-14). |
 | C-7 | `tests/test_abios.py` passes with tiktoken available. |
 | C-8 | POST handshake (`post.py`) verifies minimal context digest; mismatch is a hard error (fallback signal). |
+| C-9 | Sealed sessions (8.2), when implemented, reproduce the known-answer vector, and every receiver check fails closed. A plain POST parser rejects a sealed POST. |
 
 ## 13. Non-goals
 
-ABIOS does not define: SYM-2P act enums, authorization envelopes, routing gates, dispute objects, or English rendering requirements (English renderers such as `english.py` are non-normative convenience). It does not mandate adaptive encoding on the wire. It does not revive SYM-2P/2.0 draft pipe packets as a standard.
+ABIOS does not define: SYM-2P act enums, authorization envelopes, routing gates, dispute objects, or English rendering requirements (English renderers such as `english.py` are non-normative convenience). It does not mandate adaptive encoding on the wire. It does not revive SYM-2P/2.0 draft pipe packets as a standard. It does not encrypt: sealed sessions (8.2) authenticate lines but leave them readable.
 
 ---
 

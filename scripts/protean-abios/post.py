@@ -34,7 +34,10 @@ def parse_post_handshake(blob: str) -> tuple[str, str]:
     expected_prefix = f"{POST_ACK_PREFIX}{PROFILE_LINE} "
     if not ack.startswith(expected_prefix):
         raise ValueError("POST profile mismatch")
-    digest = ack[len(expected_prefix) :].strip()
+    digest, _, params = ack[len(expected_prefix) :].strip().partition(" ")
+    if params:
+        # A sealed POST (section 8.2) must never be accepted as a plain one.
+        raise ValueError("POST carries sealed-session parameters; open it with auth.open_sealed_post")
     if digest != context_digest(context):
         raise ValueError("POST context digest mismatch")
     return ack, context
