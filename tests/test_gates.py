@@ -55,6 +55,23 @@ class TestGates(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0,
                                 "gate did not fire on an injected private path")
 
+    def test_internal_names_gate_scans_stdin(self):
+        # Commit metadata never lands in the tree, so CI pipes it in.
+        gate = os.path.join(ROOT, "gates", "protean-sym2p", "check-internal-names.py")
+        for text, leaks in (
+            ("Release notes\n\nCo-authored-by: role <noreply@example.invalid>\n", False),
+            ("Co-authored-by: " + fixture("leak-token") + " <x@example.invalid>\n", True),
+            ("built under " + fixture("leak-path") + "\n", True),
+        ):
+            with self.subTest(leaks=leaks):
+                result = subprocess.run([sys.executable, gate, "--stdin"], input=text,
+                                        capture_output=True, text=True, timeout=120)
+                if leaks:
+                    self.assertNotEqual(result.returncode, 0, result.stdout)
+                    self.assertIn("<stdin>:", result.stdout)
+                else:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

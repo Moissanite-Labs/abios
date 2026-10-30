@@ -44,6 +44,13 @@ entry per release: what changed, why, and how it was verified.
 - **Not changed:** `SPEC.md`. The publisher emits `sup` as a legal REF and the
   section 4 rule 2 shorthand is left as filed for the owner (`<id>.v<N-1>` is not
   expressible under L-5's grammar).
+- **Gate:** the internal-names gate takes `--stdin` and scans the text it is
+  given, and CI runs it over the author, committer, and message of every commit
+  in a pull request. Commit metadata never lands in the tree, so the tree scan
+  could not see a private identifier in a trailer or an author field. The gate's
+  name, command, and tree behaviour are unchanged, so this is a compatible
+  addition. `tests/test_gates.py` covers clean text, a blocklisted token, and a
+  private path on stdin.
 
 ## 1.0.0
 

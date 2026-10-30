@@ -30,6 +30,10 @@ advancement: it is never skipped.
 - The leak gate exists so a private identifier never reaches this repository. It
   reads digests, never names. Do not add a name to it: rebuild the digest list
   privately if the inventory changes.
+- Commit metadata reaches the repository too, but never lands in the tree. CI
+  pipes the author, committer, and message of every commit in a pull request
+  through the same gate (`check-internal-names.py --stdin`), so a commit that
+  names a private identifier fails review even when its files are clean.
 - Never publish a private identifier, a machine-specific absolute path, a session
   identifier, or a credential name that enumerates a private inventory. The gate
   is the enforcement surface, and it is not a substitute for reading your diff.
