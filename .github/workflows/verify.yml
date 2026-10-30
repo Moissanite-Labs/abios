@@ -28,4 +28,4 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -v
           python3 -m pip install -q -r requirements-bench.txt
-          PYTHONPATH=scripts/protean-abios python3 bench/run-sym3-bench.py
+          PYTHONPATH=scripts/protean-abios python3 bench/run-abios-bench.py
