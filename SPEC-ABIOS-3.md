@@ -229,12 +229,14 @@ The parameters appear exactly in this order, separated by single spaces, with no
 
 Tags use decimal because every lexicon tokenizer splits digit runs into chunks of at most three digits, so a 64-bit tag always costs seven digit tokens. That is a fixed cost, and below the measured average for base64url of the same bits (`docs/abios-auth-bench.md`).
 
-1. `P` is the ack line without ` mac=<mac>`, then LF, then the normalized body. Receivers rebuild `P` from the parsed parameters and the normalized body; they do not hash the received bytes. To normalize a body, replace each CRLF with LF, remove leading and trailing SP, HT, CR, and LF characters (no others), and append exactly one LF. The ack `<digest>` is computed over the normalized body.
+1. `P` is the ack line without ` mac=<mac>`, then LF, then the normalized body. Receivers rebuild `P` from the parsed parameters and the normalized body; they do not hash the received bytes. To normalize a body, replace each CRLF with LF, remove leading and trailing SP, HT, CR, and LF characters (no others), and append exactly one LF. A body that still contains a CR after this is rejected, so normalization is idempotent. The ack `<digest>` is computed over the normalized body.
 2. Session key `S = H(K, "abios/3 seal hs256", kid, sid, SHA-256(P))`. Every later tag is thus bound to the exact decode context and parameters.
 3. `mac = dec(trunc(H(S, "post")))`.
 4. Direction keys `K_d = H(S, "dir", d)`, where `d` is `i` for lines from the POST sender and `r` for lines toward it.
 
-**MAC chain.** Each direction keeps a chain value `c`, starting at `c = H(K_d, "chain")`. For each message line `L` sent in that direction, in order, `c = H(K_d, c, L)`, where `L` excludes its line terminator. Two line forms carry tags:
+**Line framing.** Wire lines end with LF, and a receiver reads CRLF as LF. A line `L` below is the text between terminators, without the terminator. How a transport separates the POST from the lines that follow it is outside this section; the body is what the transport delivers as the POST after its ack line.
+
+**MAC chain.** Each direction keeps one chain value `c` for the life of the session, starting at `c = H(K_d, "chain")`. An implementation never starts a second chain for the same direction. For each message line `L` sent in that direction, in order, `c = H(K_d, c, L)`, where `L` excludes its line terminator. Two line forms carry tags:
 
 - **Seal line:** `~` followed by `dec(trunc(H(K_d, "seal", c)))`. It covers every message line since the previous seal.
 - **Close seal:** `~!` followed by `dec(trunc(H(K_d, "close", c)))`. It covers any pending lines and ends the direction.
@@ -245,7 +247,7 @@ The chain makes the sequence number implicit, so no counter goes on the wire. AB
 
 **Receiver checks.** Receivers MUST verify, and fail closed on any failure:
 
-1. Sealed POST: the ack prefix and profile; parameter syntax, order, and canonical values; `tag` at least the receiver's minimum, if it sets one; the digest against the normalized body; a known `kid`; and `mac`, compared in constant time. Only then, check that `(kid, sid)` is not already in the registry, and record it. Then run the 8.1 checks (c) and (d).
+1. Sealed POST: the ack prefix and profile; parameter syntax, order, and canonical values; `tag` at least the receiver's minimum, if it sets one; the digest against the normalized body; a known `kid`; and `mac`, compared in constant time. Only then, check that `(kid, sid)` is not already in the registry, and record it. Then run the 8.1 checks (c) and (d), and check that no format tag in the context begins with `~`.
 2. Every seal and close seal has the `dec` form for `tag` and matches the chain.
 3. A seal line has at least one pending message line to cover. A close seal may have none.
 4. At most `seal` message lines arrive without a seal.

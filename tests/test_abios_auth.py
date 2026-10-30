@@ -161,7 +161,7 @@ class SealedRoundTripTests(unittest.TestCase):
         self.assertTrue(wire[-1].startswith("~!"))
         rx = session.receiver(INITIATOR)
         self.assertEqual(unseal_transcript(rx, wire, require_close=True), KAT_LINES)
-        sender = session.sender(INITIATOR)
+        sender = _kat_session(seal_every=1)[1].sender(INITIATOR)
         sender.push("Est dn t", last=True)
         with self.assertRaisesRegex(AuthError, "batch already full"):
             sender.push("Est wk t")
@@ -181,11 +181,13 @@ class SealedRoundTripTests(unittest.TestCase):
 class SealedRejectionTests(unittest.TestCase):
     """One case per section 8.2 receiver check; each asserts the check that fires."""
 
-    def setUp(self):
-        _ctx, self.session = open_sealed_post(KAT_POST, keyring=KEYRING, seen=SidRegistry())
+    def _rx(self, direction=INITIATOR):
+        # A session issues one receiver per direction, so each case opens its own.
+        _ctx, session = open_sealed_post(KAT_POST, keyring=KEYRING, seen=SidRegistry())
+        return session.receiver(direction)
 
     def _reject(self, wire, pattern, *, direction=INITIATOR, require_close=False):
-        rx = self.session.receiver(direction)
+        rx = self._rx(direction)
         with self.assertRaisesRegex(AuthError, pattern):
             unseal_transcript(rx, wire, require_close=require_close)
         return rx
@@ -220,7 +222,7 @@ class SealedRejectionTests(unittest.TestCase):
         self._reject(KAT_WIRE_I[:3] + [KAT_WIRE_I[2]], "no lines to cover")
 
     def test_overdue_seal(self):
-        rx = self.session.receiver(INITIATOR)
+        rx = self._rx()
         rx.feed(KAT_WIRE_I[0])
         rx.feed(KAT_WIRE_I[1])
         with self.assertRaisesRegex(AuthError, "without a seal"):
@@ -246,7 +248,7 @@ class SealedRejectionTests(unittest.TestCase):
         )
         for bad, pattern in cases:
             with self.subTest(line=repr(bad)):
-                rx = self.session.receiver(INITIATOR)
+                rx = self._rx()
                 rx.feed(KAT_WIRE_I[0])
                 with self.assertRaisesRegex(AuthError, pattern):
                     rx.feed(bad)
@@ -254,8 +256,18 @@ class SealedRejectionTests(unittest.TestCase):
                 with self.assertRaisesRegex(AuthError, "already failed"):
                     rx.feed(KAT_WIRE_I[1])
 
+    def test_one_chain_per_role_and_direction(self):
+        # A fresh receiver would restart the chain, which is resynchronization.
+        _ctx, session = open_sealed_post(KAT_POST, keyring=KEYRING, seen=SidRegistry())
+        session.receiver(INITIATOR)
+        session.sender(RESPONDER)
+        with self.assertRaisesRegex(AuthError, "already issued"):
+            session.receiver(INITIATOR)
+        with self.assertRaisesRegex(AuthError, "already issued"):
+            session.sender(RESPONDER)
+
     def test_receiver_stays_failed(self):
-        rx = self.session.receiver(INITIATOR)
+        rx = self._rx()
         rx.feed("Est wk t")
         with self.assertRaises(AuthError):
             rx.feed(KAT_WIRE_I[2])
@@ -371,6 +383,37 @@ class SealedPostRejectionTests(unittest.TestCase):
             _check_dec(str(1 << 64).zfill(20), 64, "sid")
         _check_dec(str((1 << 64) - 1), 64, "sid")
 
+    def test_bare_cr_and_lone_surrogate_bodies(self):
+        with self.assertRaisesRegex(AuthError, "bare CR"):
+            render_sealed_post(KAT_CONTEXT.replace("schema:", "sch\r\rema:"), key=KEY, seen=SidRegistry(), kid="kat")
+        with self.assertRaisesRegex(AuthError, "bare CR|digest mismatch"):
+            self._open(KAT_POST.replace("schema:", "sch\r\r\nema:"))
+        with self.assertRaisesRegex(AuthError, "UTF-8"):
+            self._open(KAT_POST.replace("schema:", "sch\udcffema:"))
+
+    def test_format_tag_must_not_begin_with_seal_prefix(self):
+        post, _session = render_sealed_post(
+            KAT_CONTEXT.replace('"refs":"E"', '"refs":"~E"'), key=KEY, seen=SidRegistry(), kid="kat"
+        )
+        with self.assertRaisesRegex(AuthError, "seal prefix"):
+            self._open(post)
+
+    def test_registry_with_atomic_external_store(self):
+        store = set()
+
+        def add_if_absent(kid, sid):
+            if (kid, sid) in store:
+                return False
+            store.add((kid, sid))
+            return True
+
+        seen = SidRegistry(add_if_absent=add_if_absent)
+        self._open(KAT_POST, seen=seen)
+        with self.assertRaisesRegex(AuthError, "replay"):
+            self._open(KAT_POST, seen=seen)
+        with self.assertRaises(ValueError):
+            SidRegistry(set(), add_if_absent=add_if_absent)
+
     def test_minimum_tag_policy(self):
         with self.assertRaisesRegex(AuthError, "minimum"):
             self._open(KAT_POST, min_tag_bits=128)
@@ -385,6 +428,13 @@ class SealedPostRejectionTests(unittest.TestCase):
     def test_plain_parser_refuses_sealed_post(self):
         with self.assertRaisesRegex(ValueError, "sealed-session parameters"):
             parse_post_handshake(KAT_POST)
+        # 8.1(a): nothing may follow the digest, not even whitespace.
+        plain = render_post_handshake(KAT_CONTEXT)
+        ack, body = plain.split("\n", 1)
+        for tail in (" ", "\t", "\u3000"):
+            with self.subTest(tail=repr(tail)):
+                with self.assertRaises(ValueError):
+                    parse_post_handshake(ack + tail + "\n" + body)
 
     def test_policy_refuses_plain_post(self):
         plain = render_post_handshake(KAT_CONTEXT)

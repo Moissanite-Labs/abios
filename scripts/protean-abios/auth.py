@@ -22,7 +22,7 @@ import secrets
 import struct
 import threading
 from dataclasses import dataclass
-from typing import Iterable, Mapping, MutableSet, Optional
+from typing import Callable, Iterable, Mapping, MutableSet, Optional
 
 from post import POST_ACK_PREFIX, PROFILE_LINE, parse_post_handshake, verify_post_or_raise
 
@@ -107,13 +107,27 @@ class SealParams:
         return f"auth={AUTH_ALG} kid={self.kid} sid={self.sid} tag={self.tag_bits} seal={self.seal_every}"
 
 
+def _utf8(text: str) -> bytes:
+    try:
+        return text.encode("utf-8")
+    except UnicodeEncodeError:
+        raise AuthError("text must be valid UTF-8 (no lone surrogates)") from None
+
+
 def _normalize_context(context_text: str) -> str:
-    """CRLF to LF, trim SP/HT/CR/LF at both ends, end with exactly one LF (section 8.2)."""
-    return context_text.replace("\r\n", "\n").strip(_ASCII_WS) + "\n"
+    """CRLF to LF, trim SP/HT/CR/LF at both ends, end with exactly one LF (section 8.2).
+
+    A CR left inside after that is refused: it would not survive the receiver's
+    own CRLF handling, so normalization would not be idempotent.
+    """
+    body = context_text.replace("\r\n", "\n").strip(_ASCII_WS) + "\n"
+    if "\r" in body:
+        raise AuthError("POST body must not contain a bare CR")
+    return body
 
 
 def _body_digest(body: str) -> str:
-    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(_utf8(body)).hexdigest()[:16]
 
 
 def _signed_post_text(context_text: str, params: SealParams) -> str:
@@ -126,7 +140,7 @@ def _signed_post_text(context_text: str, params: SealParams) -> str:
 def _session_key(key: bytes, params: SealParams, signed_text: str) -> bytes:
     if len(key) < MIN_KEY_BYTES:
         raise AuthError(f"key must be at least {MIN_KEY_BYTES} bytes")
-    post_hash = hashlib.sha256(signed_text.encode("utf-8")).digest()
+    post_hash = hashlib.sha256(_utf8(signed_text)).digest()
     return _mac(
         key,
         KDF_LABEL.encode("ascii"),
@@ -142,6 +156,7 @@ class SealedSession:
     def __init__(self, session_key: bytes, params: SealParams) -> None:
         self.params = params
         self._key = session_key
+        self._issued: set[tuple[str, str]] = set()
 
     def post_mac(self) -> str:
         return _dec(_mac(self._key, b"post")[: self.params.tag_bytes])
@@ -151,11 +166,20 @@ class SealedSession:
             raise AuthError(f"direction must be one of {DIRECTIONS}")
         return _mac(self._key, b"dir", direction.encode("ascii"))
 
+    def _issue(self, role: str, direction: str) -> bytes:
+        # One chain per role and direction: a second receiver would restart at
+        # the chain's first value, which is the resynchronization 8.2 forbids.
+        if (role, direction) in self._issued:
+            raise AuthError(f"a {role} for direction {direction!r} was already issued for this session")
+        key = self._direction_key(direction)
+        self._issued.add((role, direction))
+        return key
+
     def sender(self, direction: str) -> "SealSender":
-        return SealSender(self._direction_key(direction), self.params)
+        return SealSender(self._issue("sender", direction), self.params)
 
     def receiver(self, direction: str) -> "SealReceiver":
-        return SealReceiver(self._direction_key(direction), self.params)
+        return SealReceiver(self._issue("receiver", direction), self.params)
 
 
 class _Chain:
@@ -169,11 +193,7 @@ class _Chain:
             raise AuthError("a sealed line must be one non-empty line")
         if line.startswith(SEAL_PREFIX):
             raise AuthError("a message line must not begin with the seal prefix")
-        try:
-            data = line.encode("utf-8")
-        except UnicodeEncodeError:
-            raise AuthError("a sealed line must be valid UTF-8 text") from None
-        self._state = _mac(self._key, self._state, data)
+        self._state = _mac(self._key, self._state, _utf8(line))
 
     def tag(self, label: bytes) -> str:
         return _dec(_mac(self._key, label, self._state)[: self._params.tag_bytes])
@@ -283,16 +303,29 @@ class SealReceiver:
 class SidRegistry:
     """Every (kid, sid) a peer sent or accepted. A POST reusing one is refused.
 
-    Pass a persistent ``seen`` set to keep the record for the key's lifetime. The
-    lock makes check-and-record atomic in one process; a store shared across
-    processes must give the same insert-if-absent guarantee (section 8.2).
+    Pass a persistent ``seen`` set to keep the record for the key's lifetime; the
+    lock makes check-and-record atomic within one process. A store shared across
+    processes must pass ``add_if_absent`` instead: an atomic insert that returns
+    False when the pair is already present (SQL unique insert, Redis SETNX).
     """
 
-    def __init__(self, seen: Optional[MutableSet[tuple[str, str]]] = None) -> None:
+    def __init__(
+        self,
+        seen: Optional[MutableSet[tuple[str, str]]] = None,
+        *,
+        add_if_absent: Optional[Callable[[str, str], bool]] = None,
+    ) -> None:
+        if seen is not None and add_if_absent is not None:
+            raise ValueError("pass seen or add_if_absent, not both")
         self._seen = seen if seen is not None else set()
+        self._add_if_absent = add_if_absent
         self._lock = threading.Lock()
 
     def claim(self, kid: str, sid: str) -> None:
+        if self._add_if_absent is not None:
+            if not self._add_if_absent(kid, sid):
+                raise AuthError("POST replay: session id already used with this key")
+            return
         with self._lock:
             if (kid, sid) in self._seen:
                 raise AuthError("POST replay: session id already used with this key")
@@ -385,9 +418,11 @@ def open_sealed_post(
     from decoder_context import parse_decoder_context
 
     try:
-        parse_decoder_context(context)
+        lex, _schema = parse_decoder_context(context)
     except Exception as exc:
         raise AuthError(f"POST context does not parse: {exc}") from None
+    if any(str(tag).startswith(SEAL_PREFIX) for tag in lex.format_tags.values()):
+        raise AuthError("a format tag must not begin with the seal prefix")
     return context, session
 
 
