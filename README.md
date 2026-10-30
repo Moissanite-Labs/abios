@@ -119,7 +119,7 @@ MIT. The committed `LICENSE` file is authoritative.
 
 ABIOS stands for Agent BIOS. A BIOS is the layer that lets an operating system talk to hardware without knowing the details of each device. ABIOS plays that role for agents: a small, shared layer that lets one agent talk to another without either paying to restate everything they already share.
 
-The name nods to IBM's Advanced BIOS. In April 1987, IBM shipped the Personal System/2 with its ROM BIOS split in two: CBIOS, which kept real-mode DOS working, and ABIOS, a new interface for multitasking, protected-mode operating systems like OS/2. ABIOS itself saw little use. Operating systems mostly brought their own drivers, and the Micro Channel machines it shipped on lost to the open ISA/EISA ecosystem.
+The name nods to IBM's Advanced BIOS ([IBM PS/2](https://en.wikipedia.org/wiki/IBM_PS/2), [Advanced BIOS](https://en.wikipedia.org/wiki/Advanced_BIOS)). In April 1987, IBM shipped the Personal System/2 with its ROM BIOS split in two: CBIOS, which kept real-mode DOS working, and ABIOS, a new interface for multitasking, protected-mode operating systems like OS/2. ABIOS itself saw little use. Operating systems mostly brought their own drivers, and the Micro Channel machines it shipped on lost to the open ISA/EISA ecosystem.
 
 The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mode remains a common lowest-common-denominator display mode. Its 6-pin mini-DIN keyboard and mouse connectors became the "PS/2 ports" found on PCs for decades. And it made the 1.44 MB 3.5-inch floppy the standard, the disk still drawn as the "save" icon. The name is for a forward-looking interface designed for multitasking systems before they were common. **It does not claim ABIOS succeeded.**
 
