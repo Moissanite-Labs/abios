@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 import unittest
 
@@ -203,6 +204,26 @@ class AbiosRegenLexiconTests(unittest.TestCase):
             generated = out.read_text(encoding="utf-8")
         json.loads(generated)
         self.assertEqual(before, generated)
+
+
+class AbiosImportRootTests(unittest.TestCase):
+    def test_every_schemas_module_imports_from_one_root(self):
+        # -I drops PYTHONPATH and the cwd, so scripts/protean-abios is the only root.
+        code = (
+            "import importlib, pathlib, sys\n"
+            "root = pathlib.Path(sys.argv[1])\n"
+            "sys.path.insert(0, str(root))\n"
+            "for path in sorted((root / 'schemas').rglob('*.py')):\n"
+            "    parts = path.relative_to(root).with_suffix('').parts\n"
+            "    if parts[-1] == '__init__':\n"
+            "        parts = parts[:-1]\n"
+            "    importlib.import_module('.'.join(parts))\n"
+            "    print('.'.join(parts))\n"
+        )
+        result = subprocess.run([sys.executable, "-I", "-c", code, os.path.normpath(ABIOS)],
+                                capture_output=True, text=True, timeout=120)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("schemas.synbios.sym2p.adapter", result.stdout.split())
 
 
 class AbiosPostTests(unittest.TestCase):
