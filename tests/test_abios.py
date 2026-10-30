@@ -8,6 +8,7 @@ ABIOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"
 sys.path.insert(0, os.path.normpath(ABIOS))
 
 from canonical import canonical_payload, messages_equal, normalize_message  # noqa: E402
+from comprehension import build_prompt, parse_predictions, score_predictions  # noqa: E402
 from decoder_context import FORMAT_HEADER, parse_decoder_context, render_decoder_context, setup_sizes  # noqa: E402
 from encoders import all_encoders, decode_transcript, encode_transcript  # noqa: E402
 from generate_lexicon import main as regen_lexicon  # noqa: E402
@@ -204,6 +205,56 @@ class AbiosRegenLexiconTests(unittest.TestCase):
             generated = out.read_text(encoding="utf-8")
         json.loads(generated)
         self.assertEqual(before, generated)
+
+
+class AbiosComprehensionHarnessTests(unittest.TestCase):
+    def test_prompt_is_decode_sufficient(self):
+        # The model sees exactly what the reference decoder needs, and no more.
+        for name in all_encoders():
+            with self.subTest(encoder=name):
+                user, expected = build_prompt(name, lifecycle_11())
+                post, wire = user.split("\nWIRE LINES:\n")
+                _, ctx = parse_post_handshake(post)
+                setup = parse_decoder_context(ctx)
+                lines = wire.rstrip("\n").split("\n")
+                back = decode_transcript(all_encoders(setup.lexicon, setup.schema)[name], lines, setup=setup)
+                self.assertEqual([{"cmd": a, "payload": canonical_payload(a, p)} for a, p in back], expected)
+
+    def test_oracle_scores_full_marks(self):
+        _, expected = build_prompt("refs", lifecycle_11())
+        score = score_predictions(expected, json.loads(json.dumps(expected)))
+        self.assertEqual((score["message_exact"], score["field_accuracy"]), (1.0, 1.0))
+
+    def test_partial_and_missing_predictions(self):
+        _, expected = build_prompt("refs", lifecycle_11())
+        predicted = json.loads(json.dumps(expected))
+        key = sorted(predicted[0]["payload"])[0]
+        predicted[0]["payload"][key] = "wrong"
+        score = score_predictions(expected, predicted)
+        self.assertAlmostEqual(score["message_exact"], 10 / 11)
+        self.assertLess(score["field_accuracy"], 1.0)
+        self.assertGreater(score["field_accuracy"], 0.9)
+        short = score_predictions(expected, predicted[:5] + [None, "x"])
+        self.assertAlmostEqual(short["message_exact"], 4 / 11)
+
+    def test_omitted_defaults_are_not_errors(self):
+        from canonical import SCHEMA_DEFAULTS
+
+        _, expected = build_prompt("refs", lifecycle_11())
+        predicted = json.loads(json.dumps(expected))
+        dropped = 0
+        for item in predicted:
+            for key, value in SCHEMA_DEFAULTS.get(item["cmd"], {}).items():
+                if item["payload"].get(key) == value:
+                    del item["payload"][key]
+                    dropped += 1
+        self.assertGreater(dropped, 0)
+        self.assertEqual(score_predictions(expected, predicted)["message_exact"], 1.0)
+
+    def test_parse_predictions_accepts_fenced_reply(self):
+        self.assertEqual(parse_predictions('```json\n[{"cmd": "x"}]\n```'), [{"cmd": "x"}])
+        with self.assertRaises(ValueError):
+            parse_predictions('{"cmd": "x"}')
 
 
 class AbiosImportRootTests(unittest.TestCase):

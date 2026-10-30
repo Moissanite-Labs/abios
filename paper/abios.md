@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Agent-to-agent traffic is billed by tokenizer output, not by human readability. ABIOS is a family of wire encodings for structured forge lifecycle commands that minimize **o200k_base** token cost under honest decoder setup accounting. Encoders share a tokenizer-tuned lexicon, session-scoped identifiers, optional content-addressed blobs, positional field schemas, default-value omission, and an adaptive mode that picks the cheapest variant per message. Primary totals count **POST ack + decode-sufficient minimal setup + messages**. On 11 synthetic lifecycle messages, ABIOS **refs** totals **766** versus **738** compact JSON (with `action` field) and **686** lossless English; on 40- and 200-message transcripts refs totals **1990** and **7901** versus JSON **5570** and **28498**. Setup includes explicit session id bindings and schema defaults (S-12). Negative results from SYM-2P v1 packets, SYM-2P v2 dense pilots, and multilingual lexicon candidates are reported. Model comprehension on the wire format remains under evaluation.
+Agent-to-agent traffic is billed by tokenizer output, not by human readability. ABIOS is a family of wire encodings for structured forge lifecycle commands that minimize **o200k_base** token cost under honest decoder setup accounting. Encoders share a tokenizer-tuned lexicon, session-scoped identifiers, optional content-addressed blobs, positional field schemas, default-value omission, and an adaptive mode that picks the cheapest variant per message. Primary totals count **POST ack + decode-sufficient minimal setup + messages**. On 11 synthetic lifecycle messages, ABIOS **refs** totals **766** versus **738** compact JSON (with `action` field) and **686** lossless English; on 40- and 200-message transcripts refs totals **1990** and **7901** versus JSON **5570** and **28498**. Setup includes explicit session id bindings and schema defaults (S-12). Negative results from SYM-2P v1 packets and SYM-2P v2 dense pilots are reported. Model comprehension on the wire format remains under evaluation, and ABIOS/3 does not yet authenticate senders.
 
 ## Motivation
 
@@ -26,7 +26,7 @@ ABIOS targets **lossless** reconstruction of forge commands relative to compact 
 
 **A2A** and **MCP** standardize agent discovery and tool/context channels; ABIOS is complementary wire compression for an application-specific command stream, not a replacement for either protocol.
 
-**Multilingual tokenizer fertility:** Petrov et al. (2023) show non-English text is not uniformly cheaper under byte-level BPE; our lexicon generator rejected non-English wire tokens that did not reduce **o200k** counts (see negative results).
+**Multilingual tokenizer fertility:** Petrov et al. (2023) show non-English text is not uniformly cheaper under byte-level BPE. Our lexicon generator searches ASCII candidates derived from the English field and command names only; non-English candidates were not evaluated (see negative results).
 
 ## Method
 
@@ -54,7 +54,7 @@ Round-trip goal: given decoder context + lines, reconstruct canonical JSON-equiv
 
 **SYM-2P v2 dense (supersedes `SPEC-V2-DRAFT.md` for token efficiency):** PR #6 pilot on 11 messages—session steady state **1202** message tokens, handshake setup **213**, total **1415** (still above JSON **683** messages-only in that pilot); **raw v2 dense wire 3386** message tokens without session amortization. v2 remains in the repo as a draft spec and tooling reference, not a migration target for token-aware agent sessions.
 
-**Multilingual / non-English lexicon candidates:** words chosen for human brevity did not reduce **o200k** token counts versus ASCII wire tokens; the committed lexicon stays tokenizer-tuned.
+**Not evaluated: multilingual / non-English lexicon candidates.** An informal early check suggested that words chosen for human brevity in other languages did not reduce **o200k** counts versus ASCII wire tokens, but no code or data for it is committed, so it is not reported as a result. `generate_lexicon.py` searches ASCII candidates only.
 
 ## Results
 
@@ -104,13 +104,13 @@ ABIOS **refs** and **adaptive** beat compact JSON on 40- and 200-message transcr
 
 > **Status:** pending — do not cite accuracy numbers yet.
 
+Scope is narrowed to one metric, decode accuracy. State-question accuracy and generation round-trip are not implemented and are not claimed.
+
 | Metric | Encoder variants | Result |
 | --- | --- | --- |
-| Decode accuracy (line → JSON) | delta, refs, positional, omit, combined, adaptive | TODO |
-| State-question accuracy (session facts) | all | TODO |
-| Generation round-trip (encode → model decode → re-encode) | all | TODO |
+| Decode accuracy (POST context + lines → JSON): message-exact and field accuracy | delta, refs, positional, omit, combined, adaptive | pending |
 
-Optional harness: `PYTHONPATH=scripts/protean-abios python3 scripts/protean-abios/comprehension.py` (requires API key; skipped in CI).
+Harness: `PYTHONPATH=scripts/protean-abios python3 scripts/protean-abios/comprehension.py --encoder <name> --fixture lifecycle_11`. The prompt is the POST handshake (ack + decode-sufficient minimal context) followed by the wire lines, which is exactly what the reference decoder receives; `tests/test_abios.py` checks that the reference decoder recovers every message from that prompt alone, so a perfect decoder scores 100%. A model call needs `OPENAI_API_KEY`; `--predictions <file>` scores a saved reply from any model offline, and `--dry-run` prints the prompt. Scoring is by position: message-exact counts messages whose command and full canonical payload match (omitted defaults are filled first), and field accuracy counts matching command and payload slots. Not run in CI.
 
 ## Limitations
 
@@ -120,6 +120,7 @@ Optional harness: `PYTHONPATH=scripts/protean-abios python3 scripts/protean-abio
 - Lifecycles are **synthetic** forge transcripts, not production traffic mixes.
 - **Full** lexicon setup can erase wins on very short sessions (see 11-message full-setup row).
 - Human readability and third-party auditability of raw lines are reduced by design.
+- **No sender authentication.** ABIOS/3 messages and the POST handshake carry no signature or MAC, so a receiver cannot tell a forged or replayed line from a genuine one across a trust boundary; content hashes catch accidental corruption only. Tracked in [#24](https://github.com/Moissanite-Labs/abios/issues/24); a sealed-session proposal (HMAC chain bound to POST, with measured token cost) is in [#27](https://github.com/Moissanite-Labs/abios/pull/27).
 
 ## Reproduction
 

@@ -21,6 +21,20 @@ entry per release: what changed, why, and how it was verified.
 - **Verified:** the new test fails with the removed module restored
   (`ModuleNotFoundError: No module named 'synbios'`) and passes without it.
 
+- **What:** `scripts/protean-abios/comprehension.py` measures decode accuracy
+  from the POST handshake plus the wire lines (it previously sent the lines
+  with no decoder context), scores message-exact and field accuracy by
+  position, and can score a saved reply offline (`--predictions`) or print the
+  prompt (`--dry-run`). `paper/abios.md` narrows the comprehension section to
+  that one metric, drops the uncommitted multilingual-lexicon "negative
+  result", and states the sender-authentication gap (#24, #27).
+- **Why:** The paper described a harness that could not measure what it
+  claimed, and a result with no code or data behind it (#33).
+- **Verified:** `tests/test_abios.py` checks that the reference decoder
+  recovers every `lifecycle_11` message from the harness prompt alone for all
+  six encoders, that an oracle reply scores 1.0, and that wrong, missing, and
+  default-omitted predictions score as documented.
+
 - **What:** `scripts/protean-sym2p/sym-publish.py`, the write-once object
   publisher (stdlib only): it assigns `v`, `sup`, `hash`, `by`, and `at`,
   resolves the next version from `<root>/objects/` (never from the input), writes
