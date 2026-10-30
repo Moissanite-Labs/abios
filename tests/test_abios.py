@@ -150,12 +150,23 @@ class AbiosMinimalContextTests(unittest.TestCase):
                     enc_full = all_encoders(full_lex)[enc_name]
                     lines = encode_transcript(enc_full, messages)
                     sizes = setup_sizes(messages, lines, full_lex)
-                    lex_min, _schema = parse_decoder_context(sizes["minimal_text"])
-                    enc_min = all_encoders(lex_min)[enc_name]
-                    back = decode_transcript(enc_min, lines)
+                    setup = parse_decoder_context(sizes["minimal_text"])
+                    enc_min = all_encoders(setup.lexicon, setup.schema)[enc_name]
+                    back = decode_transcript(enc_min, lines, setup=setup)
                     self.assertEqual(len(back), len(messages))
                     for exp, got in zip(messages, back):
                         self.assertTrue(messages_equal(exp, got))
+
+    def test_s12_decode_from_post_context_bare_session(self):
+        messages = lifecycle_11()
+        enc = all_encoders()["combined"]
+        lines = encode_transcript(enc, messages)
+        sizes = setup_sizes(messages, lines)
+        blob = render_post_handshake(sizes["minimal_text"])
+        _, ctx = parse_post_handshake(blob)
+        setup = parse_decoder_context(ctx)
+        back = decode_transcript(all_encoders(setup.lexicon, setup.schema)["combined"], lines, setup=setup)
+        self.assertEqual(len(back), len(messages))
 
 
 class AbiosBenchSmokeTests(unittest.TestCase):
@@ -197,20 +208,25 @@ class AbiosPostTests(unittest.TestCase):
         ack, ctx = parse_post_handshake(blob)
         self.assertTrue(ack.startswith("POST ok abios/3 "))
         verify_post_or_raise(blob, minimal)
-        lex, _schema = parse_decoder_context(ctx)
-        back = decode_transcript(all_encoders(lex)["refs"], lines)
+        setup = parse_decoder_context(ctx)
+        back = decode_transcript(all_encoders(setup.lexicon, setup.schema)["refs"], lines, setup=setup)
         self.assertEqual(len(back), len(messages))
 
-    def test_legacy_sym3_header_still_parses(self):
+    def test_post_header_only_rejected(self):
+        with self.assertRaises(ValueError):
+            parse_post_handshake("POST ok abios/3 deadbeef\nabios/3\n")
+
+    def test_post_sym3_profile_requires_matching_ack(self):
         messages = lifecycle_11()
         enc = all_encoders()["refs"]
         lines = encode_transcript(enc, messages)
         sizes = setup_sizes(messages, lines)
         legacy = sizes["minimal_text"].replace("abios/3", "sym3/1", 1)
-        lex, schema = parse_decoder_context(legacy)
-        self.assertIn("project.create", schema)
-        back = decode_transcript(all_encoders(lex)["refs"], lines)
+        blob = render_post_handshake(legacy)
+        setup = parse_decoder_context(legacy)
+        back = decode_transcript(all_encoders(setup.lexicon, setup.schema)["refs"], lines, setup=setup)
         self.assertEqual(len(back), len(messages))
+        self.assertTrue(blob.startswith("POST ok sym3/1 "))
 
     def test_post_mismatch_raises(self):
         messages = lifecycle_11()

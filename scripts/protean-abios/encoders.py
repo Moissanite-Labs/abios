@@ -213,8 +213,9 @@ def _require_tag(line: str, tag: str) -> str:
 class Encoder(ABC):
     tag_name: str
 
-    def __init__(self, lexicon: Lexicon | None = None) -> None:
+    def __init__(self, lexicon: Lexicon | None = None, schema: dict[str, list[str]] | None = None) -> None:
         self.lex = lexicon or load_lexicon()
+        self.schema = schema or POSITIONAL_ORDER
 
     @property
     def tag(self) -> str:
@@ -232,7 +233,7 @@ class PositionalEncoder(Encoder):
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
         full = canonical_payload(action, payload)
-        order = POSITIONAL_ORDER[action]
+        order = self.schema[action]
         vals = [_escape_token(full[k], session, session.content, use_refs=False) for k in order]
         return f"{self.tag}{_lex_cmd(self.lex, action)} {' '.join(vals)}"
 
@@ -242,7 +243,7 @@ class PositionalEncoder(Encoder):
         if not parts:
             raise ValueError("empty positional line")
         action = _cmd_from_lex(self.lex, parts[0].text)
-        order = POSITIONAL_ORDER[action]
+        order = self.schema[action]
         vals = parts[1:]
         if len(vals) != len(order):
             raise ValueError(f"positional arity mismatch for {action}: expected {len(order)}, got {len(vals)}")
@@ -257,7 +258,7 @@ class OmitEncoder(Encoder):
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
         sparse = session.omit_defaults(action, payload)
-        order = [k for k in POSITIONAL_ORDER[action] if k in sparse]
+        order = [k for k in self.schema[action] if k in sparse]
         vals = [_escape_token(sparse[k], session, session.content, use_refs=False) for k in order]
         keys_blob = "|".join(order) + "|"
         return f"{self.tag}{_lex_cmd(self.lex, action)} {keys_blob} {' '.join(vals)}"
@@ -266,12 +267,12 @@ class OmitEncoder(Encoder):
         if not parts:
             raise ValueError("empty omit line")
         action = _cmd_from_lex(self.lex, parts[0].text)
-        allowed = set(POSITIONAL_ORDER[action])
+        allowed = set(self.schema[action])
         if len(parts) > 2 and parts[1].text.endswith("|"):
             keys = parts[1].text[:-1].split("|") if parts[1].text[:-1] else []
             vals = parts[2:]
         else:
-            keys = POSITIONAL_ORDER[action]
+            keys = self.schema[action]
             vals = parts[1:]
         for k in keys:
             if k not in allowed:
@@ -293,7 +294,7 @@ class RefsEncoder(Encoder):
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
         full = canonical_payload(action, payload)
-        order = POSITIONAL_ORDER[action]
+        order = self.schema[action]
         vals = [_escape_token(full[k], session, session.content, use_refs=True) for k in order]
         return f"{self.tag}{_lex_cmd(self.lex, action)} {' '.join(vals)}"
 
@@ -301,7 +302,7 @@ class RefsEncoder(Encoder):
         if not parts:
             raise ValueError("empty refs line")
         action = _cmd_from_lex(self.lex, parts[0].text)
-        order = POSITIONAL_ORDER[action]
+        order = self.schema[action]
         vals = parts[1:]
         if len(vals) != len(order):
             raise ValueError(f"refs arity mismatch for {action}")
@@ -330,7 +331,7 @@ class DeltaEncoder(Encoder):
         if delta and action == "task.transition" and session.task_id == canonical_payload(action, payload)["task_id"]:
             st_word = self.lex.word("status", delta["status"]).strip()
             return f"{self.tag}{_lex_cmd(self.lex, action)} t st={st_word}"
-        omit = OmitEncoder(self.lex)
+        omit = OmitEncoder(self.lex, self.schema)
         line = omit.encode(action, payload, session)
         return line.replace(omit.tag, self.tag, 1)
 
@@ -347,17 +348,17 @@ class DeltaEncoder(Encoder):
             st_word = parts[2].text[3:]
             status = _status_from_lex(self.lex, st_word)
             return normalize_message(action, {"task_id": task_id, "status": status})
-        omit = OmitEncoder(self.lex)
+        omit = OmitEncoder(self.lex, self.schema)
         return omit._decode_sparse(_split_line(body), session)
 
 
 class CombinedEncoder(Encoder):
     tag_name = "combined"
 
-    def __init__(self, lexicon: Lexicon | None = None) -> None:
-        super().__init__(lexicon)
-        self._delta = DeltaEncoder(self.lex)
-        self._refs = RefsEncoder(self.lex)
+    def __init__(self, lexicon: Lexicon | None = None, schema: dict[str, list[str]] | None = None) -> None:
+        super().__init__(lexicon, schema)
+        self._delta = DeltaEncoder(self.lex, self.schema)
+        self._refs = RefsEncoder(self.lex, self.schema)
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
         delta = session.delta_payload(action, payload)
@@ -369,7 +370,7 @@ class CombinedEncoder(Encoder):
             line = self._delta.encode(action, payload, session)
             return line.replace(self._delta.tag, self.tag, 1)
         sparse = session.omit_defaults(action, payload)
-        order = [k for k in POSITIONAL_ORDER[action] if k in sparse]
+        order = [k for k in self.schema[action] if k in sparse]
         vals = [_escape_token(sparse[k], session, session.content, use_refs=True) for k in order]
         keys_blob = "|".join(order) + "|"
         return f"{self.tag}{_lex_cmd(self.lex, action)} {keys_blob} {' '.join(vals)}"
@@ -390,7 +391,7 @@ class CombinedEncoder(Encoder):
                 st_word = parts[2].text[3:]
                 status = _status_from_lex(self.lex, st_word)
                 return normalize_message(action, {"task_id": task_id, "status": status})
-            return OmitEncoder(self.lex)._decode_sparse(parts, session)
+            return OmitEncoder(self.lex, self.schema)._decode_sparse(parts, session)
         body = line[len(self.tag) :].strip()
         parts = _split_line(body)
         if not parts:
@@ -399,7 +400,7 @@ class CombinedEncoder(Encoder):
         if len(parts) > 2 and parts[1].text.endswith("|"):
             keys = parts[1].text[:-1].split("|") if parts[1].text[:-1] else []
             vals = parts[2:]
-            allowed = set(POSITIONAL_ORDER[action])
+            allowed = set(self.schema[action])
             for k in keys:
                 if k not in allowed:
                     raise ValueError(f"unknown omit key {k!r} for {action}")
@@ -416,7 +417,7 @@ class CombinedEncoder(Encoder):
                     val = session.content.resolve(val)
                 payload[key] = val
             return normalize_message(action, session.restore_defaults(action, payload))
-        return RefsEncoder(self.lex)._decode_positional(parts, session)
+        return RefsEncoder(self.lex, self.schema)._decode_positional(parts, session)
 
 
 @dataclass
@@ -437,14 +438,14 @@ def _restore_content(session: Sym3Session, snap: ContentStore) -> None:
 class AdaptiveEncoder(Encoder):
     tag_name = "adaptive"
 
-    def __init__(self, lexicon: Lexicon | None = None) -> None:
-        super().__init__(lexicon)
+    def __init__(self, lexicon: Lexicon | None = None, schema: dict[str, list[str]] | None = None) -> None:
+        super().__init__(lexicon, schema)
         self._choices = [
-            DeltaEncoder(self.lex),
-            RefsEncoder(self.lex),
-            OmitEncoder(self.lex),
-            PositionalEncoder(self.lex),
-            CombinedEncoder(self.lex),
+            DeltaEncoder(self.lex, self.schema),
+            RefsEncoder(self.lex, self.schema),
+            OmitEncoder(self.lex, self.schema),
+            PositionalEncoder(self.lex, self.schema),
+            CombinedEncoder(self.lex, self.schema),
         ]
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
@@ -486,20 +487,20 @@ class AdaptiveEncoder(Encoder):
                 if name == "adaptive":
                     continue
                 if line.startswith(tag):
-                    return _encoder_by_name(name, self.lex).decode(line, session)
+                    return _encoder_by_name(name, self.lex, self.schema).decode(line, session)
             raise ValueError("cannot decode adaptive line: missing format tag")
         except Exception:
             _restore_content(session, snap)
             raise
 
 
-def _encoder_by_name(name: str, lex: Lexicon) -> Encoder:
+def _encoder_by_name(name: str, lex: Lexicon, schema: dict[str, list[str]] | None = None) -> Encoder:
     return {
-        "delta": DeltaEncoder(lex),
-        "refs": RefsEncoder(lex),
-        "omit": OmitEncoder(lex),
-        "positional": PositionalEncoder(lex),
-        "combined": CombinedEncoder(lex),
+        "delta": DeltaEncoder(lex, schema),
+        "refs": RefsEncoder(lex, schema),
+        "omit": OmitEncoder(lex, schema),
+        "positional": PositionalEncoder(lex, schema),
+        "combined": CombinedEncoder(lex, schema),
     }[name]
 
 
@@ -511,15 +512,19 @@ COMBINED_TAG = "combined"
 ADAPTIVE_TAG = "adaptive"
 
 
-def all_encoders(lex: Lexicon | None = None) -> dict[str, Encoder]:
+def all_encoders(
+    lex: Lexicon | None = None,
+    schema: dict[str, list[str]] | None = None,
+) -> dict[str, Encoder]:
     lex = lex or load_lexicon()
+    schema = schema or POSITIONAL_ORDER
     return {
-        DELTA_TAG: DeltaEncoder(lex),
-        REFS_TAG: RefsEncoder(lex),
-        POSITIONAL_TAG: PositionalEncoder(lex),
-        OMIT_TAG: OmitEncoder(lex),
-        COMBINED_TAG: CombinedEncoder(lex),
-        ADAPTIVE_TAG: AdaptiveEncoder(lex),
+        DELTA_TAG: DeltaEncoder(lex, schema),
+        REFS_TAG: RefsEncoder(lex, schema),
+        POSITIONAL_TAG: PositionalEncoder(lex, schema),
+        OMIT_TAG: OmitEncoder(lex, schema),
+        COMBINED_TAG: CombinedEncoder(lex, schema),
+        ADAPTIVE_TAG: AdaptiveEncoder(lex, schema),
     }
 
 
@@ -543,8 +548,17 @@ def encode_transcript(encoder: Encoder, messages: list[ForgeMessage]) -> list[st
     return lines
 
 
-def decode_transcript(encoder: Encoder, lines: list[str]) -> list[ForgeMessage]:
-    session = fresh_session()
+def decode_transcript(
+    encoder: Encoder,
+    lines: list[str],
+    setup: "DecoderSetup | None" = None,
+) -> list[ForgeMessage]:
+    from decoder_context import session_from_setup
+
+    if setup is not None:
+        session = session_from_setup(setup)
+    else:
+        session = fresh_session()
     out: list[ForgeMessage] = []
     for line in lines:
         msg = encoder.decode(line, session)

@@ -21,6 +21,7 @@ class Sym3Session:
     task_status: str = "open"
     content: ContentStore = field(default_factory=ContentStore)
     snapshots: dict[str, dict[str, Any]] = field(default_factory=dict)
+    schema_defaults: dict[str, dict[str, Any]] | None = None
 
     def ref_id(self, entity: str, raw_id: str) -> str:
         mapping = {
@@ -68,7 +69,7 @@ class Sym3Session:
 
     def omit_defaults(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         full = canonical_payload(action, payload)
-        defaults = SCHEMA_DEFAULTS.get(action, {})
+        defaults = self._defaults_for(action)
         out: dict[str, Any] = {}
         for k, v in full.items():
             if k in defaults and defaults[k] == v:
@@ -77,9 +78,14 @@ class Sym3Session:
         return out
 
     def restore_defaults(self, action: str, sparse: dict[str, Any]) -> dict[str, Any]:
-        defaults = SCHEMA_DEFAULTS.get(action, {})
+        defaults = self._defaults_for(action)
         merged = {**defaults, **sparse}
         return canonical_payload(action, merged)
+
+    def _defaults_for(self, action: str) -> dict[str, Any]:
+        if self.schema_defaults and action in self.schema_defaults:
+            return self.schema_defaults[action]
+        return SCHEMA_DEFAULTS.get(action, {})
 
     def apply_message(self, action: str, payload: dict[str, Any]) -> None:
         full = canonical_payload(action, payload)
