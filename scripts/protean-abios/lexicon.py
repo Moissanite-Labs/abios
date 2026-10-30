@@ -1,4 +1,4 @@
-"""Load committed SYM-3 lexicon."""
+"""Load committed ABIOS/3 lexicon."""
 from __future__ import annotations
 
 import json

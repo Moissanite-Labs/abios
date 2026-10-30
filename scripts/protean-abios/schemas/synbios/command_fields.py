@@ -1,4 +1,4 @@
-"""Synbios forge command field sets (example schema for SYM-3 bench and tests)."""
+"""Synbios forge command field sets (example schema for ABIOS/3 bench and tests)."""
 
 COMMAND_FIELDS = {
     "project.create": {"name", "description", "repository"},

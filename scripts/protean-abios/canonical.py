@@ -1,4 +1,4 @@
-"""Canonical forge command messages for SYM-3 codecs."""
+"""Canonical forge command messages for ABIOS/3 codecs."""
 from __future__ import annotations
 
 import copy

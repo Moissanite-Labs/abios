@@ -1,4 +1,4 @@
-"""Multi-tokenizer counting utilities for SYM-3 bench and lexicon generation."""
+"""Multi-tokenizer counting utilities for ABIOS/3 bench and lexicon generation."""
 from __future__ import annotations
 
 from dataclasses import dataclass

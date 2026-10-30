@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Optional LLM comprehension check for SYM-3 wire lines (skipped in CI without API key)."""
+"""Optional LLM comprehension check for ABIOS/3 wire lines (skipped in CI without API key)."""
 from __future__ import annotations
 
 import argparse
@@ -13,7 +13,7 @@ from encoders import all_encoders, decode_transcript, encode_transcript
 from schemas.synbios.fixtures import lifecycle_11
 
 
-PROMPT = """Decode each SYM-3 line to JSON objects with keys "cmd" and "payload".
+PROMPT = """Decode each ABIOS/3 line to JSON objects with keys "cmd" and "payload".
 Return a JSON array only, one object per input line, same order."""
 
 
@@ -50,7 +50,7 @@ def score_predictions(expected: list[dict], predicted: list[dict]) -> float:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="SYM-3 comprehension harness")
+    parser = argparse.ArgumentParser(description="ABIOS/3 comprehension harness")
     parser.add_argument("--encoder", default="combined")
     parser.add_argument("--model", default="gpt-4o-mini")
     args = parser.parse_args()

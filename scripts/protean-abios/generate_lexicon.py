@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate scripts/protean-sym3/lexicon.json from tokenizer-aware candidate search."""
+"""Regenerate scripts/protean-abios/lexicon.json from tokenizer-aware candidate search."""
 from __future__ import annotations
 
 import json

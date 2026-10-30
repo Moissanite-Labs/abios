@@ -1,4 +1,4 @@
-"""SYM-3 wire encoders and decoders."""
+"""ABIOS/3 wire encoders and decoders."""
 from __future__ import annotations
 
 import copy

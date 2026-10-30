@@ -1,1 +1,1 @@
-"""SYM-3 reference implementation (tokenizer-aware shared-state messaging)."""
+"""ABIOS/3 reference implementation (tokenizer-aware shared-state messaging)."""

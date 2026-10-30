@@ -1,4 +1,4 @@
-"""Lifecycle fixtures for SYM-3 bench and tests."""
+"""Lifecycle fixtures for ABIOS/3 bench and tests."""
 from __future__ import annotations
 
 from canonical import ForgeMessage

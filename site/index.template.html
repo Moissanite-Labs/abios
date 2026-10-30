@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>abios | Agent BIOS and SYM-2P packets</title>
-<meta name="description" content="ABIOS/3 token-aware agent command wire, SYM-2P v2.1 packets, validator, and reproducible benchmarks.">
-<meta property="og:title" content="abios | Agent BIOS and SYM-2P packets">
-<meta property="og:description" content="ABIOS compresses multi-turn agent command streams; SYM-2P carries dense symbolic packets for agents.">
+<title>abios | Agent BIOS — token-aware agent messaging</title>
+<meta name="description" content="ABIOS/3: token-aware shared-state command wire with POST handshake, reproducible o200k benchmarks, and legacy ABIOS/1 (formerly SYM-2P) packet tooling.">
+<meta property="og:title" content="abios | Agent BIOS">
+<meta property="og:description" content="ABIOS compresses multi-turn agent command streams with an explicit POST handshake and honest decoder-setup accounting.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://moissanite-labs.github.io/abios/">
 <meta property="og:image" content="https://moissanite-labs.github.io/abios/og-image.png">
@@ -149,53 +149,52 @@ footer a{color:var(--muted)}
 <div class="page">
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="#">protean-<span>sym2p</span></a>
+    <a class="brand" href="index.html">abi<span>os</span></a>
     <nav class="links">
-      <a href="#why">Why symbols</a>
-      <a href="#need">Need it?</a>
-      <a href="#packet">The packet</a>
-      <a href="#reasoning">Reasoning</a>
-      <a href="#rcp">Protection</a>
-      <a href="#measure">Measure</a>
-      <a href="abios.html">ABIOS</a>
-      <a href="#open">Open items</a>
+      <a href="#why-abios">Why ABIOS</a>
+      <a href="#abios">ABIOS/3</a>
+      <a href="spec-abios-3.html">Spec</a>
+      <a href="paper.html">Paper</a>
+      <a href="reproduce.html">Reproduce</a>
+      <a href="#legacy">Legacy</a>
       <a href="https://github.com/Moissanite-Labs/abios">GitHub</a>
     </nav>
   </div>
 </header>
 
 <div class="wrap">
-  <div class="hero">
-    <p class="kicker"><span class="pulse"></span>Protean Kit &middot; protocol ingredient</p>
-    <h1>SYM-2P</h1>
-    <p class="tag">Dense, checkable messages for AI agents.</p>
-    <p class="lede">AI agents talk to each other in English, usually wrapped in JSON. SYM-2P replaces the English with symbols: roles, actions, and states become numbers, fields become positions in a line, and payloads become s-expressions, a Lisp notation for nested structure.</p>
-    <p class="lede">Every word an agent writes costs tokens, and tokens cost money and time. English is also ambiguous: no program can check a sentence the way it checks a number. Symbols are cheaper and checkable. One brief packet is a 101-byte line where the JSON took 481.</p>
-    <p class="lede">Agents can reason in symbols too: bind values, branch on conditions, iterate, dispatch subagents, broadcast to swarms. A translator renders each packet into English for operators. A checksum edition protects packets crossing untrusted paths. One thing it doesn't claim: better answers. That eval hasn't been run.</p>
+  <div class="hero" id="top">
+    <p class="kicker"><span class="pulse"></span>Moissanite Labs &middot; Agent BIOS</p>
+    <h1>ABIOS</h1>
+    <p class="tag">Token-aware shared-state messaging for agents.</p>
+    <p class="lede"><strong>ABIOS/3</strong> compresses multi-turn forge command streams for tokenizer billing while keeping decode explicit. Each session opens with <strong>POST</strong>—a one-time handshake that exchanges decode-sufficient lexicon and schema before refs, deltas, or content-addressed lines (rule <strong>L-18</strong>: no latent channel).</p>
+    <p class="lede">Primary metric: <strong>o200k_base</strong> decode-sufficient setup (min) + messages. On 11 synthetic lifecycle messages, ABIOS <strong>refs</strong> totals <strong>491</strong> tokens versus <strong>682</strong> compact JSON and <strong>686</strong> lossless English; savings grow on 40- and 200-message transcripts (<code>make bench</code> verifies committed tables).</p>
+    <p class="lede">This repo also ships legacy wire: <strong>ABIOS/1 (formerly SYM-2P)</strong> v1 JSON packets and superseded v2 dense experiments—documented under <a href="#legacy">Legacy</a>, not the forward path.</p>
     <div class="stats">
-      <div class="stat"><b>4.8x</b><span>denser than v1 JSON</span></div>
-      <div class="stat"><b>3.1x</b><span>smaller than compact v1, per bench</span></div>
-      <div class="stat"><b>50</b><span>stdlib-only tests</span></div>
-      <div class="stat"><b>0</b><span>network calls to install</span></div>
+      <div class="stat"><b>491</b><span>ABIOS refs (11 msgs, min setup + wire)</span></div>
+      <div class="stat"><b>682</b><span>compact JSON baseline</span></div>
+      <div class="stat"><b>POST</b><span>session handshake (counted in totals)</span></div>
+      <div class="stat"><b>0</b><span>hidden decoder cache</span></div>
     </div>
-    <div class="meta"><b>v2.1 merged</b> &middot; v2-rcp edition &middot; measurement harness &middot; MIT &middot; Python &ge;3.9, stdlib only</div>
+    <div class="meta"><b>ABIOS/3</b> &middot; <code>abios/3</code> profile &middot; legacy <code>sym3/1</code> alias &middot; MIT &middot; Python &ge;3.9</div>
     <div class="cta">
-      <a class="btn primary" href="https://github.com/Moissanite-Labs/abios/blob/main/SPEC-V2-DRAFT.md">Read the v2 spec</a>
-      <a class="btn ghost" href="https://github.com/Moissanite-Labs/abios">View on GitHub</a>
-      <a class="btn ghost" href="https://github.com/Moissanite-Labs/abios/blob/main/SPEC.md">v1 SPEC.md</a>
+      <a class="btn primary" href="spec-abios-3.html">SPEC-ABIOS-3</a>
+      <a class="btn ghost" href="abios.html">ABIOS overview</a>
+      <a class="btn ghost" href="reproduce.html">Reproduce bench</a>
+      <a class="btn ghost" href="https://github.com/Moissanite-Labs/abios">GitHub</a>
     </div>
     <div class="stream" aria-hidden="true">
-      <div class="stream-head"><span class="dots"><i></i><i></i><i></i></span>wire preview <span class="dim">// simulated v2 packets</span></div>
+      <div class="stream-head"><span class="dots"><i></i><i></i><i></i></span>wire preview <span class="dim">// ABIOS/3 + POST</span></div>
       <div id="stream-body"></div>
     </div>
   </div>
 
 
-<section id="why">
+<section id="legacy">
     <div class="secnum">01</div>
-    <h2>Why symbols</h2>
-    <p><span class="lead">What it is.</span> SYM-2P is a message language for AI agents. Today agents talk to each other in English, usually wrapped in JSON.</p>
-    <p>SYM-2P replaces the English with symbols: roles, actions, and states become integers, fields become positions in a line, and payloads become s-expressions, a Lisp notation for nested structure. One brief packet is a single 101-byte line where the JSON version took 481.</p>
+    <h2>ABIOS/1 (formerly SYM-2P)</h2>
+    <p><span class="lead">History.</span> Before ABIOS/3, this repository shipped <strong>ABIOS/1 (formerly SYM-2P)</strong>: dense symbolic v2 wire and canonical JSON v1 packets for inter-agent traffic. That stack remains for compatibility (<code>scripts/protean-sym2p/</code>, wire field <code>ext.sym2p</code> unchanged).</p>
+    <p>Agents once replaced English+JSON with symbols: roles and acts as integers, positional fields, s-expression payloads. One brief v2 line could be ~101 bytes where JSON took 481—checkable by a stdlib validator, not ambiguous prose.</p>
     <p><span class="lead">Why it works.</span> Every word an agent emits costs tokens, and tokens cost money and time. Shorter messages are cheaper on every call, forever.</p>
     <p>English is also ambiguous: two readers can disagree about what a sentence means, and no program can check a sentence the way it checks a number. Symbols are unambiguous by construction, so a validator can reject a malformed packet mechanically instead of misreading it.</p>
     <p><span class="lead">Who reads what.</span> Machines read the wire. Humans never read the symbols directly: a translator renders every packet back into English for operators. Each side gets the language that suits it.</p>
@@ -356,7 +355,7 @@ Expires in 40s.</code></pre>
     <p>The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mode remains a common lowest-common-denominator display mode. Its 6-pin mini-DIN keyboard and mouse connectors became the "PS/2 ports" found on PCs for decades. And it made the 1.44 MB 3.5-inch floppy the standard, the disk still drawn as the "save" icon. The name is for a forward-looking interface designed for multitasking systems before they were common. <strong>It does not claim ABIOS succeeded.</strong></p>
     <p><span class="lead">POST.</span> Every PC runs POST (power-on self-test) at boot, before loading an operating system. In ABIOS, POST is the one-time session handshake: before references or deltas, peers exchange decode-sufficient minimal context. Those tokens count in every benchmark total.</p>
     <p><span class="lead">Synbios.</span> ABIOS pairs with <a href="https://github.com/Moissanite-Labs/synbios">Synbios</a>, Moissanite Labs' agent-first collaboration hub, which integrates ABIOS natively.</p>
-    <p><span class="lead">Lineage.</span> ABIOS/3 was previously SYM-2P. Version 3 is the token-aware, shared-state redesign; SYM-2P v2 dense codes tokenized worse than JSON (1,415 vs 682 o200k tokens) and were dropped. SYM-2P/1.0 and the v2 draft packet layers keep their historical names here.</p>
+    <p><span class="lead">Lineage.</span> ABIOS/3 is the token-aware redesign. ABIOS/1 (formerly SYM-2P) v2 dense wire tokenized worse than JSON (1,415 vs 682 o200k tokens on 11 messages) and was dropped; v1 JSON packets remain documented as SYM-2P/1.0 in <code>SPEC.md</code>.</p>
   </section>
 
   <section id="measure">
@@ -407,9 +406,9 @@ python3 tests/test_sym2.py</code></pre>
       <tr><th>Path</th><th>Contents</th></tr>
       <tr><td><code>SPEC-V2-DRAFT.md</code></td><td>The v2 specification: wire format, reasoning dialect, rcp edition</td></tr>
       <tr><td><code>VISION.md</code></td><td>The thesis, the six-step plan, delivered vs future work</td></tr>
-      <tr><td><code>scripts/abios/</code></td><td><code>sym2_parse.py</code> (shared wire parser), <code>sym2-render.py</code> (translator), <code>sym2-validate.py</code> (validator), <code>sym2-migrate.py</code> (v1 to v2, with <code>--rcp</code>). stdlib only.</td></tr>
-      <tr><td><code>templates/abios/v2/</code></td><td>Brief, dispute, reasoning, swarm, and delegate packets: wire form plus rendered English</td></tr>
-      <tr><td><code>templates/abios/v2-rcp/</code></td><td>Brief packet in the protected edition, generated by the tooling</td></tr>
+      <tr><td><code>scripts/protean-sym2p/</code></td><td><code>sym2_parse.py</code> (shared wire parser), <code>sym2-render.py</code> (translator), <code>sym2-validate.py</code> (validator), <code>sym2-migrate.py</code> (v1 to v2, with <code>--rcp</code>). stdlib only.</td></tr>
+      <tr><td><code>templates/protean-sym2p/v2/</code></td><td>Brief, dispute, reasoning, swarm, and delegate packets: wire form plus rendered English</td></tr>
+      <tr><td><code>templates/protean-sym2p/v2-rcp/</code></td><td>Brief packet in the protected edition, generated by the tooling</td></tr>
       <tr><td><code>bench/</code></td><td><code>tasks.jsonl</code> (10 paired tasks), <code>sym2-bench.py</code>, <code>sym2-score.py</code>, <code>EVAL.md</code>, <code>README.md</code></td></tr>
       <tr><td><code>tests/test_sym2.py</code></td><td>50 stdlib-unittest tests: parser, renderer, validator, reasoning, rcp, migration</td></tr>
       <tr><td><code>SPEC.md</code>, <code>skills/sym2p/</code>, <code>install.sh</code>, <code>gates/</code></td><td>The v1 release, still normative and unchanged</td></tr>
@@ -450,13 +449,13 @@ bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
 
 <footer>
   <div class="wrap">
-    <span>abios &middot; v2.1 merged &middot; v2-rcp edition &middot; MIT &middot; part of the Protean Kit distribution</span>
+    <span>abios &middot; ABIOS/3 &middot; MIT &middot; Moissanite Labs</span>
   </div>
 </footer>
 </div>
 
 <a class="return-link" href="https://github.com/Moissanite-Labs">&#8592; Moissanite Labs</a>
-<p class="made-by">Protocol ingredient · <a href="https://github.com/Moissanite-Labs/abios">abios</a></p>
+<p class="made-by"><a href="https://github.com/Moissanite-Labs/abios">abios</a> · Agent BIOS</p>
 
 <script>
 (function(){
