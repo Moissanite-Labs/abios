@@ -258,7 +258,7 @@ Any failure ends the session. Receivers MUST NOT resynchronize. They treat the f
 
 **Not provided.** Sealing does not provide confidentiality (lines stay plaintext) or non-repudiation (either key holder can produce any seal). It does not protect against a holder of `K`, and it does not distribute keys.
 
-**Cost.** Seal lines cost tokens. `docs/abios-auth-bench.md` reports the measured cost by tag size and seal interval. A larger `seal` spreads one tag over more lines, at the price of holding lines until the seal arrives.
+**Cost.** Seal lines cost tokens: 8 per 64-bit seal line under `o200k_base`. `docs/abios-auth-bench.md` reports the measured cost by tag size and seal interval (informative). A larger `seal` spreads one tag over more lines, at the price of holding lines until the seal arrives.
 
 Reference: `scripts/protean-abios/auth.py` (`render_sealed_post`, `open_sealed_post`, `open_post`, `SealSender`, `SealReceiver`, `SidRegistry`).
 
