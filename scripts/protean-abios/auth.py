@@ -9,7 +9,9 @@ the sequence number implicit: a replayed, reordered, dropped, or injected line
 breaks every later seal at zero wire cost.
 
 HMAC-SHA256 (stdlib only). This is authenticity between holders of one key,
-not non-repudiation, and not confidentiality.
+not non-repudiation, and not confidentiality. A peer records the (kid, sid) of
+every POST it sends or accepts in one registry, so its own POST reflected back
+to it is a replay.
 """
 from __future__ import annotations
 
@@ -18,10 +20,11 @@ import hmac
 import re
 import secrets
 import struct
+import threading
 from dataclasses import dataclass
 from typing import Iterable, Mapping, MutableSet, Optional
 
-from post import POST_ACK_PREFIX, PROFILE_LINE, context_digest, parse_post_handshake
+from post import POST_ACK_PREFIX, PROFILE_LINE, parse_post_handshake, verify_post_or_raise
 
 AUTH_ALG = "hs256"
 KDF_LABEL = "abios/3 seal hs256"
@@ -37,6 +40,9 @@ DIRECTIONS = (INITIATOR, RESPONDER)
 
 _KID_RE = re.compile(r"[A-Za-z0-9._-]{1,32}\Z")
 _PARAM_KEYS = ("auth", "kid", "sid", "tag", "seal", "mac")
+_CANON_INT_RE = re.compile(r"[1-9][0-9]{0,3}\Z")
+# Section 8.2 normalization trims exactly these, never other Unicode whitespace.
+_ASCII_WS = " \t\r\n"
 
 
 class AuthError(ValueError):
@@ -102,13 +108,18 @@ class SealParams:
 
 
 def _normalize_context(context_text: str) -> str:
-    return context_text.replace("\r\n", "\n").strip() + "\n"
+    """CRLF to LF, trim SP/HT/CR/LF at both ends, end with exactly one LF (section 8.2)."""
+    return context_text.replace("\r\n", "\n").strip(_ASCII_WS) + "\n"
+
+
+def _body_digest(body: str) -> str:
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
 
 
 def _signed_post_text(context_text: str, params: SealParams) -> str:
-    """The POST exactly as sent, minus `` mac=...``: what the session key binds."""
+    """P: the ack line without `` mac=...``, LF, the normalized body. What the session key binds."""
     body = _normalize_context(context_text)
-    ack = f"{POST_ACK_PREFIX}{PROFILE_LINE} {context_digest(body)} {params.ack_params()}"
+    ack = f"{POST_ACK_PREFIX}{PROFILE_LINE} {_body_digest(body)} {params.ack_params()}"
     return f"{ack}\n{body}"
 
 
@@ -154,11 +165,15 @@ class _Chain:
         self._state = _mac(dir_key, b"chain")
 
     def absorb(self, line: str) -> None:
-        if not line or "\n" in line or "\r" in line:
+        if not isinstance(line, str) or not line or "\n" in line or "\r" in line:
             raise AuthError("a sealed line must be one non-empty line")
         if line.startswith(SEAL_PREFIX):
             raise AuthError("a message line must not begin with the seal prefix")
-        self._state = _mac(self._key, self._state, line.encode("utf-8"))
+        try:
+            data = line.encode("utf-8")
+        except UnicodeEncodeError:
+            raise AuthError("a sealed line must be valid UTF-8 text") from None
+        self._state = _mac(self._key, self._state, data)
 
     def tag(self, label: bytes) -> str:
         return _dec(_mac(self._key, label, self._state)[: self._params.tag_bytes])
@@ -224,51 +239,64 @@ class SealReceiver:
     def closed(self) -> bool:
         return self._closed
 
-    def _fail(self, reason: str) -> AuthError:
-        self._failed = True
-        self._pending = []
-        return AuthError(reason)
-
     def _check(self, got: str, label: bytes, what: str) -> list[str]:
+        _check_dec(got, self._params.tag_bits, what)
         if not hmac.compare_digest(got, self._chain.tag(label)):
-            raise self._fail(f"{what} tag mismatch")
+            raise AuthError(f"{what} tag mismatch")
         released, self._pending = self._pending, []
         return released
 
     def feed(self, wire_line: str) -> list[str]:
-        """Consume one wire line; return the message lines this line releases (maybe none)."""
+        """Consume one wire line; return the message lines this line releases (maybe none).
+
+        Any failure, whatever raised it, ends the session: no resynchronization.
+        """
         if self._failed:
             raise AuthError("sealed session already failed")
+        try:
+            return self._feed(wire_line)
+        except Exception as exc:
+            self._failed = True
+            self._pending = []
+            if isinstance(exc, AuthError):
+                raise
+            raise AuthError(f"malformed wire line: {exc}") from None
+
+    def _feed(self, wire_line: str) -> list[str]:
         if self._closed:
-            raise self._fail("line after close seal")
+            raise AuthError("line after close seal")
         if wire_line.startswith(CLOSE_PREFIX):
             released = self._check(wire_line[len(CLOSE_PREFIX) :], b"close", "close seal")
             self._closed = True
             return released
         if wire_line.startswith(SEAL_PREFIX):
             if not self._pending:
-                raise self._fail("seal with no lines to cover")
+                raise AuthError("seal with no lines to cover")
             return self._check(wire_line[len(SEAL_PREFIX) :], b"seal", "seal")
         if len(self._pending) >= self._params.seal_every:
-            raise self._fail(f"more than {self._params.seal_every} lines without a seal")
-        try:
-            self._chain.absorb(wire_line)
-        except AuthError as exc:
-            raise self._fail(str(exc)) from None
+            raise AuthError(f"more than {self._params.seal_every} lines without a seal")
+        self._chain.absorb(wire_line)
         self._pending.append(wire_line)
         return []
 
 
 class SidRegistry:
-    """Accepted (kid, sid) pairs. A receiver MUST reject a POST that reuses one."""
+    """Every (kid, sid) a peer sent or accepted. A POST reusing one is refused.
+
+    Pass a persistent ``seen`` set to keep the record for the key's lifetime. The
+    lock makes check-and-record atomic in one process; a store shared across
+    processes must give the same insert-if-absent guarantee (section 8.2).
+    """
 
     def __init__(self, seen: Optional[MutableSet[tuple[str, str]]] = None) -> None:
         self._seen = seen if seen is not None else set()
+        self._lock = threading.Lock()
 
     def claim(self, kid: str, sid: str) -> None:
-        if (kid, sid) in self._seen:
-            raise AuthError("POST replay: session id already used with this key")
-        self._seen.add((kid, sid))
+        with self._lock:
+            if (kid, sid) in self._seen:
+                raise AuthError("POST replay: session id already used with this key")
+            self._seen.add((kid, sid))
 
 
 def render_sealed_post(
@@ -276,23 +304,29 @@ def render_sealed_post(
     *,
     key: bytes,
     kid: str,
+    seen: SidRegistry,
     sid: Optional[str] = None,
     tag_bits: int = DEFAULT_TAG_BITS,
     seal_every: int = 1,
 ) -> tuple[str, SealedSession]:
-    """Render a sealed POST and return it with the initiator's session keys."""
+    """Render a sealed POST and return it with the initiator's session keys.
+
+    Records (kid, sid) in ``seen`` first: the same registry this peer checks when
+    it accepts POSTs, so its own POST reflected back to it is refused as a replay.
+    """
     body = _normalize_context(context_text)
     if not body.startswith(PROFILE_LINE):
         raise ValueError("POST context must start with profile header")
     params = SealParams(kid=kid, sid=sid if sid is not None else new_sid(), tag_bits=tag_bits, seal_every=seal_every)
     signed = _signed_post_text(body, params)
     session = SealedSession(_session_key(key, params, signed), params)
+    seen.claim(params.kid, params.sid)
     ack, rest = signed.split("\n", 1)
     return f"{ack} mac={session.post_mac()}\n{rest}", session
 
 
 def is_sealed_post(blob: str) -> bool:
-    first = blob.replace("\r\n", "\n").lstrip().split("\n", 1)[0]
+    first = blob.replace("\r\n", "\n").lstrip(_ASCII_WS).split("\n", 1)[0]
     return " auth=" in first
 
 
@@ -302,15 +336,16 @@ def open_sealed_post(
     keyring: Mapping[str, bytes],
     seen: SidRegistry,
     minimal_context_text: Optional[str] = None,
+    min_tag_bits: int = DEFAULT_TAG_BITS,
 ) -> tuple[str, SealedSession]:
-    """Verify a sealed POST; return (decoder context, responder's session keys).
+    """Verify a sealed POST; return (normalized decoder context, responder's session keys).
 
-    Checks, in order: ack prefix and profile, parameter syntax and order, context
-    digest, known ``kid``, POST MAC, then (only after the MAC verifies) the
-    session id against ``seen``. Optionally checks the context against the
-    expected minimal context, as ``post.verify_post_or_raise`` does.
+    Checks, in order: ack prefix and profile, parameter syntax, order, and
+    canonical values, the receiver's minimum tag size, the context digest, a
+    known ``kid``, the POST MAC, then (only after the MAC verifies) the session
+    id against ``seen``, then section 8.1 checks (c) and (d).
     """
-    lines = blob.replace("\r\n", "\n").strip().split("\n")
+    lines = blob.replace("\r\n", "\n").strip(_ASCII_WS).split("\n")
     head = f"{POST_ACK_PREFIX}{PROFILE_LINE} "
     if not lines or not lines[0].startswith(head):
         raise AuthError("missing POST ack line or profile mismatch")
@@ -326,16 +361,16 @@ def open_sealed_post(
         values[name] = value
     if values["auth"] != AUTH_ALG:
         raise AuthError(f"unsupported auth algorithm: {values['auth']}")
-    if not values["tag"].isdigit() or not values["seal"].isdigit():
-        raise AuthError("tag and seal must be decimal integers")
+    if not _CANON_INT_RE.match(values["tag"]) or not _CANON_INT_RE.match(values["seal"]):
+        raise AuthError("tag and seal must be canonical ASCII decimal")
     params = SealParams(
         kid=values["kid"], sid=values["sid"], tag_bits=int(values["tag"]), seal_every=int(values["seal"])
     )
+    if params.tag_bits < min_tag_bits:
+        raise AuthError(f"tag={params.tag_bits} is below this receiver's minimum of {min_tag_bits}")
     _check_dec(values["mac"], params.tag_bits, "mac")
-    if values["seal"] != str(params.seal_every) or values["tag"] != str(params.tag_bits):
-        raise AuthError("tag and seal must be canonical decimal")
-    context = "\n".join(lines[1:]) + "\n"
-    if digest != context_digest(context):
+    context = _normalize_context("\n".join(lines[1:]))
+    if digest != _body_digest(context):
         raise AuthError("POST context digest mismatch")
     key = keyring.get(params.kid)
     if key is None:
@@ -345,11 +380,14 @@ def open_sealed_post(
     if not hmac.compare_digest(values["mac"], session.post_mac()):
         raise AuthError("POST mac mismatch")
     seen.claim(params.kid, params.sid)
-    if minimal_context_text is not None and _normalize_context(context) != _normalize_context(minimal_context_text):
+    if minimal_context_text is not None and context != _normalize_context(minimal_context_text):
         raise AuthError("POST context does not match decode-sufficient minimal context")
     from decoder_context import parse_decoder_context
 
-    parse_decoder_context(context)
+    try:
+        parse_decoder_context(context)
+    except Exception as exc:
+        raise AuthError(f"POST context does not parse: {exc}") from None
     return context, session
 
 
@@ -359,15 +397,33 @@ def open_post(
     require_seal: bool,
     keyring: Optional[Mapping[str, bytes]] = None,
     seen: Optional[SidRegistry] = None,
+    minimal_context_text: Optional[str] = None,
+    min_tag_bits: int = DEFAULT_TAG_BITS,
 ) -> tuple[str, Optional[SealedSession]]:
-    """Receiver policy entry point: a peer that requires sealing refuses a plain POST (no downgrade)."""
+    """Receiver policy entry point for one channel. Every failure raises AuthError.
+
+    ``require_seal`` is per channel: a plain POST names no kid, so it cannot be
+    matched to a per-key policy. A channel that requires sealing refuses a plain
+    POST; one that accepts plain POSTs gets no protection from sealing.
+    """
     if is_sealed_post(blob):
         if keyring is None or seen is None:
             raise AuthError("sealed POST needs a keyring and a session-id registry")
-        return open_sealed_post(blob, keyring=keyring, seen=seen)
+        return open_sealed_post(
+            blob, keyring=keyring, seen=seen, minimal_context_text=minimal_context_text, min_tag_bits=min_tag_bits
+        )
     if require_seal:
         raise AuthError("plain POST refused: this receiver requires a sealed session")
-    _, context = parse_post_handshake(blob)
+    try:
+        _, context = parse_post_handshake(blob)
+        if minimal_context_text is not None:
+            verify_post_or_raise(blob, minimal_context_text)
+        else:
+            from decoder_context import parse_decoder_context
+
+            parse_decoder_context(context)
+    except Exception as exc:
+        raise AuthError(f"plain POST rejected: {exc}") from None
     return context, None
 
 

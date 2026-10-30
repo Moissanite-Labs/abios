@@ -16,8 +16,9 @@ entry per release: what changed, why, and how it was verified.
   digest mismatch.
 - **Why:** ABIOS/3 had no sender authentication (#24). The chain makes the
   sequence number implicit, so in-session replay, reordering, loss, and injection
-  fail closed at no wire cost, and a `(kid, sid)` registry rejects replay of a
-  whole session.
+  fail closed at no wire cost. A `(kid, sid)` registry, which also records the
+  POSTs a peer sends, rejects replay of a whole session and a peer's own POST
+  reflected back to it.
 - **Verified:** `python3 -m unittest discover -s tests` (a known-answer vector
   also checked against the spec formulas, round trips for all six encoders, and
   every receiver check), `make bench` in CI.

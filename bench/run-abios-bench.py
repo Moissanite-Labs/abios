@@ -13,7 +13,7 @@ ABIOS = os.path.join(ROOT, "scripts", "protean-abios")
 def main() -> int:
     env = os.environ.copy()
     env["PYTHONPATH"] = ABIOS + os.pathsep + env.get("PYTHONPATH", "")
-    worst = 0
+    status = 0
     for script in ("bench.py", "auth_bench.py"):
         proc = subprocess.run(
             [sys.executable, os.path.join(ABIOS, script)],
@@ -21,8 +21,10 @@ def main() -> int:
             env=env,
             check=False,
         )
-        worst = max(worst, proc.returncode)
-    return worst
+        if proc.returncode != 0 and status == 0:
+            # A child killed by a signal reports a negative code; still a failure.
+            status = proc.returncode if proc.returncode > 0 else 1
+    return status
 
 
 if __name__ == "__main__":

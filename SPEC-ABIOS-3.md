@@ -195,7 +195,7 @@ Primary bench accounting (informative): **total cost = minimal setup tokens + me
 
 The ack line MUST name profile `abios/3`. Implementations MAY accept legacy contexts whose body begins with `sym3/1` when explicitly negotiated; the ack line still uses `abios/3`.
 
-**Checks.** Receivers MUST verify: (a) ack prefix and profile, (b) digest matches the body, (c) `parse_decoder_context(body)` succeeds, (d) the body is decode-sufficient for the planned transcript (S-12). Reference: `scripts/protean-abios/post.py` (`render_post_handshake`, `parse_post_handshake`, `verify_post_or_raise`).
+**Checks.** Receivers MUST verify: (a) ack prefix and profile, and that the ack line is exactly `POST ok abios/3 <digest>` with nothing after the digest (a receiver that implements 8.2 opens a sealed POST under 8.2 instead), (b) digest matches the body, (c) `parse_decoder_context(body)` succeeds, (d) the body is decode-sufficient for the planned transcript (S-12). Reference: `scripts/protean-abios/post.py` (`render_post_handshake`, `parse_post_handshake`, `verify_post_or_raise`).
 
 **Mismatch fallback.** If POST fails (digest, profile, or parse error), implementations MUST NOT assume shared context. They SHOULD fall back to plain compact JSON (or another agreed lossless carrier) for that session, or abort the session with an explicit error. They MUST NOT decode ABIOS lines with a guessed or partial lexicon.
 
@@ -204,6 +204,8 @@ The ack line MUST name profile `abios/3`. Implementations MAY accept legacy cont
 A plain POST proves only that both peers hold the same decode context. A **sealed session** adds sender authenticity and integrity for the POST and for every later line. Use it when lines cross a trust boundary (a relay, a shared artifact store) where someone without the key can read, drop, reorder, replay, inject, or alter lines.
 
 **Keys.** The peers share a secret key `K` of at least 16 bytes (32 random bytes RECOMMENDED), named by a key id `kid` of 1 to 32 characters from `[A-Za-z0-9._-]`. Key distribution, storage, and rotation happen out of band. Any holder of `K` can produce valid seals, so use one key per peer pair: a key shared by a group authenticates the group, not the sender.
+
+**One POST per session.** A sealed session has exactly one sealed POST, sent by the initiator. The responder sends no POST for that session: it seals its own lines under direction `r` of the initiator's session.
 
 **Sealed POST form.**
 
@@ -223,11 +225,11 @@ The parameters appear exactly in this order, separated by single spaces, with no
 | `seal` | Maximum message lines per seal, `1` to `1024`, canonical decimal. |
 | `mac` | POST tag in `dec` form. |
 
-**Key schedule.** `LP(x)` is the 4-byte big-endian length of `x` followed by `x`. `H(k, x1, ..., xn)` is HMAC-SHA-256 with key `k` over `LP(x1) || ... || LP(xn)`. `trunc(x)` is the first `tag / 8` bytes of `x`. `dec(x)` writes the bytes `x` as one big-endian unsigned integer in ASCII decimal, zero-padded to the width of the largest value of that size: 20 digits for 64 bits, 29 for 96, 39 for 128. Receivers reject any other width, a non-ASCII digit, or a value that does not fit. Strings are UTF-8.
+**Key schedule.** `LP(x)` is the 4-byte big-endian length of `x` followed by `x`. `H(k, x1, ..., xn)` is HMAC-SHA-256 with key `k` over `LP(x1) || ... || LP(xn)`. `trunc(x)` is the first `tag / 8` bytes of `x`. `dec(x)` writes the bytes `x` as one big-endian unsigned integer in ASCII decimal, zero-padded to the width of the largest value of that size: 20 digits for 64 bits, 29 for 96, 39 for 128. Receivers reject any other width, a non-ASCII digit, or a value that does not fit. Strings are UTF-8. Labels, `kid`, and `sid` enter `H` as their ASCII bytes as written on the wire (`sid` as its 20 digits). `SHA-256(P)` and every chain value `c` enter as raw 32-byte values.
 
 Tags use decimal because every lexicon tokenizer splits digit runs into chunks of at most three digits, so a 64-bit tag always costs seven digit tokens. That is a fixed cost, and below the measured average for base64url of the same bits (`docs/abios-auth-bench.md`).
 
-1. `P` is the sealed POST as sent, with ` mac=<mac>` removed from the ack line: the ack line, LF, then the normalized body.
+1. `P` is the ack line without ` mac=<mac>`, then LF, then the normalized body. Receivers rebuild `P` from the parsed parameters and the normalized body; they do not hash the received bytes. To normalize a body, replace each CRLF with LF, remove leading and trailing SP, HT, CR, and LF characters (no others), and append exactly one LF. The ack `<digest>` is computed over the normalized body.
 2. Session key `S = H(K, "abios/3 seal hs256", kid, sid, SHA-256(P))`. Every later tag is thus bound to the exact decode context and parameters.
 3. `mac = dec(trunc(H(S, "post")))`.
 4. Direction keys `K_d = H(S, "dir", d)`, where `d` is `i` for lines from the POST sender and `r` for lines toward it.
@@ -237,28 +239,28 @@ Tags use decimal because every lexicon tokenizer splits digit runs into chunks o
 - **Seal line:** `~` followed by `dec(trunc(H(K_d, "seal", c)))`. It covers every message line since the previous seal.
 - **Close seal:** `~!` followed by `dec(trunc(H(K_d, "close", c)))`. It covers any pending lines and ends the direction.
 
-The chain makes the sequence number implicit, so no counter goes on the wire. ABIOS already needs ordered, complete delivery for refs and deltas (S-9, S-10, section 6). Seal lines are not command lines: in a sealed session a line beginning with `~` is a seal line, and no format tag may begin with `~`. Receivers remove seal lines before decoding, and seal lines never touch session state.
+The chain makes the sequence number implicit, so no counter goes on the wire. ABIOS already needs ordered, complete delivery for refs and deltas (S-9, S-10, section 6). Seal lines are a framing layer below the ABIOS line layer: in a sealed session a line beginning with `~` is a seal line, receivers remove seal lines before decoding, and S-3, S-4, and S-13 apply to the message lines that remain. A format tag MUST NOT begin with `~`. Seal lines never touch session state.
 
 **Sender rules.** Emit a seal after at most `seal` message lines. A sender MAY seal earlier to cut latency. A close seal MAY take the place of the last seal.
 
 **Receiver checks.** Receivers MUST verify, and fail closed on any failure:
 
-1. Sealed POST: the ack prefix and profile; parameter syntax, order, and canonical values; the digest against the body; a known `kid`; and `mac`, compared in constant time. Only then, check that `(kid, sid)` was not accepted before, and record it. Then run the 8.1 checks (c) and (d).
-2. Every seal and close seal matches the chain.
+1. Sealed POST: the ack prefix and profile; parameter syntax, order, and canonical values; `tag` at least the receiver's minimum, if it sets one; the digest against the normalized body; a known `kid`; and `mac`, compared in constant time. Only then, check that `(kid, sid)` is not already in the registry, and record it. Then run the 8.1 checks (c) and (d).
+2. Every seal and close seal has the `dec` form for `tag` and matches the chain.
 3. A seal line has at least one pending message line to cover. A close seal may have none.
 4. At most `seal` message lines arrive without a seal.
 5. No line arrives after a close seal.
 6. A message line is decoded or acted on only after a seal covering it verifies. Lines still pending at the end of a stream are unauthenticated.
 
-Any failure ends the session. Receivers MUST NOT resynchronize. They treat the failure as a POST failure (8.1 mismatch fallback) and start again with a new POST and a new `sid`.
+Any failure ends the session, including a malformed line that is not a tag mismatch. Receivers MUST NOT resynchronize. They treat the failure as a POST failure (8.1 mismatch fallback) and start again with a new POST and a new `sid`.
 
-**Replay and truncation.** Replaying, reordering, dropping, or injecting a line within a session breaks the chain. Reflecting a direction's lines back fails because direction keys differ. Against replay of a whole earlier session, receivers MUST keep the `(kid, sid)` pairs they accepted for as long as the key is valid; rotating keys bounds that record. Dropping the tail of a stream cannot be detected from tags alone, so a receiver that must know a stream is complete requires a close seal.
+**Replay, reflection, and truncation.** Replaying, reordering, dropping, or injecting a line within a session breaks the chain, and a direction's lines sent back the other way fail because direction keys differ. Against replay of a whole earlier session, each peer keeps a registry of `(kid, sid)` pairs for as long as the key is valid; rotating keys bounds it. A peer MUST record the pair of every POST it sends, before sending it, in the same registry it checks when accepting POSTs under that `kid`. Otherwise a relay can return a peer's own POST and lines to it, and they verify as if the other key holder sent them. Using a separate key for each initiating peer also prevents this. Checking and recording a pair MUST be atomic across every process that shares the registry. Dropping the tail of a stream cannot be detected from tags alone, so a receiver that must know a stream is complete requires a close seal.
 
-**Downgrade.** A plain POST carries no authentication. Whether a peer must seal is local receiver policy, set per peer or per `kid`, and a receiver whose policy requires sealing MUST reject a plain POST. A receiver that does not implement this section rejects a sealed POST, because its ack line carries more than the digest. Sealed traffic therefore never decodes as plain.
+**Downgrade.** A plain POST carries no authentication, and a relay can turn sealed traffic into plain traffic by stripping the parameters and the seal lines. Whether sealing is required is therefore local receiver policy, set per channel or per peer identity established outside ABIOS. A plain POST names no `kid`, so a per-key rule cannot admit one. A receiver whose policy requires sealing on a channel MUST reject a plain POST there; one that accepts plain POSTs on a channel gets no protection from sealing on it. In the other direction, a receiver that implements only 8.1 rejects a sealed POST, because its ack line carries more than the digest. Tag size is receiver policy as well: a receiver MAY set a minimum `tag` and reject smaller ones before checking `mac`.
 
 **Not provided.** Sealing does not provide confidentiality (lines stay plaintext) or non-repudiation (either key holder can produce any seal). It does not protect against a holder of `K`, and it does not distribute keys.
 
-**Cost.** Seal lines cost tokens: 8 per 64-bit seal line under `o200k_base`. `docs/abios-auth-bench.md` reports the measured cost by tag size and seal interval (informative). A larger `seal` spreads one tag over more lines, at the price of holding lines until the seal arrives.
+**Cost.** Seal lines cost tokens. Under `o200k_base` a 64-bit seal line is 8 tokens, or 9 in a transcript counting its newline (10 for a close seal). `docs/abios-auth-bench.md` reports the measured cost by tag size and seal interval (informative). A larger `seal` spreads one tag over more lines, at the price of holding lines until the seal arrives.
 
 Reference: `scripts/protean-abios/auth.py` (`render_sealed_post`, `open_sealed_post`, `open_post`, `SealSender`, `SealReceiver`, `SidRegistry`).
 
@@ -277,6 +279,15 @@ The sealed POST ack line is:
 
 ```
 POST ok abios/3 70a7903f8829ad8a auth=hs256 kid=kat sid=12345678901234567890 tag=64 seal=2 mac=02111108734560368521
+```
+
+Intermediate values, in hex:
+
+```
+SHA-256(P) c7b18a165500745cde20a3d413a9e03a89ef23c7c68fd3d82d85db56913f5ab4
+S          ccee11daffb7977979ea45ae083442e71f1ed72335b2fede483ff81ee114e8fd
+K_i        8a16a824037d2f2137c132799f3bd1e7b928308d67b411e9189fa5efe5d56638
+c (start)  a7a2f59f404b94ccae65b7e16e96d79f8299d8c6a37323dacbb365735676e4dd
 ```
 
 The initiator sends `Est dn t`, `Est wk t`, `Est dn t` and then closes. On the wire:
@@ -348,7 +359,7 @@ Bench regression (informative): `make bench` / `bench/run-abios-bench.py` compar
 | C-6 | No dependency on hidden KV state, embeddings, or undeclared cross-process memory (L-18 / S-14). |
 | C-7 | `tests/test_abios.py` passes with tiktoken available. |
 | C-8 | POST handshake (`post.py`) verifies minimal context digest; mismatch is a hard error (fallback signal). |
-| C-9 | Sealed sessions (8.2), when implemented, reproduce the known-answer vector, and every receiver check fails closed. A plain POST parser rejects a sealed POST. |
+| C-9 | Every POST parser rejects an ack line with tokens after the digest unless it implements 8.2. Sealed sessions (8.2), when implemented, reproduce the known-answer vector and its intermediate values, and every receiver check fails closed. |
 
 ## 13. Non-goals
 

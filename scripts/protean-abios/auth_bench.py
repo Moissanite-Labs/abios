@@ -15,7 +15,7 @@ import json
 import sys
 from pathlib import Path
 
-from auth import INITIATOR, TAG_BITS_ALLOWED, _dec, render_sealed_post, seal_transcript
+from auth import INITIATOR, TAG_BITS_ALLOWED, SidRegistry, _dec, render_sealed_post, seal_transcript
 from decoder_context import setup_sizes
 from encoders import all_encoders, encode_transcript
 from lexicon import LEXICON_PATH
@@ -59,7 +59,13 @@ def _counts(specs, text: str) -> dict[str, int]:
 
 def _sealed(lines: list[str], minimal: str, tag_bits: int, seal_every: int) -> tuple[str, list[str]]:
     post, session = render_sealed_post(
-        minimal, key=BENCH_KEY, kid=BENCH_KID, sid=BENCH_SID, tag_bits=tag_bits, seal_every=seal_every
+        minimal,
+        key=BENCH_KEY,
+        kid=BENCH_KID,
+        seen=SidRegistry(),
+        sid=BENCH_SID,
+        tag_bits=tag_bits,
+        seal_every=seal_every,
     )
     return post, seal_transcript(session.sender(INITIATOR), lines, close=True)
 
