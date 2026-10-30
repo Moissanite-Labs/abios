@@ -44,6 +44,13 @@ entry per release: what changed, why, and how it was verified.
 - **Not changed:** `SPEC.md`. The publisher emits `sup` as a legal REF and the
   section 4 rule 2 shorthand is left as filed for the owner (`<id>.v<N-1>` is not
   expressible under L-5's grammar).
+- **Fix:** the internal-names gate reported a leak in every git worktree or
+  submodule checkout. Such a checkout has a `.git` pointer file holding the
+  absolute gitdir path, and the gate skipped `.git` only as a directory. It now
+  skips a file named `.git` too: git cannot commit a path by that name, so no
+  repository content is excluded. Both gate copies get the fix, and
+  `tests/test_gates.py` gains a case that plants a `.git` pointer file holding a
+  private path and expects a clean result.
 
 ## 1.0.0
 
