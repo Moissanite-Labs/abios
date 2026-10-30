@@ -55,6 +55,18 @@ class TestGates(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0,
                                 "gate did not fire on an injected private path")
 
+    def test_internal_names_gate_skips_git_pointer_file(self):
+        # A worktree or submodule checkout has a .git file naming an absolute
+        # gitdir. It is git metadata, so the gate must not report it.
+        with tempfile.TemporaryDirectory() as tmp:
+            tree = os.path.join(tmp, "tree")
+            shutil.copytree(os.path.join(ROOT, "gates", "protean-sym2p"),
+                            os.path.join(tree, "gates", "protean-sym2p"))
+            with open(os.path.join(tree, ".git"), "w", encoding="utf-8") as fh:
+                fh.write("gitdir: " + fixture("leak-path") + "\n")
+            result = run_gate("gates/protean-sym2p/check-internal-names.py", tree)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

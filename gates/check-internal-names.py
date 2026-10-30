@@ -33,6 +33,9 @@ PATH_RES = [
 ]
 
 SKIP_DIRS = {".git", "__pycache__", "node_modules", ".venv"}
+# A worktree or submodule checkout has a .git pointer FILE holding the
+# absolute gitdir path. It is git metadata, never committable content.
+SKIP_FILES = {".git"}
 SKIP_EXT = (".pyc", ".so", ".png", ".jpg", ".jpeg", ".gif", ".pdf", ".zip",
             ".woff", ".woff2", ".ttf", ".ico")
 SELF_EXCLUDE = {"gates/check-internal-names.py", "gates/internal-names.blocklist"}
@@ -57,7 +60,7 @@ def scan(repo, digests):
     for root, dirs, files in os.walk(repo):
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
         for name in sorted(files):
-            if name.endswith(SKIP_EXT):
+            if name.endswith(SKIP_EXT) or name in SKIP_FILES:
                 continue
             abspath = os.path.join(root, name)
             rel = os.path.relpath(abspath, repo).replace(os.sep, "/")
