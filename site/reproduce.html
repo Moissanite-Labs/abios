@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reproduce | SYM-3</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles-sym3.css?v=2d93ed6">
+</head>
+<body>
+<header class="site-header">
+  <p class="eyebrow">Benchmark</p>
+  <h1>Reproduce</h1>
+  <nav><a href="index.html">Home</a> <a href="sym3.html">SYM-3</a></nav>
+</header>
+<main>
+  <pre><code>python3 -m pip install -r requirements-bench.txt
+make bench</code></pre>
+  <p>Verify-only: compares to committed <code>docs/sym3-bench.md</code> and <code>bench/results/sym3-bench.json</code>. Refresh with <code>make bench-write</code>.</p>
+  <p><a href="https://github.com/aska-digital/protean-sym2p/blob/main/docs/REPRODUCE.md">Full instructions</a></p>
+</main>
+</body>
+</html>

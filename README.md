@@ -110,3 +110,37 @@ performs zero network calls and fails closed when the cache entry is absent.
 ## License
 
 MIT. The committed `LICENSE` file is authoritative.
+
+## SYM-3 (token-aware command wire)
+
+SYM-3/1 is the canonical home for tokenizer-aware, shared-state command encoding alongside SYM-2P v1 packets. Normative spec: `SPEC-v3.md`. Reference code: `scripts/protean-sym3/` (generic protocol); Synbios forge example schema: `scripts/protean-sym3/schemas/synbios/`.
+
+| Path | Contents |
+|---|---|
+| `SPEC-v3.md` | normative SYM-3/1 profile |
+| `scripts/protean-sym3/` | encoders, lexicon, decoder context, bench harness |
+| `docs/sym3-bench.md` | committed benchmark tables |
+| `bench/results/sym3-bench.json` | golden JSON (`make bench` verifies) |
+| `paper/sym3.md` | preprint source |
+| `docs/REPRODUCE.md` | reproduction instructions |
+
+### Headline results (primary: setup min + messages, o200k_base)
+
+| Transcript | Compact JSON | Lossless English | SYM-3 refs | SYM-3 adaptive |
+| --- | ---: | ---: | ---: | ---: |
+| 11 messages | 682 | 686 | **491** | 512 |
+| 40 messages | 5343 | 5242 | **1717** | 1738 |
+| 200 messages | 27363 | 26754 | **7628** | 7649 |
+
+Also on 11 messages: TOON **805**, Agora envelope **1027** (see bench doc). **DOI: pending** (Zenodo deposit planned).
+
+**Caveats:** Savings scale with session length and repeated content; full lexicon setup exceeds JSON on very short transcripts. `SPEC-V2-DRAFT.md` is superseded for token efficiency (v2 dense pilot total **1415** vs JSON **682** on 11 msgs; raw v2 **3386**). The bench row **English (lossless, key=value one-line)** is honestly labeled—it is not Chain-of-Draft terse prose and costs **691** vs **686** lossless English on 11 msgs.
+
+```bash
+python3 -m pip install -r requirements-bench.txt
+make bench          # verify committed tables (CI)
+make bench-write    # refresh golden files after intentional changes
+PYTHONPATH=scripts/protean-sym3 python3 -m unittest tests.test_sym3 -v
+```
+
+Site: https://aska-digital.github.io/protean-sym2p/ (sources in `site/`; published from `gh-pages` branch).

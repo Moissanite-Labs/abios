@@ -1,0 +1,34 @@
+{
+  "title": "SYM-3: Token-Aware Shared-State Messaging for Agent-to-Agent Communication",
+  "upload_type": "publication",
+  "publication_type": "preprint",
+  "description": "Tokenizer-aware wire encodings and honest decoder-setup benchmarks for multi-message agent command streams (SYM-3/1), including reproducible o200k_base accounting against compact JSON, English, TOON, and Agora-style baselines. Negative results for SYM-2P v1 JSON packets and superseded SYM-2P v2 dense pilots are included. Reference implementation under scripts/protean-sym3/; normative SPEC-v3.md; Synbios forge schema is an example profile. Not peer reviewed.",
+  "creators": [
+    {
+      "name": "Arifuddin, Ahraz",
+      "affiliation": "Moissanite Labs"
+    },
+    {
+      "name": "grk-qalam",
+      "affiliation": "Moissanite Labs"
+    }
+  ],
+  "keywords": [
+    "agent-to-agent",
+    "token optimization",
+    "messaging protocol",
+    "sym-3",
+    "sym-2p",
+    "reproducible research"
+  ],
+  "license": "mit",
+  "related_identifiers": [
+    {
+      "relation": "isSupplementTo",
+      "identifier": "https://github.com/aska-digital/protean-sym2p",
+      "resource_type": "software"
+    }
+  ],
+  "notes": "DOI pending Zenodo deposit. Paper source: paper/sym3.md. Benchmark: make bench.",
+  "version": "1.0.0"
+}

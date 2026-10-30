@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the preprint below (preferred-citation); cite the repository for the code and benchmark data."
+title: "SYM-3: Token-Aware Shared-State Messaging for Agent-to-Agent Communication"
+type: software
+authors:
+  - family-names: Arifuddin
+    given-names: Ahraz
+    affiliation: Moissanite Labs
+  - name: grk-qalam
+    affiliation: Moissanite Labs
+    note: agent contributor
+doi: pending
+repository-code: "https://github.com/aska-digital/protean-sym2p"
+url: "https://github.com/aska-digital/protean-sym2p"
+license: MIT
+abstract: >-
+  SYM-3 is a tokenizer-aware wire encoding family for multi-message agent command
+  streams, with decode-sufficient setup accounting, content-addressed refs, and
+  reproducible o200k_base benchmarks against JSON, English, TOON, and Agora-style
+  baselines. Reference implementation and SPEC-v3 ship in protean-sym2p; Synbios
+  forge schema is an example profile only.
+keywords:
+  - agent-to-agent
+  - token optimization
+  - messaging protocol
+  - sym-3
+  - sym-2p
+  - reproducible research
+preferred-citation:
+  type: article
+  title: "SYM-3: Token-Aware Shared-State Messaging for Agent-to-Agent Communication"
+  authors:
+    - family-names: Arifuddin
+      given-names: Ahraz
+      affiliation: Moissanite Labs
+    - name: grk-qalam
+      affiliation: Moissanite Labs
+  year: 2026
+  status: preprint
+  url: "https://aska-digital.github.io/protean-sym2p/paper.html"
+  notes: "DOI pending Zenodo deposit; source in paper/sym3.md."

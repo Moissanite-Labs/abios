@@ -24,5 +24,9 @@ jobs:
         run: |
           python3 gates/protean-sym2p/check-internal-names.py .
           python3 tests/run-tests.py
-      - name: Run tests
+      - name: Install bench dependencies
+        run: python3 -m pip install -r requirements-bench.txt
+      - name: Run unit tests
         run: python3 -m unittest discover -s tests -v
+      - name: Verify SYM-3 benchmark (committed tables)
+        run: make bench
