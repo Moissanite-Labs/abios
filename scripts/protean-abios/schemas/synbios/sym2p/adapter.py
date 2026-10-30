@@ -1,7 +1,7 @@
-"""Apply SYM-2P packets through the forge command path."""
+"""Apply SYM-2P packets through the forge command path (Synbios store is out of tree)."""
 from __future__ import annotations
 
-from synbios.store import Store
+from typing import Any, Protocol
 
 from .audit import render_audit_line
 from .canonical import packet_line
@@ -11,7 +11,21 @@ from .ids import forge_role
 from .validate import validate_wire_line
 
 
-def apply_packet(store: Store, token: str, line: str):
+class ForgeStore(Protocol):
+    def authenticate(self, token: str) -> dict: ...
+
+    def command(
+        self,
+        token: str,
+        action: str,
+        payload: dict,
+        *,
+        sym2p_packet_hash: str,
+        sym2p_audit: str,
+    ) -> Any: ...
+
+
+def apply_packet(store: ForgeStore, token: str, line: str):
     packet = validate_wire_line(line)
     canonical = packet_line(packet)
     if canonical != line.strip():

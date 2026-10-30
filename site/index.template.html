@@ -168,11 +168,11 @@ footer a{color:var(--muted)}
     <h1>ABIOS</h1>
     <p class="tag">Token-aware shared-state messaging for agents.</p>
     <p class="lede"><strong>ABIOS/3</strong> compresses multi-turn forge command streams for tokenizer billing while keeping decode explicit. Each session opens with <strong>POST</strong>—a one-time handshake that exchanges decode-sufficient lexicon and schema before refs, deltas, or content-addressed lines (rule <strong>L-18</strong>: no latent channel).</p>
-    <p class="lede">Primary metric: <strong>o200k_base</strong> decode-sufficient setup (min) + messages. On 11 synthetic lifecycle messages, ABIOS <strong>refs</strong> totals <strong>491</strong> tokens versus <strong>682</strong> compact JSON and <strong>686</strong> lossless English; savings grow on 40- and 200-message transcripts (<code>make bench</code> verifies committed tables).</p>
+    <p class="lede">Primary metric: <strong>o200k_base</strong> POST ack + decode-sufficient minimal setup + messages. On 11 synthetic lifecycle messages, ABIOS <strong>refs</strong> totals <strong>766</strong> tokens versus <strong>738</strong> compact JSON (with <code>action</code> field) and <strong>686</strong> lossless English; on 40- and 200-message transcripts refs totals beat JSON (<code>make bench</code> verifies committed tables).</p>
     <p class="lede">This repo also ships legacy wire: <strong>ABIOS/1 (formerly SYM-2P)</strong> v1 JSON packets and superseded v2 dense experiments—documented under <a href="#legacy">Legacy</a>, not the forward path.</p>
     <div class="stats">
-      <div class="stat"><b>491</b><span>ABIOS refs (11 msgs, min setup + wire)</span></div>
-      <div class="stat"><b>682</b><span>compact JSON baseline</span></div>
+      <div class="stat"><b>766</b><span>ABIOS refs (11 msgs, POST + min setup + wire)</span></div>
+      <div class="stat"><b>738</b><span>compact JSON baseline</span></div>
       <div class="stat"><b>POST</b><span>session handshake (counted in totals)</span></div>
       <div class="stat"><b>0</b><span>hidden decoder cache</span></div>
     </div>
@@ -229,7 +229,7 @@ footer a{color:var(--muted)}
         <h3 class="skip">Skip it</h3>
         <ul>
           <li>The run needs proof of who sent a packet. The checksum detects corruption in transit. Transport signing (identity) is still a future protocol.</li>
-          <li>The kit lock must move to v2. The migration scaffold covers the worked examples only, so the lock stays on v1 until v2 is accepted.</li>
+          <li>SYM-2P v2 dense wire is superseded for token efficiency; v1 JSON packets remain normative inter-agent traffic per <code>SPEC.md</code>.</li>
         </ul>
       </div>
     </div>
@@ -243,8 +243,8 @@ footer a{color:var(--muted)}
     <p><span class="lead">Where the work stands.</span></p>
     <ul class="tight">
       <li><span class="lead">Delivered.</span> The v2 wire format, the translator, the migration scaffold, the v2.1 reasoning dialect, the v2-rcp relay-protection edition, and the measurement harness.</li>
-      <li><span class="lead">Not delivered.</span> Transport signing (proof of identity) and kit adoption (deferred until v2 is accepted).</li>
-      <li><span class="lead">What stays.</span> English remains the render target for operators. Everything stays stdlib-only and offline-friendly. v1 stays normative until v2 is accepted.</li>
+      <li><span class="lead">Not delivered.</span> Transport signing (proof of identity) is tracked separately; SYM-2P v2 is not a kit migration target.</li>
+      <li><span class="lead">What stays.</span> English remains the render target for operators. Everything stays stdlib-only and offline-friendly. SYM-2P/1.0 stays the inter-agent packet profile.</li>
     </ul>
     <p>The full statement lives in <a href="https://github.com/Moissanite-Labs/abios/blob/main/VISION.md">VISION.md</a>.</p>
   </section>
@@ -331,14 +331,14 @@ Expires in 40s.</code></pre>
     <div class="secnum">07b</div>
     <h2>ABIOS — token-aware sessions</h2>
     <p><span class="lead">Canonical home.</span> ABIOS/3 (<code>SPEC-ABIOS-3.md</code>) compresses multi-message forge command streams for tokenizer billing while respecting rule <strong>L-18</strong> (no latent channel): decoder setup is explicit text, not a hidden cache. Sessions begin with <strong>POST</strong>, a one-time handshake that verifies decode-sufficient context before compressed traffic.</p>
-    <p>The v2 dense draft (`SPEC-V2-DRAFT.md`) is <strong>superseded</strong> for token efficiency. Measured on 11 messages (o200k, setup min + messages): ABIOS <strong>refs</strong> <strong>491</strong> vs compact JSON <strong>682</strong>; v2 dense pilot total <strong>1415</strong> (PR #6); raw v2 wire <strong>3386</strong>.</p>
+    <p>The v2 dense draft (<code>SPEC-V2-DRAFT.md</code>) is <strong>superseded</strong> for token efficiency (not a migration target). Measured on 11 messages (o200k, POST + min setup + messages): ABIOS <strong>refs</strong> <strong>766</strong> vs compact JSON <strong>738</strong>; v2 dense pilot total <strong>1415</strong> (external PR #6 constant); raw v2 wire <strong>3386</strong>.</p>
     <table>
       <tr><th>Transcript</th><th>Compact JSON</th><th>ABIOS refs</th><th>ABIOS adaptive</th></tr>
-      <tr><td>11 msgs</td><td>682</td><td><strong>491</strong></td><td>512</td></tr>
-      <tr><td>40 msgs</td><td>5343</td><td><strong>1717</strong></td><td>1738</td></tr>
-      <tr><td>200 msgs</td><td>27363</td><td><strong>7628</strong></td><td>7649</td></tr>
+      <tr><td>11 msgs</td><td>738</td><td><strong>766</strong></td><td>766</td></tr>
+      <tr><td>40 msgs</td><td>5570</td><td><strong>1990</strong></td><td>1990</td></tr>
+      <tr><td>200 msgs</td><td>28498</td><td><strong>7901</strong></td><td>7901</td></tr>
     </table>
-    <p>Primary = decode-sufficient setup (min) + messages. Full tables and baselines (TOON <strong>805</strong>, Agora <strong>1027</strong> on 11 msgs) in the bench doc. Reproduce: <code>make bench</code>.</p>
+    <p>Primary = POST ack + decode-sufficient setup (min) + messages. Full tables and baselines (TOON approx fallback <strong>809</strong>, Agora <strong>1027</strong> on 11 msgs) in the bench doc. Reproduce: <code>make bench</code>.</p>
     <div class="cta">
       <a class="btn primary" href="abios.html">ABIOS overview</a>
       <a class="btn ghost" href="spec-abios-3.html">SPEC-ABIOS-3</a>
@@ -355,7 +355,7 @@ Expires in 40s.</code></pre>
     <p>The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mode remains a common lowest-common-denominator display mode. Its 6-pin mini-DIN keyboard and mouse connectors became the "PS/2 ports" found on PCs for decades. And it made the 1.44 MB 3.5-inch floppy the standard, the disk still drawn as the "save" icon. The name is for a forward-looking interface designed for multitasking systems before they were common. <strong>It does not claim ABIOS succeeded.</strong></p>
     <p><span class="lead">POST.</span> Every PC runs POST (power-on self-test) at boot, before loading an operating system. In ABIOS, POST is the one-time session handshake: before references or deltas, peers exchange decode-sufficient minimal context. Those tokens count in every benchmark total.</p>
     <p><span class="lead">Synbios.</span> ABIOS pairs with <a href="https://github.com/Moissanite-Labs/synbios">Synbios</a>, Moissanite Labs' agent-first collaboration hub, which integrates ABIOS natively.</p>
-    <p><span class="lead">Lineage.</span> ABIOS/3 is the token-aware redesign. ABIOS/1 (formerly SYM-2P) v2 dense wire tokenized worse than JSON (1,415 vs 682 o200k tokens on 11 messages) and was dropped; v1 JSON packets remain documented as SYM-2P/1.0 in <code>SPEC.md</code>.</p>
+    <p><span class="lead">Lineage.</span> ABIOS/3 is the token-aware redesign. ABIOS/1 (formerly SYM-2P) v2 dense wire tokenized worse than JSON (1,415 vs 738 o200k tokens on 11 messages with current baselines) and was dropped; v1 JSON packets remain documented as SYM-2P/1.0 in <code>SPEC.md</code>.</p>
   </section>
 
   <section id="measure">
@@ -378,16 +378,16 @@ Expires in 40s.</code></pre>
     <p>v1 speaks JSON but thinks in English: prose sits inside string fields, and a model receiver must parse human language to understand a machine message. That is the handicap the project starts from.</p>
     <p>v2 moves the language to symbols. Packet content becomes codes, numbers, and structured expressions. English stops being the source and becomes a render target: a translator script converts packets to human-readable English for operators.</p>
     <p>v2 keeps what worked in v1: one packet per line in durable text artifacts, a versioned wire format, and a validator with exit codes 0 (valid), 1 (invalid), 2 (usage or IO error).</p>
-    <p>v1 stays normative until v2 is accepted. The migrator converts v1 packets to v2 lines, failing loudly where English has no symbolic pattern yet. It covers the worked examples, not the full corpus, so the kit lock stays on v1 for now.</p>
+    <p>SYM-2P/1.0 stays the inter-agent packet profile. The v2 migrator remains a tooling experiment for worked examples; v2 dense wire is not a kit migration target.</p>
   </section>
 
   <section id="translate">
     <div class="secnum">09</div>
     <h2>Translate and validate</h2>
-    <pre><code>python3 scripts/abios/sym2-render.py &lt;packets.sym2&gt;
-python3 scripts/abios/sym2-migrate.py &lt;packets.jsonl&gt;
-python3 scripts/abios/sym2-migrate.py --rcp &lt;packets.jsonl&gt;
-python3 scripts/abios/sym2-validate.py &lt;packets.sym2&gt;
+    <pre><code>python3 scripts/protean-sym2p/sym2-render.py &lt;packets.sym2&gt;
+python3 scripts/protean-sym2p/sym2-migrate.py &lt;packets.jsonl&gt;
+python3 scripts/protean-sym2p/sym2-migrate.py --rcp &lt;packets.jsonl&gt;
+python3 scripts/protean-sym2p/sym2-validate.py &lt;packets.sym2&gt;
 python3 tests/test_sym2.py</code></pre>
     <p>The renderer reads the wire form. Operators read the rendered form. Agents read the wire form.</p>
     <p>The migrator converts v1 JSON packets to v2 lines. It fails loudly where English has no symbolic pattern yet, and it covers the worked examples, not the full corpus. The <code>--rcp</code> flag emits the protected edition.</p>
@@ -395,7 +395,7 @@ python3 tests/test_sym2.py</code></pre>
     <ul class="tight">
       <li><span class="lead">v2 test suite.</span> <code>tests/test_sym2.py</code> runs 50 stdlib-unittest tests: the wire parser, the renderer, the validator including negative cases, the reasoning dialect, the rcp edition, and the migration round trip.</li>
       <li><span class="lead">v1 suite unchanged.</span> <code>tests/run-tests.py</code> passes every valid fixture and rejects every malformed, stale, duplicate, or protected-semantic fixture. Twenty invalid fixtures and four valid ones ship under <code>tests/fixtures/</code>.</li>
-      <li><span class="lead">Internal-name gate.</span> <code>gates/abios/check-internal-names.py</code> blocks internal names from leaking into published artifacts.</li>
+      <li><span class="lead">Internal-name gate.</span> <code>gates/protean-sym2p/check-internal-names.py</code> blocks internal names from leaking into published artifacts.</li>
     </ul>
   </section>
 
@@ -427,10 +427,10 @@ bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
   <section id="open">
     <div class="secnum">12</div>
     <h2>Open items</h2>
-    <p>v2 is merged. v1 stays the spec of record until v2 is accepted. Stated plainly:</p>
+    <p>SYM-2P v2 dense wire is superseded for token efficiency; SYM-2P/1.0 stays the inter-agent profile. Stated plainly:</p>
     <ul class="tight">
       <li><span class="lead">Transport signing (identity).</span> The rcp checksum detects corruption in transit. Proof of who sent a packet stays a separate future protocol.</li>
-      <li><span class="lead">Kit adoption.</span> The migrator covers the worked examples, not the full corpus. The kit lock pins v1 until v2 is accepted.</li>
+      <li><span class="lead">Kit adoption.</span> ABIOS/3 is repo-only until the ingredient manifest lists it; SYM-2P v2 dense is not a migration target.</li>
       <li><span class="lead">Forward compatibility.</span> A v2.0-era reader rejects v2.1 opcodes as unknown, with no capability marker to distinguish "too old" from "corrupt." Worth deciding before the kit lock moves.</li>
     </ul>
   </section>

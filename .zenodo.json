@@ -29,6 +29,5 @@
       "resource_type": "software"
     }
   ],
-  "notes": "DOI pending Zenodo deposit. Paper source: paper/abios.md. Benchmark: make bench.",
-  "version": "1.0.0"
+  "notes": "Set version at deposit time; do not rely on a fixed version field in this file. Paper source: paper/abios.md. Benchmark: make bench."
 }

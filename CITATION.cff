@@ -9,7 +9,6 @@ authors:
   - name: grk-qalam
     affiliation: Moissanite Labs
     note: agent contributor
-doi: pending
 repository-code: "https://github.com/Moissanite-Labs/abios"
 url: "https://github.com/Moissanite-Labs/abios"
 license: MIT

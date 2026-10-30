@@ -1,8 +1,12 @@
+SYM-2P: a compact versioned agentic message language - one canonical JSON packet per line over durable text artifacts - with validator, enums, and fixtures.
+
 # abios
 
 **ABIOS** (Agent BIOS) is token-aware shared-state command wire for agents: profile **ABIOS/3** (`abios/3`), **POST** session handshake, reproducible benchmarks, and a reference implementation under `scripts/protean-abios/`.
 
 This repository also ships **ABIOS/1 (formerly SYM-2P)**: canonical JSON v1 packets, v2 dense wire experiments, stdlib validator, templates, and fixtures under `scripts/protean-sym2p/` (Protean Kit ingredient paths unchanged).
+
+**ABIOS/3** (`scripts/protean-abios/`, `SPEC-ABIOS-3.md`) is **repository-only** for now: it is not yet listed in `protean-ingredient.json` install targets or gates (see `tests/test_abios.py` locally).
 
 ## Do you need this?
 

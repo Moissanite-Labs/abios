@@ -41,7 +41,7 @@ and updated bench golden files when accounting rules change.
 | **SYM-2P/2.0 draft** (`SPEC-V2-DRAFT.md`) | Dense pipe-separated SYM-2P packet experiment. **Superseded for product direction:** bench showed unfavorable total cost (decode setup plus messages) versus compact JSON and ABIOS on Synbios forge lifecycles; PR #6 dense pilot numbers are retained only as **negative results** in `docs/abios-bench.md`. Not a migration target. |
 | **ABIOS/3** (this document) | Compact encoding of **forge commands** (Synbios example: `schemas/synbios/command_fields.py`), comparable to JSON POST bodies and the Synbios SYM-2P v1 codec path (`schemas/synbios/sym2p/`). ABIOS lines may be embedded in artifacts, prompts, or sidecar logs; they do not alter SYM-2P packet grammar. |
 
-Translation boundary: `schemas/synbios/sym2p/codec.py` maps forge commands ↔ SYM-2P v1 packets. ABIOS encoders map forge commands ↔ ABIOS lines. A deployment may use v1 packets on the blackboard and ABIOS only inside model context, or vice versa, as long as L-18 is preserved (everything needed to decode is written or sent).
+Translation boundary: `schemas/synbios/sym2p/codec.py` maps forge commands ↔ SYM-2P v1 packets. ABIOS encoders map forge commands ↔ ABIOS lines. A deployment may use v1 packets on the blackboard and ABIOS only inside model context, as long as L-18 is preserved (everything needed to decode is written or sent). ABIOS MUST NOT replace SYM-2P JSON as the inter-agent surface without an explicit profile change (SPEC.md L-18, L-3, section 8.1).
 
 ## 3. Logical layer — canonical messages
 
@@ -178,9 +178,17 @@ lexicon:
 {...json...}
 schema:
 {...json...}
+ids:
+{...json...}
+defaults:
+{...json...}
 ```
 
 `schema` maps each command to ordered field name list. **Full schema** = all commands in profile. **Minimal schema** = only commands used in transcript (S-12).
+
+`ids` binds session ref tokens (`p`, `t`, `a`, `h`, `f`) to full id strings. Decoders MUST NOT rely on hard-coded fixture ids outside this block (S-14).
+
+`defaults` maps each command in the schema to its default payload fields (S-7). Minimal setup carries defaults only for commands present in the minimal schema.
 
 Primary bench accounting (informative): **total cost = minimal setup tokens + message tokens**; cached setup MAY be reported at 10% of minimal setup for break-even analysis only, not as a wire requirement.
 
@@ -190,10 +198,10 @@ Primary bench accounting (informative): **total cost = minimal setup tokens + me
 
 **Message form.** POST is UTF-8 text:
 
-1. **Ack line:** `POST ok abios/3 <digest>` where `<digest>` is the first 16 hex chars of SHA-256 over the normalized decoder-context body (LF newlines, trailing newline on the body).
-2. **Body:** the minimal decoder context (profile header, `lexicon:` block, `schema:` block) exactly as defined above.
+1. **Ack line:** `POST ok <profile> <digest>` where `<profile>` is `abios/3` or negotiated legacy `sym3/1`, and `<digest>` is the first 16 hex chars of SHA-256 over the decoder-context body after CRLF→LF normalization and ensuring a trailing newline (no Unicode whitespace trim).
+2. **Body:** the minimal decoder context (profile header, `lexicon:`, `schema:`, `ids:`, and `defaults:` blocks) exactly as defined above.
 
-The ack line MUST name profile `abios/3`. Implementations MAY accept legacy contexts whose body begins with `sym3/1` when explicitly negotiated; the ack line still uses `abios/3`.
+The ack line profile MUST match the body profile header. Legacy `sym3/1` is accepted only when the body begins with `sym3/1` and the ack names `sym3/1`.
 
 **Checks.** Receivers MUST verify: (a) ack prefix and profile, (b) digest matches the body, (c) `parse_decoder_context(body)` succeeds, (d) the body is decode-sufficient for the planned transcript (S-12). Reference: `scripts/protean-abios/post.py` (`render_post_handshake`, `parse_post_handshake`, `verify_post_or_raise`).
 

@@ -32,7 +32,7 @@ PATH_RES = [
     re.compile(r"Documents" + r"/" + r"ai work"),
 ]
 
-SKIP_DIRS = {".git", "__pycache__", "node_modules", ".venv", "site"}
+SKIP_DIRS = {".git", "__pycache__", "node_modules", ".venv"}
 SKIP_EXT = (".pyc", ".so", ".png", ".jpg", ".jpeg", ".gif", ".pdf", ".zip",
             ".woff", ".woff2", ".ttf", ".ico")
 # The blocklist sits beside this script, so the gate runs wherever it is

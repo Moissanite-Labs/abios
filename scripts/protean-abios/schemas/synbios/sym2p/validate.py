@@ -8,10 +8,7 @@ from .codec import SYNBIOS_EXT_VER
 from .errors import PacketRejected
 
 _VENDOR = (
-    Path(__file__).resolve().parents[2]
-    / "vendor"
-    / "protean-sym2p-v1.0.0"
-    / "scripts"
+    Path(__file__).resolve().parents[4]
     / "protean-sym2p"
     / "sym-validate.py"
 )
@@ -23,7 +20,7 @@ def _validator():
     if _MODULE is None:
         spec = importlib.util.spec_from_file_location("_sym_validate_vendor", _VENDOR)
         if spec is None or spec.loader is None:
-            raise RuntimeError("sym-validate.py not found")
+            raise PacketRejected(f"sym-validate.py not found at {_VENDOR}")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         _MODULE = module

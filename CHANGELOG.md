@@ -5,9 +5,9 @@ entry per release: what changed, why, and how it was verified.
 
 ## Unreleased
 
-- **What:** ABIOS/1 canonical integration — `SPEC-ABIOS-3.md`, `scripts/protean-abios/` reference implementation, `tests/test_abios.py`, reproducible bench (`make bench` / golden `bench/results/abios-bench.json`), paper and citation metadata, GitHub Pages sources under `site/`.
-- **Why:** Make protean-sym2p the home for tokenizer-aware shared-state command encoding; record SYM-2P v2 dense supersession and measured negative results.
-- **Verified:** `python3 tests/run-tests.py`, `python3 -m unittest discover -s tests -v`, `make bench`.
+- **What:** ABIOS/3 integration — `SPEC-ABIOS-3.md`, `scripts/protean-abios/` reference codec, `tests/test_abios.py`, golden bench (`make bench` / `bench/results/abios-bench.json`), paper source (`paper/abios.md`), GitHub Pages templates under `site/`. Leak gate scans `site/` again; ABIOS/3 is repo-only until the ingredient manifest lists it.
+- **Why:** Token-aware shared-state command encoding with honest POST + minimal-setup accounting; record SYM-2P v2 dense supersession and external PR #6 negative constants.
+- **Verified:** `python3 tests/run-tests.py`, `python3 -m unittest discover -s tests -v`, `make bench` (Python 3.11+ in CI via `bench/run-abios-bench.py`).
 
 - **What:** `scripts/protean-sym2p/sym-publish.py`, the write-once object
   publisher (stdlib only): it assigns `v`, `sup`, `hash`, `by`, and `at`,
