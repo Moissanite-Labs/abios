@@ -13,7 +13,6 @@ not non-repudiation, and not confidentiality.
 """
 from __future__ import annotations
 
-import base64
 import hashlib
 import hmac
 import re
@@ -37,7 +36,6 @@ RESPONDER = "r"
 DIRECTIONS = (INITIATOR, RESPONDER)
 
 _KID_RE = re.compile(r"[A-Za-z0-9._-]{1,32}\Z")
-_B64URL_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
 _PARAM_KEYS = ("auth", "kid", "sid", "tag", "seal", "mac")
 
 
@@ -54,22 +52,28 @@ def _mac(key: bytes, *parts: bytes) -> bytes:
     return hmac.new(key, _lp(*parts), hashlib.sha256).digest()
 
 
-def _b64(raw: bytes) -> str:
-    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+def _width(bits: int) -> int:
+    return len(str((1 << bits) - 1))
 
 
-def _b64_decode_canonical(text: str, nbytes: int) -> bytes:
-    if not _B64URL_RE.match(text) or len(text) != len(_b64(bytes(nbytes))):
-        raise AuthError("not canonical base64url of the expected length")
-    raw = base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
-    if len(raw) != nbytes or _b64(raw) != text:
-        raise AuthError("not canonical base64url of the expected length")
-    return raw
+def _dec(raw: bytes) -> str:
+    """Fixed-width decimal of a big-endian integer.
+
+    Every lexicon tokenizer splits digit runs into chunks of at most three, so
+    the token cost is fixed (seven digit tokens for 64 bits) and below base64's
+    average for the same bits (docs/abios-auth-bench.md).
+    """
+    return str(int.from_bytes(raw, "big")).zfill(_width(8 * len(raw)))
+
+
+def _check_dec(text: str, bits: int, what: str) -> None:
+    if len(text) != _width(bits) or not (text.isascii() and text.isdigit()) or int(text) >> bits:
+        raise AuthError(f"{what} must be {_width(bits)} decimal digits below 2^{bits}")
 
 
 def new_sid() -> str:
     """Fresh 64-bit session id. Never reuse one with the same key."""
-    return _b64(secrets.token_bytes(8))
+    return _dec(secrets.token_bytes(8))
 
 
 @dataclass(frozen=True)
@@ -82,7 +86,7 @@ class SealParams:
     def __post_init__(self) -> None:
         if not _KID_RE.match(self.kid):
             raise AuthError("kid must be 1-32 characters of [A-Za-z0-9._-]")
-        _b64_decode_canonical(self.sid, 8)
+        _check_dec(self.sid, 64, "sid")
         if self.tag_bits not in TAG_BITS_ALLOWED:
             raise AuthError(f"tag bits must be one of {TAG_BITS_ALLOWED}")
         if not 1 <= self.seal_every <= MAX_SEAL_EVERY:
@@ -129,7 +133,7 @@ class SealedSession:
         self._key = session_key
 
     def post_mac(self) -> str:
-        return _b64(_mac(self._key, b"post")[: self.params.tag_bytes])
+        return _dec(_mac(self._key, b"post")[: self.params.tag_bytes])
 
     def _direction_key(self, direction: str) -> bytes:
         if direction not in DIRECTIONS:
@@ -157,7 +161,7 @@ class _Chain:
         self._state = _mac(self._key, self._state, line.encode("utf-8"))
 
     def tag(self, label: bytes) -> str:
-        return _b64(_mac(self._key, label, self._state)[: self._params.tag_bytes])
+        return _dec(_mac(self._key, label, self._state)[: self._params.tag_bytes])
 
 
 class SealSender:
@@ -327,7 +331,7 @@ def open_sealed_post(
     params = SealParams(
         kid=values["kid"], sid=values["sid"], tag_bits=int(values["tag"]), seal_every=int(values["seal"])
     )
-    _b64_decode_canonical(values["mac"], params.tag_bytes)
+    _check_dec(values["mac"], params.tag_bits, "mac")
     if values["seal"] != str(params.seal_every) or values["tag"] != str(params.tag_bits):
         raise AuthError("tag and seal must be canonical decimal")
     context = "\n".join(lines[1:]) + "\n"

@@ -218,22 +218,24 @@ The parameters appear exactly in this order, separated by single spaces, with no
 |---|---|
 | `auth` | Algorithm. Only `hs256` (HMAC-SHA-256) is defined. |
 | `kid` | Key id. |
-| `sid` | 64-bit session id, unpadded base64url (11 characters), chosen fresh at random by the POST sender. MUST NOT be reused with the same key. |
+| `sid` | 64-bit session id in `dec` form (20 digits), chosen fresh at random by the POST sender. MUST NOT be reused with the same key. |
 | `tag` | Tag length in bits for `mac` and every seal: `64`, `96`, or `128`, canonical decimal. |
 | `seal` | Maximum message lines per seal, `1` to `1024`, canonical decimal. |
-| `mac` | POST tag, unpadded base64url. |
+| `mac` | POST tag in `dec` form. |
 
-**Key schedule.** `LP(x)` is the 4-byte big-endian length of `x` followed by `x`. `H(k, x1, ..., xn)` is HMAC-SHA-256 with key `k` over `LP(x1) || ... || LP(xn)`. `trunc(x)` is the first `tag / 8` bytes of `x`, and `b64(x)` is unpadded base64url. Strings are UTF-8.
+**Key schedule.** `LP(x)` is the 4-byte big-endian length of `x` followed by `x`. `H(k, x1, ..., xn)` is HMAC-SHA-256 with key `k` over `LP(x1) || ... || LP(xn)`. `trunc(x)` is the first `tag / 8` bytes of `x`. `dec(x)` writes the bytes `x` as one big-endian unsigned integer in ASCII decimal, zero-padded to the width of the largest value of that size: 20 digits for 64 bits, 29 for 96, 39 for 128. Receivers reject any other width, a non-ASCII digit, or a value that does not fit. Strings are UTF-8.
+
+Tags use decimal because every lexicon tokenizer splits digit runs into chunks of at most three digits, so a 64-bit tag always costs seven digit tokens. That is a fixed cost, and below the measured average for base64url of the same bits (`docs/abios-auth-bench.md`).
 
 1. `P` is the sealed POST as sent, with ` mac=<mac>` removed from the ack line: the ack line, LF, then the normalized body.
 2. Session key `S = H(K, "abios/3 seal hs256", kid, sid, SHA-256(P))`. Every later tag is thus bound to the exact decode context and parameters.
-3. `mac = b64(trunc(H(S, "post")))`.
+3. `mac = dec(trunc(H(S, "post")))`.
 4. Direction keys `K_d = H(S, "dir", d)`, where `d` is `i` for lines from the POST sender and `r` for lines toward it.
 
 **MAC chain.** Each direction keeps a chain value `c`, starting at `c = H(K_d, "chain")`. For each message line `L` sent in that direction, in order, `c = H(K_d, c, L)`, where `L` excludes its line terminator. Two line forms carry tags:
 
-- **Seal line:** `~` followed by `b64(trunc(H(K_d, "seal", c)))`. It covers every message line since the previous seal.
-- **Close seal:** `~!` followed by `b64(trunc(H(K_d, "close", c)))`. It covers any pending lines and ends the direction.
+- **Seal line:** `~` followed by `dec(trunc(H(K_d, "seal", c)))`. It covers every message line since the previous seal.
+- **Close seal:** `~!` followed by `dec(trunc(H(K_d, "close", c)))`. It covers any pending lines and ends the direction.
 
 The chain makes the sequence number implicit, so no counter goes on the wire. ABIOS already needs ordered, complete delivery for refs and deltas (S-9, S-10, section 6). Seal lines are not command lines: in a sealed session a line beginning with `~` is a seal line, and no format tag may begin with `~`. Receivers remove seal lines before decoding, and seal lines never touch session state.
 
@@ -260,7 +262,7 @@ Any failure ends the session. Receivers MUST NOT resynchronize. They treat the f
 
 Reference: `scripts/protean-abios/auth.py` (`render_sealed_post`, `open_sealed_post`, `open_post`, `SealSender`, `SealReceiver`, `SidRegistry`).
 
-**Known-answer vector** (also in `tests/test_abios_auth.py`). `K` is the 32 bytes `00 01 02 ... 1f`, `kid=kat`, `sid=AAECAwQFBgc`, `tag=64`, `seal=2`, and the body is:
+**Known-answer vector** (also in `tests/test_abios_auth.py`). `K` is the 32 bytes `00 01 02 ... 1f`, `kid=kat`, `sid=12345678901234567890`, `tag=64`, `seal=2`, and the body is:
 
 ```
 abios/3
@@ -274,7 +276,7 @@ schema:
 The sealed POST ack line is:
 
 ```
-POST ok abios/3 70a7903f8829ad8a auth=hs256 kid=kat sid=AAECAwQFBgc tag=64 seal=2 mac=gjzVQxegYR4
+POST ok abios/3 70a7903f8829ad8a auth=hs256 kid=kat sid=12345678901234567890 tag=64 seal=2 mac=02111108734560368521
 ```
 
 The initiator sends `Est dn t`, `Est wk t`, `Est dn t` and then closes. On the wire:
@@ -282,12 +284,12 @@ The initiator sends `Est dn t`, `Est wk t`, `Est dn t` and then closes. On the w
 ```
 Est dn t
 Est wk t
-~RU3QhiHCSjY
+~11827668228127165077
 Est dn t
-~!u2hYxiVOkJ0
+~!01027126885348767035
 ```
 
-In the responder direction, one line `Est dn t` sealed at once is followed by `~Lds8ZfhwL-o`.
+In the responder direction, one line `Est dn t` sealed at once is followed by `~01897601097019698901`.
 
 ## 9. Generic protocol vs Synbios example schema
 

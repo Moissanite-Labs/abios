@@ -1,5 +1,4 @@
 """Sealed sessions (SPEC-ABIOS-3.md section 8.2): known answers, round trips, and every rejection."""
-import base64
 import hashlib
 import hmac
 import os
@@ -39,12 +38,12 @@ KAT_CONTEXT = (
     '{"task.transition":["status","task_id"]}\n'
 )
 KAT_POST = (
-    "POST ok abios/3 70a7903f8829ad8a auth=hs256 kid=kat sid=AAECAwQFBgc tag=64 seal=2 mac=gjzVQxegYR4\n"
+    "POST ok abios/3 70a7903f8829ad8a auth=hs256 kid=kat sid=12345678901234567890 tag=64 seal=2 mac=02111108734560368521\n"
     + KAT_CONTEXT
 )
 KAT_LINES = ["Est dn t", "Est wk t", "Est dn t"]
-KAT_WIRE_I = ["Est dn t", "Est wk t", "~RU3QhiHCSjY", "Est dn t", "~!u2hYxiVOkJ0"]
-KAT_WIRE_R = ["Est dn t", "~Lds8ZfhwL-o"]
+KAT_WIRE_I = ["Est dn t", "Est wk t", "~11827668228127165077", "Est dn t", "~!01027126885348767035"]
+KAT_WIRE_R = ["Est dn t", "~01897601097019698901"]
 
 
 def _spec_mac(key, *parts):
@@ -53,8 +52,8 @@ def _spec_mac(key, *parts):
     return hmac.new(key, data, hashlib.sha256).digest()
 
 
-def _b64(raw):
-    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+def _dec(raw):
+    return str(int.from_bytes(raw, "big")).zfill(len(str((1 << (8 * len(raw))) - 1)))
 
 
 def _minimal(messages, encoder="refs"):
@@ -64,7 +63,7 @@ def _minimal(messages, encoder="refs"):
 
 class SealedKnownAnswerTests(unittest.TestCase):
     def test_render_matches_vector(self):
-        post, session = render_sealed_post(KAT_CONTEXT, key=KEY, kid="kat", sid="AAECAwQFBgc", seal_every=2)
+        post, session = render_sealed_post(KAT_CONTEXT, key=KEY, kid="kat", sid="12345678901234567890", seal_every=2)
         self.assertEqual(post, KAT_POST)
         sender = session.sender(INITIATOR)
         wire = []
@@ -77,15 +76,15 @@ class SealedKnownAnswerTests(unittest.TestCase):
     def test_vector_matches_spec_formulas(self):
         signed = KAT_POST.split(" mac=")[0] + "\n" + KAT_CONTEXT
         post_hash = hashlib.sha256(signed.encode("utf-8")).digest()
-        s = _spec_mac(KEY, b"abios/3 seal hs256", b"kat", b"AAECAwQFBgc", post_hash)
-        self.assertEqual(_b64(_spec_mac(s, b"post")[:8]), "gjzVQxegYR4")
+        s = _spec_mac(KEY, b"abios/3 seal hs256", b"kat", b"12345678901234567890", post_hash)
+        self.assertEqual(_dec(_spec_mac(s, b"post")[:8]), "02111108734560368521")
         k_i = _spec_mac(s, b"dir", b"i")
         c = _spec_mac(k_i, b"chain")
         for line in KAT_LINES[:2]:
             c = _spec_mac(k_i, c, line.encode("utf-8"))
-        self.assertEqual("~" + _b64(_spec_mac(k_i, b"seal", c)[:8]), KAT_WIRE_I[2])
+        self.assertEqual("~" + _dec(_spec_mac(k_i, b"seal", c)[:8]), KAT_WIRE_I[2])
         c = _spec_mac(k_i, c, KAT_LINES[2].encode("utf-8"))
-        self.assertEqual("~!" + _b64(_spec_mac(k_i, b"close", c)[:8]), KAT_WIRE_I[4])
+        self.assertEqual("~!" + _dec(_spec_mac(k_i, b"close", c)[:8]), KAT_WIRE_I[4])
 
     def test_responder_opens_vector(self):
         context, session = open_sealed_post(KAT_POST, keyring=KEYRING, seen=SidRegistry())
@@ -116,7 +115,7 @@ class SealedRoundTripTests(unittest.TestCase):
 
     def test_tag_sizes(self):
         lines, minimal = _minimal(lifecycle_11())
-        for bits, chars in ((64, 11), (96, 16), (128, 22)):
+        for bits, chars in ((64, 20), (96, 29), (128, 39)):
             with self.subTest(bits=bits):
                 post, s_init = render_sealed_post(minimal, key=KEY, kid="k1", tag_bits=bits)
                 self.assertIn(f" tag={bits} ", post.split("\n", 1)[0])
@@ -126,7 +125,7 @@ class SealedRoundTripTests(unittest.TestCase):
                 self.assertEqual(unseal_transcript(s_resp.receiver(INITIATOR), wire), lines)
 
     def test_close_seal_covers_the_last_full_batch(self):
-        _post, session = render_sealed_post(KAT_CONTEXT, key=KEY, kid="kat", sid="AAECAwQFBgc", seal_every=1)
+        _post, session = render_sealed_post(KAT_CONTEXT, key=KEY, kid="kat", sid="12345678901234567890", seal_every=1)
         wire = seal_transcript(session.sender(INITIATOR), KAT_LINES, close=True)
         self.assertEqual(len(wire), 2 * len(KAT_LINES))
         self.assertTrue(wire[-1].startswith("~!"))
@@ -138,7 +137,7 @@ class SealedRoundTripTests(unittest.TestCase):
             sender.push("Est wk t")
 
     def test_batch_lines_release_only_at_the_seal(self):
-        _post, session = render_sealed_post(KAT_CONTEXT, key=KEY, kid="kat", sid="AAECAwQFBgc", seal_every=2)
+        _post, session = render_sealed_post(KAT_CONTEXT, key=KEY, kid="kat", sid="12345678901234567890", seal_every=2)
         rx = session.receiver(INITIATOR)
         self.assertEqual(rx.feed(KAT_WIRE_I[0]), [])
         self.assertEqual(rx.feed(KAT_WIRE_I[1]), [])
@@ -177,10 +176,10 @@ class SealedRejectionTests(unittest.TestCase):
         self._reject(KAT_WIRE_I, direction=RESPONDER)
 
     def test_altered_tag(self):
-        self._reject(KAT_WIRE_I[:2] + ["~RU3QhiHCSjZ"])
+        self._reject(KAT_WIRE_I[:2] + ["~11827668228127165078"])
 
     def test_seal_with_nothing_to_cover(self):
-        self._reject(["~RU3QhiHCSjY"])
+        self._reject([KAT_WIRE_I[2]])
 
     def test_overdue_seal(self):
         self._reject(KAT_WIRE_I[:2] + ["Est dn t"])
@@ -203,7 +202,7 @@ class SealedRejectionTests(unittest.TestCase):
             rx.feed(KAT_WIRE_I[0])
 
     def test_other_session_tags_do_not_verify(self):
-        _post, other = render_sealed_post(KAT_CONTEXT, key=KEY, kid="kat", sid="AQIDBAUGBwg", seal_every=2)
+        _post, other = render_sealed_post(KAT_CONTEXT, key=KEY, kid="kat", sid="12345678901234567891", seal_every=2)
         sender = other.sender(INITIATOR)
         self._reject(seal_transcript(sender, KAT_LINES[:2]))
 
@@ -221,7 +220,7 @@ class SealedPostRejectionTests(unittest.TestCase):
     def test_failed_post_does_not_burn_the_sid(self):
         seen = SidRegistry()
         with self.assertRaisesRegex(AuthError, "mac mismatch"):
-            self._open(KAT_POST.replace("mac=gjzVQxegYR4", "mac=gjzVQxegYR8"), seen=seen)
+            self._open(KAT_POST.replace("mac=02111108734560368521", "mac=02111108734560368522"), seen=seen)
         self._open(KAT_POST, seen=seen)
 
     def test_wrong_key(self):
@@ -242,10 +241,10 @@ class SealedPostRejectionTests(unittest.TestCase):
             self._open(ack + "\n" + body)
 
     def test_tampered_parameters(self):
-        for old, new in (("seal=2", "seal=3"), ("tag=64", "tag=96"), ("sid=AAECAwQFBgc", "sid=AAECAwQFBgg")):
+        for old, new in (("seal=2", "seal=3"), ("tag=64", "tag=96"), ("sid=12345678901234567890", "sid=12345678901234567891")):
             with self.subTest(change=new):
                 # A wider tag also changes the expected mac length.
-                with self.assertRaisesRegex(AuthError, "mac mismatch|base64url"):
+                with self.assertRaisesRegex(AuthError, "mac mismatch|decimal digits"):
                     self._open(KAT_POST.replace(old, new))
 
     def test_malformed_parameters(self):
@@ -254,9 +253,12 @@ class SealedPostRejectionTests(unittest.TestCase):
             ("seal=2", "seal=02"),
             ("seal=2", "seal=0"),
             ("tag=64", "tag=32"),
-            (" kid=kat sid=AAECAwQFBgc", " sid=AAECAwQFBgc kid=kat"),
-            ("sid=AAECAwQFBgc", "sid=AAECAwQFBgd"),
-            ("mac=gjzVQxegYR4", "mac=gjzVQxegYR4A"),
+            (" kid=kat sid=12345678901234567890", " sid=12345678901234567890 kid=kat"),
+            ("sid=12345678901234567890", "sid=99999999999999999999"),
+            ("sid=12345678901234567890", "sid=1234567890123456789"),
+            ("mac=02111108734560368521", "mac=021111087345603685210"),
+            ("mac=02111108734560368521", "mac=0211110873456036852x"),
+            ("mac=02111108734560368521", "mac=0211110873456036852\u0661"),
             ("kid=kat", "kid=k at"),
         )
         for old, new in bad:
@@ -308,7 +310,7 @@ class SealedPostRejectionTests(unittest.TestCase):
 
     def test_params_reject_bad_values(self):
         with self.assertRaises(AuthError):
-            SealParams(kid="k1", sid="AAECAwQFBgc", tag_bits=64, seal_every=-1)
+            SealParams(kid="k1", sid="12345678901234567890", tag_bits=64, seal_every=-1)
 
 
 if __name__ == "__main__":

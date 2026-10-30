@@ -15,7 +15,7 @@ import json
 import sys
 from pathlib import Path
 
-from auth import INITIATOR, TAG_BITS_ALLOWED, render_sealed_post, seal_transcript
+from auth import INITIATOR, TAG_BITS_ALLOWED, _dec, render_sealed_post, seal_transcript
 from decoder_context import setup_sizes
 from encoders import all_encoders, encode_transcript
 from lexicon import LEXICON_PATH
@@ -31,7 +31,7 @@ JSON_PATH = ROOT / "bench" / "results" / "abios-auth-bench.json"
 # them. Never use this key for anything else.
 BENCH_KEY = b"abios-auth-bench-public-key-0001"
 BENCH_KID = "bench"
-BENCH_SID = "YWJpb3MtYXU"
+BENCH_SID = "11111111111111111111"
 ENCODER = "refs"
 VARIANTS = [(64, 1), (64, 10), (128, 1), (128, 10)]
 TAG_SAMPLES = 1024
@@ -106,25 +106,31 @@ def _transcript_rows(specs, name: str, messages) -> dict:
     }
 
 
+def _b64(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
 def _tag_token_stats(specs) -> list[dict]:
-    """Tokens of a lone seal line over deterministic pseudorandom tags (luck-free cost)."""
+    """Tokens of a lone seal line over deterministic pseudorandom tags, for the
+    decimal encoding the spec uses and for base64url, the alternative it rejects."""
     primary = specs[0]
     out = []
-    for bits in TAG_BITS_ALLOWED:
-        counts = []
-        for i in range(TAG_SAMPLES):
-            raw = hmac.new(BENCH_KEY, f"tag-sample-{i}".encode("ascii"), hashlib.sha256).digest()[: bits // 8]
-            tag = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
-            counts.append(token_count("~" + tag, primary))
-        out.append(
-            {
-                "tag_bits": bits,
-                "samples": TAG_SAMPLES,
-                "min": min(counts),
-                "max": max(counts),
-                "mean": round(sum(counts) / len(counts), 2),
-            }
-        )
+    for encoding, render in (("decimal", _dec), ("base64url", _b64)):
+        for bits in TAG_BITS_ALLOWED:
+            counts = []
+            for i in range(TAG_SAMPLES):
+                raw = hmac.new(BENCH_KEY, f"tag-sample-{i}".encode("ascii"), hashlib.sha256).digest()[: bits // 8]
+                counts.append(token_count("~" + render(raw), primary))
+            out.append(
+                {
+                    "encoding": encoding,
+                    "tag_bits": bits,
+                    "samples": TAG_SAMPLES,
+                    "min": min(counts),
+                    "max": max(counts),
+                    "mean": round(sum(counts) / len(counts), 2),
+                }
+            )
     return out
 
 
@@ -178,13 +184,14 @@ def format_markdown(payload: dict) -> str:
     out += [
         "## Seal line cost",
         "",
-        f"Tokens of a lone seal line (`~` plus base64url tag) over {TAG_SAMPLES} deterministic pseudorandom tags.",
+        f"Tokens of a lone seal line (`~` plus tag) over {TAG_SAMPLES} deterministic pseudorandom tags. "
+        "The spec uses fixed-width decimal; base64url is the measured alternative.",
         "",
-        "| tag bits | min | mean | max |",
-        "| ---: | ---: | ---: | ---: |",
+        "| encoding | tag bits | min | mean | max |",
+        "| --- | ---: | ---: | ---: | ---: |",
     ]
     for s in payload["seal_line_tokens"]:
-        out.append(f"| {s['tag_bits']} | {s['min']} | {s['mean']} | {s['max']} |")
+        out.append(f"| {s['encoding']} | {s['tag_bits']} | {s['min']} | {s['mean']} | {s['max']} |")
     return "\n".join(out) + "\n"
 
 
