@@ -42,6 +42,79 @@ class AbiosRoundTripTests(unittest.TestCase):
         for exp, got in zip(messages, back):
             self.assertTrue(messages_equal(exp, got), f"{encoder_name}: {exp} vs {got}")
 
+    def _assert_round_trip_payload(self, action, payload, encoder_name="refs"):
+        enc = all_encoders()[encoder_name]
+        msg = (action, canonical_payload(action, payload))
+        lines = encode_transcript(enc, [msg])
+        back = decode_transcript(enc, lines)
+        self.assertTrue(messages_equal(msg, back[0]), f"{encoder_name}: {msg} vs {back[0]}")
+
+    def test_adversarial_round_trip_all_encoders(self):
+        long_desc = "x" * 60
+        cases = [
+            ("project.create", {"name": "demo", "description": "", "repository": ""}),
+            ("project.create", {"name": "#1", "description": long_desc, "repository": ""}),
+            ("project.create", {"name": "20", "description": "digit name", "repository": ""}),
+            ("project.create", {"name": "-", "description": "dash name", "repository": ""}),
+            ("project.create", {"name": "p", "description": "letter name", "repository": ""}),
+            ("task.create", {
+                "project_id": "a1" * 16,
+                "title": "brace",
+                "description": "[not json",
+                "criteria": [],
+                "scope": [],
+                "priority": "normal",
+                "dependencies": [],
+            }),
+            ("task.create", {
+                "project_id": "a1" * 16,
+                "title": "pipe|suffix",
+                "description": "ok",
+                "criteria": [],
+                "scope": [],
+                "priority": "normal",
+                "dependencies": [],
+            }),
+            ("task.create", {
+                "project_id": "a1" * 16,
+                "title": "newline",
+                "description": "line1\nline2",
+                "criteria": [],
+                "scope": [],
+                "priority": "normal",
+                "dependencies": [],
+            }),
+        ]
+        for encoder_name in all_encoders():
+            for action, payload in cases:
+                with self.subTest(encoder=encoder_name, action=action):
+                    self._assert_round_trip_payload(action, payload, encoder_name)
+
+    def test_unknown_content_ref_fails_closed(self):
+        from encoders import fresh_session
+
+        enc = all_encoders()["refs"]
+        session = fresh_session()
+        cmd = enc.lex.word("cmd", "project.create").strip()
+        line = f"{enc.tag}{cmd} demo \"\" \"\" #9"
+        with self.assertRaises(ValueError):
+            enc.decode(line, session)
+
+    def test_delta_other_task_not_short_form(self):
+        from encoders import DeltaEncoder, encode_transcript, fresh_session
+
+        messages = lifecycle_11()
+        enc = DeltaEncoder()
+        other_task = "f" * 32
+        session = fresh_session()
+        for action, payload in messages:
+            session.apply_message(action, payload)
+        line = enc.encode("task.transition", {"task_id": other_task, "status": "running"}, session)
+        self.assertNotIn(" t st=", line)
+        self.assertIn(other_task, line)
+        back = decode_transcript(enc, encode_transcript(enc, messages + [("task.transition", {"task_id": other_task, "status": "running"})]))
+        self.assertEqual(back[-1][1]["task_id"], other_task)
+
     def test_all_encoders_round_trip_11(self):
         messages = lifecycle_11()
         for name in all_encoders():

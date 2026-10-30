@@ -62,7 +62,7 @@ Tokens are space-separated except where noted. Parsing rules:
 | Construct | Rule |
 |---|---|
 | Whitespace | ASCII space separates tokens; no empty tokens. |
-| Quoted string | `"..."` with `\"` and `\\` escapes; used when a string contains space, `;`, `,`, `"`, or starts with `http`. |
+| Quoted string | `"..."` with `\"`, `\\`, and `\n` (U+000A) escapes; used when a string would otherwise parse as another token type, is empty, contains space, `;`, `,`, `"`, newline, or starts with `http`. Quoted tokens always decode as strings. |
 | Null | `-` |
 | Boolean | `1` / `0` (Synbios misc lexicon) |
 | Integer | digit sequence, parsed as int |

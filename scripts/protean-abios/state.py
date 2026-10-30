@@ -101,7 +101,11 @@ class Sym3Session:
         if action != "task.transition":
             return None
         full = canonical_payload(action, payload)
-        prior = self.snapshots.get("task") or {"task_id": full["task_id"], "status": self.task_status}
+        if full["task_id"] != self.task_id:
+            return None
+        prior = self.snapshots.get("task")
+        if prior is None:
+            return None
         if prior.get("task_id") == full["task_id"] and prior.get("status") != full["status"]:
             if set(full.keys()) == {"task_id", "status"}:
                 return {"status": full["status"]}

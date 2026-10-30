@@ -35,6 +35,9 @@ def canonical_payload(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     if action not in COMMAND_FIELDS:
         raise ValueError(f"unknown forge command: {action}")
     allowed = COMMAND_FIELDS[action]
+    for key in payload:
+        if key not in allowed:
+            raise ValueError(f"unknown field {key!r} for {action}")
     out: dict[str, Any] = {}
     defaults = SCHEMA_DEFAULTS.get(action, {})
     merged = {**defaults, **payload}
