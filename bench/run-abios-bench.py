@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify SYM-3 benchmark against committed tables (no file writes)."""
+"""Verify ABIOS benchmark against committed tables (no file writes)."""
 from __future__ import annotations
 
 import os
@@ -7,14 +7,14 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SYM3 = os.path.join(ROOT, "scripts", "protean-sym3")
+ABIOS = os.path.join(ROOT, "scripts", "protean-abios")
 
 
 def main() -> int:
     env = os.environ.copy()
-    env["PYTHONPATH"] = SYM3 + os.pathsep + env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = ABIOS + os.pathsep + env.get("PYTHONPATH", "")
     proc = subprocess.run(
-        [sys.executable, os.path.join(SYM3, "bench.py")],
+        [sys.executable, os.path.join(ABIOS, "bench.py")],
         cwd=ROOT,
         env=env,
         check=False,

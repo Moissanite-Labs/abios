@@ -10,7 +10,8 @@ from canonical import canonical_payload
 from lexicon import LEXICON_PATH, Lexicon, load_lexicon
 from schema import POSITIONAL_ORDER
 
-FORMAT_HEADER = "sym3/1\n"
+FORMAT_HEADER = "abios/3\n"
+LEGACY_FORMAT_HEADERS = frozenset({"sym3/1"})
 
 
 def full_positional_schema() -> dict[str, list[str]]:
@@ -75,8 +76,11 @@ def _minimal_lexicon_payload(
 def parse_decoder_context(text: str) -> tuple[Lexicon, dict[str, list[str]]]:
     """Parse rendered decoder context into Lexicon + schema (fresh, no committed file)."""
     lines = text.strip().split("\n")
-    if not lines or not lines[0].startswith("sym3/"):
-        raise ValueError("missing sym3 format header")
+    if not lines:
+        raise ValueError("missing ABIOS format header")
+    profile = lines[0].strip()
+    if profile != "abios/3" and profile not in LEGACY_FORMAT_HEADERS:
+        raise ValueError("missing ABIOS format header (expected abios/3 or legacy sym3/1)")
     lex_payload: dict[str, Any] = {"concepts": {}, "format_tags": {}}
     schema: dict[str, list[str]] = {}
     i = 1

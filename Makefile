@@ -1,15 +1,17 @@
-.PHONY: bench bench-write test sym3-test verify
+.PHONY: bench bench-write test abios-test sym3-test verify
 
 bench:
 	python3 -m pip install -q -r requirements-bench.txt
-	PYTHONPATH=scripts/protean-sym3 python3 bench/run-sym3-bench.py
+	PYTHONPATH=scripts/protean-abios python3 bench/run-abios-bench.py
 
 bench-write:
 	python3 -m pip install -q -r requirements-bench.txt
-	PYTHONPATH=scripts/protean-sym3 python3 scripts/protean-sym3/bench.py --write
+	PYTHONPATH=scripts/protean-abios python3 scripts/protean-abios/bench.py --write
 
-sym3-test:
-	PYTHONPATH=scripts/protean-sym3 python3 -m unittest discover -s tests -p 'test_sym3.py' -v
+abios-test:
+	PYTHONPATH=scripts/protean-abios python3 -m unittest discover -s tests -p 'test_abios.py' -v
+
+sym3-test: abios-test
 
 test:
 	python3 tests/run-tests.py

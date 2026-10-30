@@ -5,7 +5,7 @@ entry per release: what changed, why, and how it was verified.
 
 ## Unreleased
 
-- **What:** SYM-3/1 canonical integration — `SPEC-v3.md`, `scripts/protean-sym3/` reference implementation, `tests/test_sym3.py`, reproducible bench (`make bench` / golden `bench/results/sym3-bench.json`), paper and citation metadata, GitHub Pages sources under `site/`.
+- **What:** ABIOS/1 canonical integration — `SPEC-ABIOS-3.md`, `scripts/protean-abios/` reference implementation, `tests/test_abios.py`, reproducible bench (`make bench` / golden `bench/results/abios-bench.json`), paper and citation metadata, GitHub Pages sources under `site/`.
 - **Why:** Make protean-sym2p the home for tokenizer-aware shared-state command encoding; record SYM-2P v2 dense supersession and measured negative results.
 - **Verified:** `python3 tests/run-tests.py`, `python3 -m unittest discover -s tests -v`, `make bench`.
 

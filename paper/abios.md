@@ -1,20 +1,22 @@
-# SYM-3: Token-Aware Shared-State Messaging for Agent-to-Agent Communication
+# ABIOS: Token-Aware Shared-State Messaging for Agent-to-Agent Communication
 
 **Authors:** Ahraz Arifuddin (Moissanite Labs); grk-qalam (agent)
 
 ## Abstract
 
-Agent-to-agent traffic is billed by tokenizer output, not by human readability. SYM-3 is a family of wire encodings for structured forge lifecycle commands that minimize **o200k_base** token cost under honest decoder setup accounting. Encoders share a tokenizer-tuned lexicon, session-scoped identifiers, optional content-addressed blobs, positional field schemas, default-value omission, and an adaptive mode that picks the cheapest variant per message. On an 11-message synthetic lifecycle, SYM-3 **refs** totals **491** tokens (setup min + messages) versus **682** for compact JSON and **686** for lossless English; savings grow on 40- and 200-message transcripts. Setup tokens are counted in a **decode-sufficient** minimal form (mappings used in the transcript only). Negative results from SYM-2P v1 packets, SYM-2P v2 dense pilots, and multilingual lexicon candidates are reported. Model comprehension on the wire format remains under evaluation.
+Agent-to-agent traffic is billed by tokenizer output, not by human readability. ABIOS is a family of wire encodings for structured forge lifecycle commands that minimize **o200k_base** token cost under honest decoder setup accounting. Encoders share a tokenizer-tuned lexicon, session-scoped identifiers, optional content-addressed blobs, positional field schemas, default-value omission, and an adaptive mode that picks the cheapest variant per message. On an 11-message synthetic lifecycle, ABIOS **refs** totals **491** tokens (setup min + messages) versus **682** for compact JSON and **686** for lossless English; savings grow on 40- and 200-message transcripts. Setup tokens are counted in a **decode-sufficient** minimal form (mappings used in the transcript only). Negative results from SYM-2P v1 packets, SYM-2P v2 dense pilots, and multilingual lexicon candidates are reported. Model comprehension on the wire format remains under evaluation.
 
 ## Motivation
 
 Multi-agent systems exchange structured commands—task claims, artifact hashes, evidence bindings—at scale. When both endpoints are language models or model-backed services, the dominant cost is **tokens on the wire**, not bytes or JSON prettiness. Human operators rarely read raw agent traffic; protocols may use opaque tokens, positional fields, and shared state as long as decoders can reconstruct canonical payloads.
 
-SYM-3 targets **lossless** reconstruction of forge commands relative to compact JSON baselines, while accepting one-time decoder context (lexicon slice + schema) that must be present or cached for decode. Comparisons use tokenizer-accurate counting, not character length or heuristics. The normative profile is **SYM-3/1** (`SPEC-v3.md`); the reference implementation lives under `scripts/protean-sym3/`, with the Synbios forge schema isolated under `schemas/synbios/`.
+ABIOS targets **lossless** reconstruction of forge commands relative to compact JSON baselines, while accepting one-time decoder context (lexicon slice + schema) that must be present or cached for decode. Comparisons use tokenizer-accurate counting, not character length or heuristics. The normative profile is **ABIOS/3** (`abios/3`, `SPEC-ABIOS-3.md`); the reference implementation lives under `scripts/protean-abios/`, with the Synbios forge schema isolated under `schemas/synbios/`.
+
+**Name.** ABIOS stands for Agent BIOS—a shared layer so agents can exchange compressed traffic without restating context. The name nods to IBM's Advanced BIOS (April 1987, PS/2 line: CBIOS for real-mode DOS, ABIOS for protected-mode OS/2). That firmware ABIOS saw little use; the PS/2 era left VGA, PS/2 keyboard/mouse ports, and the 1.44 MB floppy as lasting standards. **It does not claim ABIOS succeeded.** Sessions open with **POST**, the one-time decode-context handshake (after the PC boot metaphor); POST tokens are counted in benchmark totals. ABIOS pairs with Synbios ([github.com/Moissanite-Labs/synbios](https://github.com/Moissanite-Labs/synbios)). ABIOS/3 continues the SYM-2P lineage; v2 dense wire was dropped after unfavorable token counts versus JSON.
 
 ## Prior work
 
-**Agora** ([arXiv:2410.11905](https://arxiv.org/abs/2410.11905)) describes hash-referenced, content-addressed agent envelopes; SYM-3 **refs** follows a similar content-store pattern and is the closest prior-art row in our benchmark (11-message total **1027** including Agora setup).
+**Agora** ([arXiv:2410.11905](https://arxiv.org/abs/2410.11905)) describes hash-referenced, content-addressed agent envelopes; ABIOS **refs** follows a similar content-store pattern and is the closest prior-art row in our benchmark (11-message total **1027** including Agora setup).
 
 **TOON** (`toon-format`) provides a compact textual serialization for nested structures; we include a TOON baseline on the same fixtures (**805** message tokens on 11 messages with the repo fallback encoder when the package encoder is unavailable).
 
@@ -22,13 +24,13 @@ SYM-3 targets **lossless** reconstruction of forge commands relative to compact 
 
 **Chain of Draft** motivates terse natural-language drafts for LLM I/O. We do **not** claim a CoD-style baseline in the bench: the row formerly labeled “terse English (CoD-style)” was renamed to **English (lossless, key=value one-line)**—a lossless `key=value` serialization that tokenizes to **691** on 11 messages, **above** lossless English (**686**), because repeated key names and JSON quoting dominate.
 
-**A2A** and **MCP** standardize agent discovery and tool/context channels; SYM-3 is complementary wire compression for an application-specific command stream, not a replacement for either protocol.
+**A2A** and **MCP** standardize agent discovery and tool/context channels; ABIOS is complementary wire compression for an application-specific command stream, not a replacement for either protocol.
 
 **Multilingual tokenizer fertility:** Petrov et al. (2023) show non-English text is not uniformly cheaper under byte-level BPE; our lexicon generator rejected non-English wire tokens that did not reduce **o200k** counts (see negative results).
 
 ## Method
 
-SYM-3 messages are line-oriented text. A session tracks project, task, agent, and artifact identifiers; repeated UUIDs collapse to single-character wire tokens (`p`, `t`, `a`, …). A **tokenizer-cost lexicon** maps command names, status/kind enums, and format tags to strings chosen by minimum max-token count across configured encodings (primary: **o200k_base**).
+ABIOS messages are line-oriented text. A session tracks project, task, agent, and artifact identifiers; repeated UUIDs collapse to single-character wire tokens (`p`, `t`, `a`, …). A **tokenizer-cost lexicon** maps command names, status/kind enums, and format tags to strings chosen by minimum max-token count across configured encodings (primary: **o200k_base**).
 
 **State deltas:** the delta encoder emits only fields that change relative to session state instead of full canonical payloads.
 
@@ -42,7 +44,7 @@ SYM-3 messages are line-oriented text. A session tracks project, task, agent, an
 
 **Decoder context:** decoders need a **decode-sufficient** prefix: wire mappings for every command, status, kind, and format tag **used in the transcript** (for adaptive, all format tags). A **full** setup includes the committed lexicon JSON and complete positional schema; benchmarks report both. **Cached†** totals assume one-time billing of 10% of minimal setup (not API-measured).
 
-Round-trip goal: given decoder context + lines, reconstruct canonical JSON-equivalent payloads (`tests/test_sym3.py` decodes with **minimal context only**). **Decode-sufficient minimal context** is the primary setup column in results. Rule **L-18** (no latent channel) from `SPEC.md` applies: setup is explicit text, not a hidden cache.
+Round-trip goal: given decoder context + lines, reconstruct canonical JSON-equivalent payloads (`tests/test_abios.py` decodes with **minimal context only**). **Decode-sufficient minimal context** is the primary setup column in results. Rule **L-18** (no latent channel) from `SPEC.md` applies: setup is explicit text, not a hidden cache.
 
 ## Negative results
 
@@ -56,7 +58,7 @@ Round-trip goal: given decoder context + lines, reconstruct canonical JSON-equiv
 
 ## Results
 
-All numbers below are taken from [docs/sym3-bench.md](../docs/sym3-bench.md) (verified by `make bench` against committed tables). Primary accounting: **setup (min, decode-sufficient) + messages**, **o200k_base**.
+All numbers below are taken from [docs/abios-bench.md](../docs/abios-bench.md) (verified by `make bench` against committed tables). Primary accounting: **setup (min, decode-sufficient) + messages**, **o200k_base**.
 
 ### lifecycle_11 (11 messages)
 
@@ -65,14 +67,14 @@ All numbers below are taken from [docs/sym3-bench.md](../docs/sym3-bench.md) (ve
 | compact JSON | 0 | 682 | 682 |
 | English (lossless) | 0 | 686 | 686 |
 | English (lossless, key=value one-line) | 0 | 691 | 691 |
-| SYM-3 refs | 250 | 241 | **491** |
-| SYM-3 adaptive | 271 | 241 | **512** |
-| SYM-3 combined | 250 | 334 | 584 |
-| SYM-3 delta | 250 | 349 | 599 |
+| ABIOS refs | 250 | 241 | **491** |
+| ABIOS adaptive | 271 | 241 | **512** |
+| ABIOS combined | 250 | 334 | 584 |
+| ABIOS delta | 250 | 349 | 599 |
 | Agora envelope | 48 | 979 | 1027 |
 | TOON | 0 | 805 | 805 |
 
-Under **full** setup (524 + messages), SYM-3 refs/adaptive totals **765**—above compact JSON at 11 messages. Do not compare against English (lossy summary) for information equivalence.
+Under **full** setup (524 + messages), ABIOS refs/adaptive totals **765**—above compact JSON at 11 messages. Do not compare against English (lossy summary) for information equivalence.
 
 **Break-even (messages to beat compact JSON / lossless English):** adaptive **7** / **7**; refs **7** / **7**; combined **8** / **8**; delta **9** / **9**; omit **9** / **9**; positional **7** / **7**.
 
@@ -82,9 +84,9 @@ Under **full** setup (524 + messages), SYM-3 refs/adaptive totals **765**—abov
 | --- | ---: | ---: |
 | compact JSON | 5343 | 5343.0 |
 | English (lossless) | 5242 | 5242.0 |
-| SYM-3 adaptive | **1738** | 1490.5 |
-| SYM-3 refs | **1717** | 1488.4 |
-| SYM-3 combined | 2566 | 2337.4 |
+| ABIOS adaptive | **1738** | 1490.5 |
+| ABIOS refs | **1717** | 1488.4 |
+| ABIOS combined | 2566 | 2337.4 |
 
 Break-even vs compact JSON: adaptive **3**, refs **3**, combined **4**, delta **6**, omit **6**, positional **4** messages.
 
@@ -94,15 +96,15 @@ Break-even vs compact JSON: adaptive **3**, refs **3**, combined **4**, delta **
 | --- | ---: | ---: |
 | compact JSON | 27363 | 27363.0 |
 | English (lossless) | 26754 | 26754.0 |
-| SYM-3 adaptive | **7649** | 7401.5 |
-| SYM-3 refs | **7628** | 7399.4 |
-| SYM-3 combined | 11873 | 11644.4 |
+| ABIOS adaptive | **7649** | 7401.5 |
+| ABIOS refs | **7628** | 7399.4 |
+| ABIOS combined | 11873 | 11644.4 |
 
 Break-even vs compact JSON: adaptive **3**, refs **3**, combined **4**, delta **6**, omit **6**, positional **4** messages.
 
 ### Verdict
 
-On the shortest transcript, SYM-3 **refs** and **adaptive** beat compact JSON and lossless English under primary accounting. Savings increase with transcript length and repeated content. Cached† totals improve further but rely on the 10% setup assumption.
+On the shortest transcript, ABIOS **refs** and **adaptive** beat compact JSON and lossless English under primary accounting. Savings increase with transcript length and repeated content. Cached† totals improve further but rely on the 10% setup assumption.
 
 ## Model comprehension
 
@@ -114,12 +116,12 @@ On the shortest transcript, SYM-3 **refs** and **adaptive** beat compact JSON an
 | State-question accuracy (session facts) | all | TODO |
 | Generation round-trip (encode → model decode → re-encode) | all | TODO |
 
-Optional harness: `PYTHONPATH=scripts/protean-sym3 python3 scripts/protean-sym3/comprehension.py` (requires API key; skipped in CI).
+Optional harness: `PYTHONPATH=scripts/protean-abios python3 scripts/protean-abios/comprehension.py` (requires API key; skipped in CI).
 
 ## Limitations
 
 - Savings depend on **repeated content and shared session state**; they scale with conversation length and redundancy, not single-turn prompts.
-- **Single-turn inference** cost is unchanged; SYM-3 optimizes multi-message agent sessions.
+- **Single-turn inference** cost is unchanged; ABIOS optimizes multi-message agent sessions.
 - Counts use **o200k_base** as primary; other models may differ.
 - Lifecycles are **synthetic** forge transcripts, not production traffic mixes.
 - **Full** lexicon setup can erase wins on very short sessions (see 11-message full-setup row).

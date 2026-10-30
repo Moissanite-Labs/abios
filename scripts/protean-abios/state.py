@@ -1,4 +1,4 @@
-"""Session state shared between SYM-3 encoder and decoder."""
+"""Session state shared between ABIOS encoder and decoder."""
 from __future__ import annotations
 
 import copy
@@ -106,3 +106,6 @@ class Sym3Session:
             if set(full.keys()) == {"task_id", "status"}:
                 return {"status": full["status"]}
         return None
+
+
+AbiosSession = Sym3Session  # normative name (SPEC-ABIOS-3.md); Sym3Session kept for compatibility

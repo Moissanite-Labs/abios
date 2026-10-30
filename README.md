@@ -111,22 +111,36 @@ performs zero network calls and fails closed when the cache entry is absent.
 
 MIT. The committed `LICENSE` file is authoritative.
 
-## SYM-3 (token-aware command wire)
+## ABIOS (Agent BIOS — token-aware command wire)
 
-SYM-3/1 is the canonical home for tokenizer-aware, shared-state command encoding alongside SYM-2P v1 packets. Normative spec: `SPEC-v3.md`. Reference code: `scripts/protean-sym3/` (generic protocol); Synbios forge example schema: `scripts/protean-sym3/schemas/synbios/`.
+**ABIOS/3** (`abios/3`, `SPEC-ABIOS-3.md`) is the canonical home for tokenizer-aware, shared-state command encoding alongside SYM-2P/1.0 packets. Reference code: `scripts/protean-abios/` (generic protocol); Synbios forge example schema: `scripts/protean-abios/schemas/synbios/`. Legacy wire profile id `sym3/1` remains a decode alias for `abios/3`.
+
+### Why ABIOS?
+
+ABIOS stands for Agent BIOS. A BIOS is the layer that lets an operating system talk to hardware without knowing the details of each device. ABIOS plays that role for agents: a small, shared layer that lets one agent talk to another without either paying to restate everything they already share.
+
+The name nods to IBM's Advanced BIOS. In April 1987, IBM shipped the Personal System/2 with its ROM BIOS split in two: CBIOS, which kept real-mode DOS working, and ABIOS, a new interface for multitasking, protected-mode operating systems like OS/2. ABIOS itself saw little use. Operating systems mostly brought their own drivers, and the Micro Channel machines it shipped on lost to the open ISA/EISA ecosystem.
+
+The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mode remains a common lowest-common-denominator display mode. Its 6-pin mini-DIN keyboard and mouse connectors became the "PS/2 ports" found on PCs for decades. And it made the 1.44 MB 3.5-inch floppy the standard, the disk still drawn as the "save" icon. The name is for a forward-looking interface designed for multitasking systems before they were common. **It does not claim ABIOS succeeded.**
+
+**POST.** Every PC runs POST (power-on self-test) at boot, before loading an operating system: it checks the hardware and sets up what the system needs. In ABIOS, POST is the one-time session handshake. Before any references or deltas, the two agents exchange the minimal context the receiver needs to decode messages. POST's tokens are included in every benchmark total.
+
+**Synbios.** ABIOS pairs with [Synbios](https://github.com/Moissanite-Labs/synbios), Moissanite Labs' agent-first collaboration hub, which integrates ABIOS natively.
+
+**Lineage.** ABIOS/3 was previously SYM-2P. Version 3 is the token-aware, shared-state redesign; the dense symbolic codes of SYM-2P v2 tokenized worse than JSON (1,415 vs 682 o200k tokens) and were dropped. Historical SYM-2P/1.0 and the v2 draft packet layers keep their original names in this repository.
 
 | Path | Contents |
 |---|---|
-| `SPEC-v3.md` | normative SYM-3/1 profile |
-| `scripts/protean-sym3/` | encoders, lexicon, decoder context, bench harness |
-| `docs/sym3-bench.md` | committed benchmark tables |
-| `bench/results/sym3-bench.json` | golden JSON (`make bench` verifies) |
-| `paper/sym3.md` | preprint source |
+| `SPEC-ABIOS-3.md` | normative ABIOS/3 profile (POST handshake, decoder setup) |
+| `scripts/protean-abios/` | encoders, lexicon, POST, decoder context, bench harness |
+| `docs/abios-bench.md` | committed benchmark tables |
+| `bench/results/abios-bench.json` | golden JSON (`make bench` verifies) |
+| `paper/abios.md` | preprint source |
 | `docs/REPRODUCE.md` | reproduction instructions |
 
 ### Headline results (primary: setup min + messages, o200k_base)
 
-| Transcript | Compact JSON | Lossless English | SYM-3 refs | SYM-3 adaptive |
+| Transcript | Compact JSON | Lossless English | ABIOS refs | ABIOS adaptive |
 | --- | ---: | ---: | ---: | ---: |
 | 11 messages | 682 | 686 | **491** | 512 |
 | 40 messages | 5343 | 5242 | **1717** | 1738 |
@@ -140,7 +154,7 @@ Also on 11 messages: TOON **805**, Agora envelope **1027** (see bench doc). **DO
 python3 -m pip install -r requirements-bench.txt
 make bench          # verify committed tables (CI)
 make bench-write    # refresh golden files after intentional changes
-PYTHONPATH=scripts/protean-sym3 python3 -m unittest tests.test_sym3 -v
+PYTHONPATH=scripts/protean-abios python3 -m unittest tests.test_abios -v
 ```
 
-Site: https://aska-digital.github.io/protean-sym2p/ (sources in `site/`; published from `gh-pages` branch).
+Site: https://moissanite-labs.github.io/abios/ (sources in `site/`; published from `gh-pages` branch).

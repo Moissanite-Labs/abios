@@ -1,6 +1,6 @@
-# Reproducing SYM-3 benchmark numbers
+# Reproducing ABIOS benchmark numbers
 
-The token counts in [sym3-bench.md](sym3-bench.md) and [paper/sym3.md](../paper/sym3.md) are produced by the in-repo harness. Primary accounting uses **o200k_base** via tiktoken: total = decode-sufficient setup (min) + message tokens.
+The token counts in [abios-bench.md](abios-bench.md) and [paper/abios.md](../paper/abios.md) are produced by the in-repo harness. Primary accounting uses **o200k_base** via tiktoken: total = decode-sufficient setup (min) + message tokens.
 
 ## One command (verify only — CI)
 
@@ -11,7 +11,7 @@ python3 -m pip install -r requirements-bench.txt
 make bench
 ```
 
-This **recomputes** tables in memory and compares them to the committed [docs/sym3-bench.md](sym3-bench.md) and [bench/results/sym3-bench.json](../bench/results/sym3-bench.json). It does **not** overwrite those files. Exit code is non-zero on any mismatch (git SHA fields in JSON are ignored).
+This **recomputes** tables in memory and compares them to the committed [docs/abios-bench.md](abios-bench.md) and [bench/results/abios-bench.json](../bench/results/abios-bench.json). It does **not** overwrite those files. Exit code is non-zero on any mismatch (git SHA fields in JSON are ignored).
 
 ## Refresh committed tables
 
@@ -20,10 +20,10 @@ After an intentional encoder, fixture, or dependency change:
 ```bash
 python3 -m pip install -r requirements-bench.txt
 make bench-write
-git diff docs/sym3-bench.md bench/results/sym3-bench.json
+git diff docs/abios-bench.md bench/results/abios-bench.json
 ```
 
-`make bench-write` runs `scripts/protean-sym3/bench.py --write` and overwrites the markdown and JSON golden files.
+`make bench-write` runs `scripts/protean-abios/bench.py --write` and overwrites the markdown and JSON golden files.
 
 ## Pinned dependencies
 
@@ -32,7 +32,7 @@ git diff docs/sym3-bench.md bench/results/sym3-bench.json
 ## Unit tests
 
 ```bash
-PYTHONPATH=scripts/protean-sym3 python3 -m unittest tests.test_sym3 -v
+PYTHONPATH=scripts/protean-abios python3 -m unittest tests.test_abios -v
 python3 tests/run-tests.py
 ```
 
@@ -40,7 +40,7 @@ Round-trip tests cover every encoder on all lifecycle fixtures using decode-suff
 
 ## Optional checks
 
-- LLM comprehension (requires `OPENAI_API_KEY`, not CI): `PYTHONPATH=scripts/protean-sym3 python3 scripts/protean-sym3/comprehension.py`
+- LLM comprehension (requires `OPENAI_API_KEY`, not CI): `PYTHONPATH=scripts/protean-abios python3 scripts/protean-abios/comprehension.py`
 
 ## GitHub Pages assets
 

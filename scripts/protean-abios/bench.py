@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SYM-3 benchmark with honest decoder setup and break-even analysis."""
+"""ABIOS benchmark with honest decoder setup and break-even analysis."""
 from __future__ import annotations
 
 import json
@@ -197,7 +197,7 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
         lines = encode_transcript(enc, messages)
         sizes = setup_sizes(messages, lines, lex)
         row = _row_from_lines(
-            f"SYM-3 {enc_name}",
+            f"ABIOS {enc_name}",
             lines,
             specs,
             primary,
@@ -213,7 +213,7 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
     english_rate = next(r["msg_rate"] for r in rows if r["label"] == "English (lossless)")
     break_even: dict[str, dict] = {}
     for row in sym3_rows:
-        enc = row["label"].replace("SYM-3 ", "")
+        enc = row["label"].replace("ABIOS ", "")
         break_even[enc] = {
             "vs_compact_json": _break_even(row["setup_min_n"], row["msg_rate"], compact_rate),
             "vs_english_lossless": _break_even(row["setup_min_n"], row["msg_rate"], english_rate),
@@ -230,7 +230,7 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
 
 def format_markdown(results: list[dict], primary: str) -> str:
     lines = [
-        "# SYM-3 benchmark",
+        "# ABIOS benchmark",
         "",
         PRIMARY_NOTE,
         "Secondary: setup (full, committed lexicon + full schema). "
@@ -278,12 +278,12 @@ def format_markdown(results: list[dict], primary: str) -> str:
     lines.append("## Verdict (primary accounting, o200k_base)")
     lines.append("")
     lines.append(
-        "Under **primary** totals (decode-sufficient setup min + messages), SYM-3 **refs** totals **491** vs compact JSON **682** "
+        "Under **primary** totals (decode-sufficient setup min + messages), ABIOS **refs** totals **491** vs compact JSON **682** "
         "and lossless English **686** on lifecycle_11 (wins). **Adaptive** is **512** (also below JSON). "
         "Under **full** setup (524 + messages), refs/adaptive **765** — **above** compact JSON at 11 messages. "
         "Prior-art rows: TOON **805**, key=value English **691** (not shorter than lossless **686** on 11 msgs), "
         "Agora envelope **1027** (messages-only baselines except Agora setup). "
-        "SYM-3 **refs** is closest to Agora-style content addressing ([arXiv:2410.11905](https://arxiv.org/abs/2410.11905)). "
+        "ABIOS **refs** is closest to Agora-style content addressing ([arXiv:2410.11905](https://arxiv.org/abs/2410.11905)). "
         "lifecycle_40/200 show larger wire savings; cached† totals use the 10% assumption only. "
         "Do not compare against English (lossy summary) for information equivalence."
     )
@@ -334,8 +334,8 @@ def _git_identifiers(root) -> tuple[str, str]:
 def verify_against_committed(results: list[dict], md: str, primary: str, root) -> None:
     from pathlib import Path
 
-    md_path = Path(root) / "docs" / "sym3-bench.md"
-    json_path = Path(root) / "bench" / "results" / "sym3-bench.json"
+    md_path = Path(root) / "docs" / "abios-bench.md"
+    json_path = Path(root) / "bench" / "results" / "abios-bench.json"
     if not md_path.is_file():
         raise SystemExit(f"Missing committed benchmark tables: {md_path}")
     if not json_path.is_file():
@@ -345,7 +345,7 @@ def verify_against_committed(results: list[dict], md: str, primary: str, root) -
     generated_md = _normalize_md(md)
     if committed_md != generated_md:
         raise SystemExit(
-            f"SYM-3 benchmark mismatch: generated markdown differs from {md_path}. "
+            f"ABIOS benchmark mismatch: generated markdown differs from {md_path}. "
             "Re-run with --write after intentional bench changes."
         )
 
@@ -360,7 +360,7 @@ def verify_against_committed(results: list[dict], md: str, primary: str, root) -
     )
     if expected != generated:
         raise SystemExit(
-            f"SYM-3 benchmark mismatch: generated JSON differs from {json_path} "
+            f"ABIOS benchmark mismatch: generated JSON differs from {json_path} "
             "(ignoring git sha fields). Re-run with --write after intentional bench changes."
         )
 
@@ -369,8 +369,8 @@ def write_committed(results: list[dict], md: str, primary: str, root) -> None:
     from pathlib import Path
 
     root = Path(root)
-    md_path = root / "docs" / "sym3-bench.md"
-    json_path = root / "bench" / "results" / "sym3-bench.json"
+    md_path = root / "docs" / "abios-bench.md"
+    json_path = root / "bench" / "results" / "abios-bench.json"
     git_sha, git_short = _git_identifiers(root)
     md_path.write_text(_normalize_md(md), encoding="utf-8")
     payload = {
@@ -391,12 +391,12 @@ def main() -> int:
     from pathlib import Path
 
     parser = argparse.ArgumentParser(
-        description="SYM-3 benchmark: default verifies committed tables; --write refreshes them."
+        description="ABIOS benchmark: default verifies committed tables; --write refreshes them."
     )
     parser.add_argument(
         "--write",
         action="store_true",
-        help="Overwrite docs/sym3-bench.md and bench/results/sym3-bench.json (not for CI).",
+        help="Overwrite docs/abios-bench.md and bench/results/abios-bench.json (not for CI).",
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
@@ -406,7 +406,7 @@ def main() -> int:
         print(md)
         return 0
     verify_against_committed(results, md, primary, root)
-    print("SYM-3 benchmark verification passed (docs/sym3-bench.md and bench/results/sym3-bench.json).")
+    print("ABIOS benchmark verification passed (docs/abios-bench.md and bench/results/abios-bench.json).")
     return 0
 
 

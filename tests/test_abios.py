@@ -3,19 +3,20 @@ import os
 import sys
 import unittest
 
-SYM3 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts", "protean-sym3")
-sys.path.insert(0, os.path.normpath(SYM3))
+ABIOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts", "protean-abios")
+sys.path.insert(0, os.path.normpath(ABIOS))
 
 from canonical import canonical_payload, messages_equal, normalize_message  # noqa: E402
-from decoder_context import parse_decoder_context, setup_sizes  # noqa: E402
+from decoder_context import FORMAT_HEADER, parse_decoder_context, render_decoder_context, setup_sizes  # noqa: E402
 from encoders import all_encoders, decode_transcript, encode_transcript  # noqa: E402
 from generate_lexicon import main as regen_lexicon  # noqa: E402
 from lexicon import LEXICON_PATH, load_lexicon  # noqa: E402
+from post import parse_post_handshake, render_post_handshake, verify_post_or_raise  # noqa: E402
 from schemas.synbios.fixtures import lifecycle_11, lifecycle_40, lifecycle_200  # noqa: E402
 from tokens import is_single_token, load_tokenizers  # noqa: E402
 
 
-class Sym3LexiconTests(unittest.TestCase):
+class AbiosLexiconTests(unittest.TestCase):
     def test_lexicon_file_exists(self):
         self.assertTrue(LEXICON_PATH.is_file())
         lex = load_lexicon()
@@ -32,7 +33,7 @@ class Sym3LexiconTests(unittest.TestCase):
             self.assertTrue(is_single_token(tag, [primary]), f"tag {name}={tag!r}")
 
 
-class Sym3RoundTripTests(unittest.TestCase):
+class AbiosRoundTripTests(unittest.TestCase):
     def _assert_round_trip(self, messages, encoder_name):
         enc = all_encoders()[encoder_name]
         lines = encode_transcript(enc, messages)
@@ -60,7 +61,7 @@ class Sym3RoundTripTests(unittest.TestCase):
                 self._assert_round_trip(messages, name)
 
 
-class Sym3MinimalContextTests(unittest.TestCase):
+class AbiosMinimalContextTests(unittest.TestCase):
     LIFECYCLES = (
         ("lifecycle_11", lifecycle_11),
         ("lifecycle_40", lifecycle_40),
@@ -84,7 +85,7 @@ class Sym3MinimalContextTests(unittest.TestCase):
                         self.assertTrue(messages_equal(exp, got))
 
 
-class Sym3BenchSmokeTests(unittest.TestCase):
+class AbiosBenchSmokeTests(unittest.TestCase):
     def test_minimal_setup_larger_than_header_only(self):
         specs = load_tokenizers()
         if not specs:
@@ -100,7 +101,7 @@ class Sym3BenchSmokeTests(unittest.TestCase):
         self.assertEqual(len(lifecycle_200()), 200)
 
 
-class Sym3RegenLexiconTests(unittest.TestCase):
+class AbiosRegenLexiconTests(unittest.TestCase):
     def test_regenerate_lexicon(self):
         specs = load_tokenizers()
         if not specs:
@@ -110,6 +111,43 @@ class Sym3RegenLexiconTests(unittest.TestCase):
         after = LEXICON_PATH.read_text(encoding="utf-8")
         json.loads(after)
         self.assertEqual(before, after)
+
+
+class AbiosPostTests(unittest.TestCase):
+    def test_post_round_trip(self):
+        messages = lifecycle_11()
+        enc = all_encoders()["refs"]
+        lines = encode_transcript(enc, messages)
+        sizes = setup_sizes(messages, lines)
+        minimal = sizes["minimal_text"]
+        blob = render_post_handshake(minimal)
+        ack, ctx = parse_post_handshake(blob)
+        self.assertTrue(ack.startswith("POST ok abios/3 "))
+        verify_post_or_raise(blob, minimal)
+        lex, _schema = parse_decoder_context(ctx)
+        back = decode_transcript(all_encoders(lex)["refs"], lines)
+        self.assertEqual(len(back), len(messages))
+
+    def test_legacy_sym3_header_still_parses(self):
+        messages = lifecycle_11()
+        enc = all_encoders()["refs"]
+        lines = encode_transcript(enc, messages)
+        sizes = setup_sizes(messages, lines)
+        legacy = sizes["minimal_text"].replace("abios/3", "sym3/1", 1)
+        lex, schema = parse_decoder_context(legacy)
+        self.assertIn("project.create", schema)
+        back = decode_transcript(all_encoders(lex)["refs"], lines)
+        self.assertEqual(len(back), len(messages))
+
+    def test_post_mismatch_raises(self):
+        messages = lifecycle_11()
+        enc = all_encoders()["refs"]
+        lines = encode_transcript(enc, messages)
+        sizes = setup_sizes(messages, lines)
+        blob = render_post_handshake(sizes["minimal_text"])
+        bad = blob.replace("abios/3", "abios/9", 1)
+        with self.assertRaises(ValueError):
+            parse_post_handshake(bad)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Prior-art and alternative wire baselines for SYM-3 bench."""
+"""Prior-art and alternative wire baselines for ABIOS bench."""
 from __future__ import annotations
 
 import hashlib
@@ -6,7 +6,7 @@ import json
 
 from canonical import canonical_payload
 
-# Agora (multi-agent messaging); arXiv:2410.11905 — cited as prior art for SYM-3 refs.
+# Agora (multi-agent messaging); arXiv:2410.11905 — cited as prior art for ABIOS refs.
 AGORA_ARXIV = "2410.11905"
 AGORA_SPEC = (
     "Agora-style deterministic envelope: one line per message, "
