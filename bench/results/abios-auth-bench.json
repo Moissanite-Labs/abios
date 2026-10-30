@@ -1,0 +1,362 @@
+{
+  "bench_kid": "bench",
+  "bench_sid": "11111111111111111111",
+  "encoder": "refs",
+  "primary_tokenizer": "o200k_base",
+  "results": [
+    {
+      "count": 11,
+      "encoder": "refs",
+      "json_messages_plain": {
+        "cl100k_base": 680,
+        "o200k_base": 682
+      },
+      "messages_plain": {
+        "cl100k_base": 243,
+        "o200k_base": 241
+      },
+      "post_plain": {
+        "cl100k_base": 256,
+        "o200k_base": 266
+      },
+      "total_plain": 507,
+      "transcript": "lifecycle_11",
+      "variants": [
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 779,
+            "o200k_base": 781
+          },
+          "messages_sealed": {
+            "cl100k_base": 343,
+            "o200k_base": 341
+          },
+          "overhead": 131,
+          "overhead_pct": 25.8,
+          "post_sealed": {
+            "cl100k_base": 287,
+            "o200k_base": 297
+          },
+          "seal_every": 1,
+          "seals": 11,
+          "tag_bits": 64,
+          "total_sealed": 638
+        },
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 698,
+            "o200k_base": 700
+          },
+          "messages_sealed": {
+            "cl100k_base": 262,
+            "o200k_base": 260
+          },
+          "overhead": 50,
+          "overhead_pct": 9.9,
+          "post_sealed": {
+            "cl100k_base": 287,
+            "o200k_base": 297
+          },
+          "seal_every": 10,
+          "seals": 2,
+          "tag_bits": 64,
+          "total_sealed": 557
+        },
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 845,
+            "o200k_base": 847
+          },
+          "messages_sealed": {
+            "cl100k_base": 409,
+            "o200k_base": 407
+          },
+          "overhead": 203,
+          "overhead_pct": 40.0,
+          "post_sealed": {
+            "cl100k_base": 293,
+            "o200k_base": 303
+          },
+          "seal_every": 1,
+          "seals": 11,
+          "tag_bits": 128,
+          "total_sealed": 710
+        },
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 710,
+            "o200k_base": 712
+          },
+          "messages_sealed": {
+            "cl100k_base": 274,
+            "o200k_base": 272
+          },
+          "overhead": 68,
+          "overhead_pct": 13.4,
+          "post_sealed": {
+            "cl100k_base": 293,
+            "o200k_base": 303
+          },
+          "seal_every": 10,
+          "seals": 2,
+          "tag_bits": 128,
+          "total_sealed": 575
+        }
+      ]
+    },
+    {
+      "count": 40,
+      "encoder": "refs",
+      "json_messages_plain": {
+        "cl100k_base": 5404,
+        "o200k_base": 5343
+      },
+      "messages_plain": {
+        "cl100k_base": 1478,
+        "o200k_base": 1463
+      },
+      "post_plain": {
+        "cl100k_base": 261,
+        "o200k_base": 271
+      },
+      "total_plain": 1734,
+      "transcript": "lifecycle_40",
+      "variants": [
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 5764,
+            "o200k_base": 5703
+          },
+          "messages_sealed": {
+            "cl100k_base": 1839,
+            "o200k_base": 1824
+          },
+          "overhead": 392,
+          "overhead_pct": 22.6,
+          "post_sealed": {
+            "cl100k_base": 292,
+            "o200k_base": 302
+          },
+          "seal_every": 1,
+          "seals": 40,
+          "tag_bits": 64,
+          "total_sealed": 2126
+        },
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 5440,
+            "o200k_base": 5379
+          },
+          "messages_sealed": {
+            "cl100k_base": 1515,
+            "o200k_base": 1500
+          },
+          "overhead": 68,
+          "overhead_pct": 3.9,
+          "post_sealed": {
+            "cl100k_base": 292,
+            "o200k_base": 302
+          },
+          "seal_every": 10,
+          "seals": 4,
+          "tag_bits": 64,
+          "total_sealed": 1802
+        },
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 6004,
+            "o200k_base": 5943
+          },
+          "messages_sealed": {
+            "cl100k_base": 2079,
+            "o200k_base": 2064
+          },
+          "overhead": 638,
+          "overhead_pct": 36.8,
+          "post_sealed": {
+            "cl100k_base": 298,
+            "o200k_base": 308
+          },
+          "seal_every": 1,
+          "seals": 40,
+          "tag_bits": 128,
+          "total_sealed": 2372
+        },
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 5464,
+            "o200k_base": 5403
+          },
+          "messages_sealed": {
+            "cl100k_base": 1539,
+            "o200k_base": 1524
+          },
+          "overhead": 98,
+          "overhead_pct": 5.7,
+          "post_sealed": {
+            "cl100k_base": 298,
+            "o200k_base": 308
+          },
+          "seal_every": 10,
+          "seals": 4,
+          "tag_bits": 128,
+          "total_sealed": 1832
+        }
+      ]
+    },
+    {
+      "count": 200,
+      "encoder": "refs",
+      "json_messages_plain": {
+        "cl100k_base": 27560,
+        "o200k_base": 27363
+      },
+      "messages_plain": {
+        "cl100k_base": 7449,
+        "o200k_base": 7374
+      },
+      "post_plain": {
+        "cl100k_base": 261,
+        "o200k_base": 271
+      },
+      "total_plain": 7645,
+      "transcript": "lifecycle_200",
+      "variants": [
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 29360,
+            "o200k_base": 29163
+          },
+          "messages_sealed": {
+            "cl100k_base": 9250,
+            "o200k_base": 9175
+          },
+          "overhead": 1832,
+          "overhead_pct": 24.0,
+          "post_sealed": {
+            "cl100k_base": 292,
+            "o200k_base": 302
+          },
+          "seal_every": 1,
+          "seals": 200,
+          "tag_bits": 64,
+          "total_sealed": 9477
+        },
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 27740,
+            "o200k_base": 27543
+          },
+          "messages_sealed": {
+            "cl100k_base": 7630,
+            "o200k_base": 7555
+          },
+          "overhead": 212,
+          "overhead_pct": 2.8,
+          "post_sealed": {
+            "cl100k_base": 292,
+            "o200k_base": 302
+          },
+          "seal_every": 10,
+          "seals": 20,
+          "tag_bits": 64,
+          "total_sealed": 7857
+        },
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 30560,
+            "o200k_base": 30363
+          },
+          "messages_sealed": {
+            "cl100k_base": 10450,
+            "o200k_base": 10375
+          },
+          "overhead": 3038,
+          "overhead_pct": 39.7,
+          "post_sealed": {
+            "cl100k_base": 298,
+            "o200k_base": 308
+          },
+          "seal_every": 1,
+          "seals": 200,
+          "tag_bits": 128,
+          "total_sealed": 10683
+        },
+        {
+          "json_messages_sealed": {
+            "cl100k_base": 27860,
+            "o200k_base": 27663
+          },
+          "messages_sealed": {
+            "cl100k_base": 7750,
+            "o200k_base": 7675
+          },
+          "overhead": 338,
+          "overhead_pct": 4.4,
+          "post_sealed": {
+            "cl100k_base": 298,
+            "o200k_base": 308
+          },
+          "seal_every": 10,
+          "seals": 20,
+          "tag_bits": 128,
+          "total_sealed": 7983
+        }
+      ]
+    }
+  ],
+  "seal_line_tokens": [
+    {
+      "encoding": "decimal",
+      "max": 8,
+      "mean": 8.0,
+      "min": 8,
+      "samples": 1024,
+      "tag_bits": 64
+    },
+    {
+      "encoding": "decimal",
+      "max": 11,
+      "mean": 11.0,
+      "min": 11,
+      "samples": 1024,
+      "tag_bits": 96
+    },
+    {
+      "encoding": "decimal",
+      "max": 14,
+      "mean": 14.0,
+      "min": 14,
+      "samples": 1024,
+      "tag_bits": 128
+    },
+    {
+      "encoding": "base64url",
+      "max": 12,
+      "mean": 8.67,
+      "min": 6,
+      "samples": 1024,
+      "tag_bits": 64
+    },
+    {
+      "encoding": "base64url",
+      "max": 15,
+      "mean": 12.04,
+      "min": 9,
+      "samples": 1024,
+      "tag_bits": 96
+    },
+    {
+      "encoding": "base64url",
+      "max": 20,
+      "mean": 16.08,
+      "min": 12,
+      "samples": 1024,
+      "tag_bits": 128
+    }
+  ],
+  "tokenizers": [
+    "o200k_base",
+    "cl100k_base"
+  ]
+}

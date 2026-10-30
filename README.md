@@ -1,14 +1,12 @@
-SYM-2P: a compact versioned agentic message language - one canonical JSON packet per line over durable text artifacts - with validator, enums, and fixtures.
+# abios
 
-# protean-sym2p
+**ABIOS** (Agent BIOS) is token-aware shared-state command wire for agents: profile **ABIOS/3** (`abios/3`), **POST** session handshake, reproducible benchmarks, and a reference implementation under `scripts/protean-abios/`.
 
-The protocol ingredient of the Protean Kit distribution. It carries the
-normative specification, the stdlib validator, the packet templates, the worked
-example, and the fixture suite.
+This repository also ships **ABIOS/1 (formerly SYM-2P)**: canonical JSON v1 packets, v2 dense wire experiments, stdlib validator, templates, and fixtures under `scripts/protean-sym2p/` (Protean Kit ingredient paths unchanged).
 
 ## Do you need this?
 
-ROLE: The protocol ingredient of the Protean Kit distribution. It carries the normative SYM-2P specification, the stdlib validator, packet templates, a worked example, and the fixture suite.
+ROLE: Agent command wire (ABIOS/3) plus legacy inter-agent packets (ABIOS/1 / SYM-2P v1). Use ABIOS/3 when multi-turn forge or command streams are billed by tokenizer output and peers can share explicit decoder setup. Use v1 packets when you need `SPEC.md` JSON lines and `sym-validate.py`.
 
 USE WHEN:
 - Two agents must pass messages as one canonical JSON packet per line inside durable text artifacts, per `SPEC.md` section 1.
@@ -110,3 +108,53 @@ performs zero network calls and fails closed when the cache entry is absent.
 ## License
 
 MIT. The committed `LICENSE` file is authoritative.
+
+## ABIOS (Agent BIOS — token-aware command wire)
+
+**ABIOS/3** (`abios/3`, `SPEC-ABIOS-3.md`) is the canonical home for tokenizer-aware, shared-state command encoding alongside SYM-2P/1.0 packets. Reference code: `scripts/protean-abios/` (generic protocol); Synbios forge example schema: `scripts/protean-abios/schemas/synbios/`. Legacy wire profile id `sym3/1` remains a decode alias for `abios/3`.
+
+### Why ABIOS?
+
+ABIOS stands for Agent BIOS. A BIOS is the layer that lets an operating system talk to hardware without knowing the details of each device. ABIOS plays that role for agents: a small, shared layer that lets one agent talk to another without either paying to restate everything they already share.
+
+The name nods to IBM's Advanced BIOS ([IBM PS/2](https://en.wikipedia.org/wiki/IBM_PS/2), [Advanced BIOS](https://en.wikipedia.org/wiki/Advanced_BIOS)). In April 1987, IBM shipped the Personal System/2 with its ROM BIOS split in two: CBIOS, which kept real-mode DOS working, and ABIOS, a new interface for multitasking, protected-mode operating systems like OS/2. ABIOS itself saw little use. Operating systems mostly brought their own drivers, and the Micro Channel machines it shipped on lost to the open ISA/EISA ecosystem.
+
+The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mode remains a common lowest-common-denominator display mode. Its 6-pin mini-DIN keyboard and mouse connectors became the "PS/2 ports" found on PCs for decades. And it made the 1.44 MB 3.5-inch floppy the standard, the disk still drawn as the "save" icon. The name is for a forward-looking interface designed for multitasking systems before they were common. **It does not claim ABIOS succeeded.**
+
+**POST.** Every PC runs POST (power-on self-test) at boot, before loading an operating system: it checks the hardware and sets up what the system needs. In ABIOS, POST is the one-time session handshake. Before any references or deltas, the two agents exchange the minimal context the receiver needs to decode messages. POST's tokens are included in every benchmark total.
+
+**Synbios.** ABIOS pairs with [Synbios](https://github.com/Moissanite-Labs/synbios), Moissanite Labs' agent-first collaboration hub, which integrates ABIOS natively.
+
+**Lineage.** ABIOS/3 was previously SYM-2P. Version 3 is the token-aware, shared-state redesign; the dense symbolic codes of SYM-2P v2 tokenized worse than JSON (1,415 vs 682 o200k tokens) and were dropped. Historical SYM-2P/1.0 and the v2 draft packet layers keep their original names in this repository.
+
+| Path | Contents |
+|---|---|
+| `SPEC-ABIOS-3.md` | normative ABIOS/3 profile (POST handshake, decoder setup) |
+| `scripts/protean-abios/` | encoders, lexicon, POST, decoder context, bench harness |
+| `docs/abios-bench.md` | committed benchmark tables |
+| `bench/results/abios-bench.json` | golden JSON (`make bench` verifies) |
+| `paper/abios.md` | preprint source |
+| `docs/REPRODUCE.md` | reproduction instructions |
+
+### Headline results (primary: setup min + messages, o200k_base)
+
+| Transcript | Compact JSON | Lossless English | ABIOS refs | ABIOS adaptive |
+| --- | ---: | ---: | ---: | ---: |
+| 11 messages | 682 | 686 | **491** | 512 |
+| 40 messages | 5343 | 5242 | **1717** | 1738 |
+| 200 messages | 27363 | 26754 | **7628** | 7649 |
+
+Also on 11 messages: TOON **805**, Agora envelope **1027** (see bench doc). **DOI: pending** (Zenodo deposit planned).
+
+**Caveats:** Savings scale with session length and repeated content; full lexicon setup exceeds JSON on very short transcripts. `SPEC-V2-DRAFT.md` is superseded for token efficiency (v2 dense pilot total **1415** vs JSON **682** on 11 msgs; raw v2 **3386**). The bench row **English (lossless, key=value one-line)** is honestly labeled—it is not Chain-of-Draft terse prose and costs **691** vs **686** lossless English on 11 msgs.
+
+**Sealed sessions (sender authentication).** Plain POST and ABIOS lines prove nothing about who sent them. A sealed session (`SPEC-ABIOS-3.md` section 8.2, `scripts/protean-abios/auth.py`) binds a pre-shared HMAC-SHA-256 key and a fresh session id into POST, then authenticates lines with short seal lines (`~<tag>`) over a per-direction MAC chain, so replayed, reordered, dropped, or injected lines fail closed. It does not encrypt, and a shared key authenticates the key holders, not one agent. Measured cost (o200k, refs encoder, 64-bit tags, `docs/abios-auth-bench.md`): a seal line costs a fixed 9 tokens in a transcript, counting its newline; sealing every line adds 23-26%, sealing every 10 lines adds 2.8% on 200 messages (9.9% on 11). Sealed per line, the 200-message transcript is 9477 tokens against 27363 for unauthenticated compact JSON.
+
+```bash
+python3 -m pip install -r requirements-bench.txt
+make bench          # verify committed tables (CI)
+make bench-write    # refresh golden files after intentional changes
+PYTHONPATH=scripts/protean-abios python3 -m unittest tests.test_abios -v
+```
+
+Site: https://moissanite-labs.github.io/abios/ (sources in `site/`; published from `gh-pages` branch).

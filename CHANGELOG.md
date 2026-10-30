@@ -5,6 +5,29 @@ entry per release: what changed, why, and how it was verified.
 
 ## Unreleased
 
+- **What:** ABIOS/3 sealed sessions (`SPEC-ABIOS-3.md` section 8.2): an optional
+  sealed POST binds a pre-shared HMAC-SHA-256 key (`kid`) and a fresh session id
+  (`sid`) to the decode context, and seal lines (`~<tag>`, close `~!<tag>`)
+  authenticate message lines over a per-direction MAC chain.
+  `scripts/protean-abios/auth.py` (stdlib only), `tests/test_abios_auth.py`, and
+  `scripts/protean-abios/auth_bench.py` with goldens
+  `bench/results/abios-auth-bench.json` and `docs/abios-auth-bench.md`.
+  `post.parse_post_handshake` now names a sealed POST instead of reporting a
+  digest mismatch.
+- **Why:** ABIOS/3 had no sender authentication (#24). The chain makes the
+  sequence number implicit, so in-session replay, reordering, loss, and injection
+  fail closed at no wire cost. A `(kid, sid)` registry, which also records the
+  POSTs a peer sends, rejects replay of a whole session and a peer's own POST
+  reflected back to it.
+- **Verified:** `python3 -m unittest discover -s tests` (a known-answer vector
+  also checked against the spec formulas, round trips for all six encoders, and
+  every receiver check), `make bench` in CI.
+- **Not provided:** confidentiality, non-repudiation, key distribution.
+
+- **What:** ABIOS/1 canonical integration — `SPEC-ABIOS-3.md`, `scripts/protean-abios/` reference implementation, `tests/test_abios.py`, reproducible bench (`make bench` / golden `bench/results/abios-bench.json`), paper and citation metadata, GitHub Pages sources under `site/`.
+- **Why:** Make protean-sym2p the home for tokenizer-aware shared-state command encoding; record SYM-2P v2 dense supersession and measured negative results.
+- **Verified:** `python3 tests/run-tests.py`, `python3 -m unittest discover -s tests -v`, `make bench`.
+
 - **What:** `scripts/protean-sym2p/sym-publish.py`, the write-once object
   publisher (stdlib only): it assigns `v`, `sup`, `hash`, `by`, and `at`,
   resolves the next version from `<root>/objects/` (never from the input), writes
