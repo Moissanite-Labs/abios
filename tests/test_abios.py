@@ -24,9 +24,10 @@ class AbiosLexiconTests(unittest.TestCase):
         self.assertIn("project.create", lex.raw["cmd"])
 
     def test_format_tags_single_token(self):
-        specs = load_tokenizers()
-        if not specs:
-            self.skipTest("tiktoken not installed")
+        try:
+            specs = load_tokenizers()
+        except RuntimeError:
+            self.skipTest("lexicon tokenizers unavailable")
         primary = specs[0]
         lex = load_lexicon()
         for name, tag in lex.format_tags.items():
@@ -171,9 +172,10 @@ class AbiosMinimalContextTests(unittest.TestCase):
 
 class AbiosBenchSmokeTests(unittest.TestCase):
     def test_minimal_setup_larger_than_header_only(self):
-        specs = load_tokenizers()
-        if not specs:
-            self.skipTest("tiktoken not installed")
+        try:
+            specs = load_tokenizers()
+        except RuntimeError:
+            self.skipTest("lexicon tokenizers unavailable")
         messages = lifecycle_11()
         enc = all_encoders()["combined"]
         lines = encode_transcript(enc, messages)
@@ -187,14 +189,20 @@ class AbiosBenchSmokeTests(unittest.TestCase):
 
 class AbiosRegenLexiconTests(unittest.TestCase):
     def test_regenerate_lexicon(self):
-        specs = load_tokenizers()
-        if not specs:
-            self.skipTest("tiktoken not installed")
+        import tempfile
+        from pathlib import Path
+
+        try:
+            load_tokenizers()
+        except RuntimeError:
+            self.skipTest("lexicon tokenizers unavailable")
         before = LEXICON_PATH.read_text(encoding="utf-8")
-        self.assertEqual(regen_lexicon(), 0)
-        after = LEXICON_PATH.read_text(encoding="utf-8")
-        json.loads(after)
-        self.assertEqual(before, after)
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "lexicon.json"
+            self.assertEqual(regen_lexicon(out), 0)
+            generated = out.read_text(encoding="utf-8")
+        json.loads(generated)
+        self.assertEqual(before, generated)
 
 
 class AbiosPostTests(unittest.TestCase):

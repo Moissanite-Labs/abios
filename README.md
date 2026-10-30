@@ -136,17 +136,17 @@ The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mo
 | `paper/abios.md` | preprint source |
 | `docs/REPRODUCE.md` | reproduction instructions |
 
-### Headline results (primary: setup min + messages, o200k_base)
+### Headline results (primary: POST ack + minimal setup + messages, o200k_base)
 
 | Transcript | Compact JSON | Lossless English | ABIOS refs | ABIOS adaptive |
 | --- | ---: | ---: | ---: | ---: |
-| 11 messages | 682 | 686 | **491** | 512 |
-| 40 messages | 5343 | 5242 | **1717** | 1738 |
-| 200 messages | 27363 | 26754 | **7628** | 7649 |
+| 11 messages | 738 | 686 | **766** | **766** |
+| 40 messages | 5570 | 5242 | **1990** | **1990** |
+| 200 messages | 28498 | 26754 | **7901** | **7901** |
 
-Also on 11 messages: TOON **805**, Agora envelope **1027** (see bench doc). **DOI: pending** (Zenodo deposit planned).
+Also on 11 messages: TOON approx fallback **809**, Agora envelope **1027** (see `docs/abios-bench.md`). Compact JSON rows include an `action` field like ABIOS command names. **DOI: pending** (Zenodo deposit planned).
 
-**Caveats:** Savings scale with session length and repeated content; full lexicon setup exceeds JSON on very short transcripts. `SPEC-V2-DRAFT.md` is superseded for token efficiency (v2 dense pilot total **1415** vs JSON **682** on 11 msgs; raw v2 **3386**). The bench row **English (lossless, key=value one-line)** is honestly labeled—it is not Chain-of-Draft terse prose and costs **691** vs **686** lossless English on 11 msgs.
+**Caveats:** On 11 messages, ABIOS totals exceed compact JSON under this accounting; savings appear from longer transcripts (40/200 repeat many identical messages). Full lexicon setup exceeds JSON on very short sessions. `SPEC-V2-DRAFT.md` is superseded for token efficiency (v2 dense pilot total **1415** vs JSON **738** on 11 msgs with current baselines; raw v2 **3386**). SYM-2P v2 bench rows are external PR #6 constants.
 
 ```bash
 python3 -m pip install -r requirements-bench.txt

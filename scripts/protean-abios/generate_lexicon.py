@@ -162,7 +162,7 @@ def _format_tag_candidates() -> dict[str, list[str]]:
     return tags
 
 
-def main() -> int:
+def main(out_path: Path | None = None) -> int:
     specs = load_tokenizers()
     if not specs:
         print("No tokenizers available; install tiktoken", file=sys.stderr)
@@ -208,10 +208,16 @@ def main() -> int:
         "concepts": chosen,
         "format_tags": format_tags,
     }
-    OUT.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"Wrote {OUT} ({len(specs)} tokenizers)")
+    target = out_path or OUT
+    target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"Wrote {target} ({len(specs)} tokenizers)")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Regenerate ABIOS lexicon.json")
+    parser.add_argument("--out", type=Path, default=OUT, help="Output path (default: committed lexicon.json)")
+    args = parser.parse_args()
+    raise SystemExit(main(args.out))

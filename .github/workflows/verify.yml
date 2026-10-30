@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install bench dependencies (tokenizer tests)
+        run: python3 -m pip install -q -r requirements-bench.txt
       - name: Dry-run the standalone installer
         run: bash install.sh --target "$RUNNER_TEMP/installed" --dry-run
       - name: Run declared gates
@@ -29,6 +31,4 @@ jobs:
         run: python3 -m unittest discover -s tests -v
       - name: Verify benchmark (Python 3.11+ bench deps)
         if: matrix.python-version != '3.9'
-        run: |
-          python3 -m pip install -q -r requirements-bench.txt
-          PYTHONPATH=scripts/protean-abios python3 bench/run-abios-bench.py
+        run: PYTHONPATH=scripts/protean-abios python3 bench/run-abios-bench.py

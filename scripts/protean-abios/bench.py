@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import sys
 
 from schemas.synbios.sym2p.codec import EncodeContext, encode_command
@@ -76,11 +75,15 @@ def _primary(specs):
     return specs[0].name if specs else "n/a"
 
 
-def _break_even(setup_min: float, msg_rate: float, baseline_rate: float) -> int | None:
-    if msg_rate >= baseline_rate:
-        return None
-    need = setup_min / (baseline_rate - msg_rate)
-    return int(math.ceil(need))
+def _cumulative_crossover(setup_min: float, enc_per_msg: list[int], baseline_per_msg: list[int]) -> int | None:
+    enc_total = setup_min
+    base_total = 0.0
+    for i, (e, b) in enumerate(zip(enc_per_msg, baseline_per_msg), start=1):
+        enc_total += e
+        base_total += b
+        if enc_total < base_total:
+            return i
+    return None
 
 
 def _row_from_lines(
@@ -118,9 +121,11 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
     n = len(messages)
 
     compact_json_lines = [
-        json.dumps(p, sort_keys=True, separators=(",", ":")) for _, p in messages
+        json.dumps({"action": a, **p}, sort_keys=True, separators=(",", ":")) for a, p in messages
     ]
-    pretty_json_lines = [json.dumps(p, sort_keys=True, indent=2) for _, p in messages]
+    pretty_json_lines = [
+        json.dumps({"action": a, **p}, sort_keys=True, indent=2) for a, p in messages
+    ]
     english_lossy_lines = [render_english_lossy(a, p) for a, p in messages]
     english_lossless_lines = [render_english_lossless(a, p) for a, p in messages]
     terse_lines = [encode_terse_english_line(a, p) for a, p in messages]
@@ -136,7 +141,7 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
     rows.append(_row_from_lines("English (lossy summary)", english_lossy_lines, specs, primary))
     rows.append(_row_from_lines("English (lossless)", english_lossless_lines, specs, primary))
     rows.append(_row_from_lines(TERSE_ENGLISH_LABEL, terse_lines, specs, primary))
-    rows.append(_row_from_lines("TOON (toon-format)", toon_lines, specs, primary))
+    rows.append(_row_from_lines("TOON (approx in-repo fallback)", toon_lines, specs, primary))
     rows.append(
         _row_from_lines(
             f"Agora envelope (arXiv:{AGORA_ARXIV})",
@@ -162,7 +167,7 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
                 "total_cached": {
                     primary: cached_setup_cost(V2_HANDSHAKE_TOKENS_11) + V2_SESSION_STEADY_TOKENS_11
                 },
-                "note": "PR #6 dense pilot numbers (supersedes v2 draft for wire efficiency)",
+                "note": "External constants from synbios PR #6 dense pilot (not live-measured in this repo)",
             }
         )
         rows.append(
@@ -196,12 +201,13 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
     for enc_name, enc in encoders.items():
         lines = encode_transcript(enc, messages)
         sizes = setup_sizes(messages, lines, lex)
+        post_setup = sizes["post_minimal"]
         row = _row_from_lines(
             f"ABIOS {enc_name}",
             lines,
             specs,
             primary,
-            setup_min=sizes["minimal"],
+            setup_min=post_setup,
             setup_full=sizes["full"],
         )
         if enc_name == "refs":
@@ -209,14 +215,18 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
         rows.append(row)
         sym3_rows.append(row)
 
-    compact_rate = rows[0]["msg_rate"]
-    english_rate = next(r["msg_rate"] for r in rows if r["label"] == "English (lossless)")
+    compact_per_msg = [token_count(line, specs[0]) for line in compact_json_lines]
+    english_lossless_lines_local = english_lossless_lines
+    english_per_msg = [token_count(line, specs[0]) for line in english_lossless_lines_local]
     break_even: dict[str, dict] = {}
     for row in sym3_rows:
         enc = row["label"].replace("ABIOS ", "")
+        enc_lines = encode_transcript(encoders[enc], messages)
+        enc_per_msg = [token_count(line, specs[0]) for line in enc_lines]
+        setup_used = row["setup_min_n"]
         break_even[enc] = {
-            "vs_compact_json": _break_even(row["setup_min_n"], row["msg_rate"], compact_rate),
-            "vs_english_lossless": _break_even(row["setup_min_n"], row["msg_rate"], english_rate),
+            "vs_compact_json": _cumulative_crossover(setup_used, enc_per_msg, compact_per_msg),
+            "vs_english_lossless": _cumulative_crossover(setup_used, enc_per_msg, english_per_msg),
         }
 
     return {
@@ -237,7 +247,8 @@ def format_markdown(results: list[dict], primary: str) -> str:
         f"Tertiary: setup (cached†) = 10% × setup (min). {CACHE_ASSUMPTION}",
         "",
         "Minimal setup is **decode-sufficient**: all used cmd/status/kind wire mappings and format tags "
-        "for the transcript (plus all format tags when `adaptive` appears).",
+        "for the transcript (plus all format tags when `adaptive` appears). "
+        "Primary setup (min) counts POST ack line plus minimal decoder context (section 8.1).",
         "",
     ]
     for block in results:
@@ -263,9 +274,11 @@ def format_markdown(results: list[dict], primary: str) -> str:
                 f"| {label} | {sm} | {msgs} | {tp} | {sf} | {tf} | {sc:.1f} | {tc:.1f} |"
             )
         lines.append("")
-        lines.append("### Break-even (primary accounting: setup min + messages, o200k)")
+        lines.append("### Cumulative crossover (primary accounting: POST + setup min + messages)")
         lines.append("")
-        lines.append("| Encoder | msgs to beat compact JSON | msgs to beat English (lossless) |")
+        lines.append(
+            "| Encoder | msgs before total beats compact JSON | msgs before total beats English (lossless) |"
+        )
         lines.append("| --- | ---: | ---: |")
         for enc, be in sorted(block["break_even"].items()):
             c = be["vs_compact_json"]
@@ -277,15 +290,24 @@ def format_markdown(results: list[dict], primary: str) -> str:
 
     lines.append("## Verdict (primary accounting, o200k_base)")
     lines.append("")
+    l11 = next(b for b in results if b["transcript"] == "lifecycle_11")
+    refs = next(r for r in l11["rows"] if r["label"] == "ABIOS refs")
+    adaptive = next(r for r in l11["rows"] if r["label"] == "ABIOS adaptive")
+    compact = next(r for r in l11["rows"] if r["label"] == "compact JSON")
+    english = next(r for r in l11["rows"] if r["label"] == "English (lossless)")
+    toon = next(r for r in l11["rows"] if "TOON" in r["label"])
+    primary = _primary(load_tokenizers())
+    refs_total = refs["total_primary"][primary]
+    adaptive_total = adaptive["total_primary"][primary]
+    compact_total = compact["total_primary"][primary]
+    english_total = english["total_primary"][primary]
+    toon_total = toon["total_primary"][primary]
     lines.append(
-        "Under **primary** totals (decode-sufficient setup min + messages), ABIOS **refs** totals **491** vs compact JSON **682** "
-        "and lossless English **686** on lifecycle_11 (wins). **Adaptive** is **512** (also below JSON). "
-        "Under **full** setup (524 + messages), refs/adaptive **765** — **above** compact JSON at 11 messages. "
-        "Prior-art rows: TOON **805**, key=value English **691** (not shorter than lossless **686** on 11 msgs), "
-        "Agora envelope **1027** (messages-only baselines except Agora setup). "
-        "ABIOS **refs** is closest to Agora-style content addressing ([arXiv:2410.11905](https://arxiv.org/abs/2410.11905)). "
-        "lifecycle_40/200 show larger wire savings; cached† totals use the 10% assumption only. "
-        "Do not compare against English (lossy summary) for information equivalence."
+        f"On lifecycle_11, ABIOS **refs** total **{refs_total}** vs compact JSON **{compact_total}** "
+        f"and lossless English **{english_total}** (primary = POST + minimal setup + messages). "
+        f"**Adaptive** total **{adaptive_total}**. TOON fallback row **{toon_total}** (approximation). "
+        "lifecycle_40/200 repeat many messages verbatim, which inflates refs savings; see transcript notes. "
+        "SYM-2P v2 rows are external PR #6 constants, not live bench output."
     )
     lines.append("")
     return "\n".join(lines) + "\n"

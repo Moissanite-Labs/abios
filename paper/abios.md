@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Agent-to-agent traffic is billed by tokenizer output, not by human readability. ABIOS is a family of wire encodings for structured forge lifecycle commands that minimize **o200k_base** token cost under honest decoder setup accounting. Encoders share a tokenizer-tuned lexicon, session-scoped identifiers, optional content-addressed blobs, positional field schemas, default-value omission, and an adaptive mode that picks the cheapest variant per message. On an 11-message synthetic lifecycle, ABIOS **refs** totals **491** tokens (setup min + messages) versus **682** for compact JSON and **686** for lossless English; savings grow on 40- and 200-message transcripts. Setup tokens are counted in a **decode-sufficient** minimal form (mappings used in the transcript only). Negative results from SYM-2P v1 packets, SYM-2P v2 dense pilots, and multilingual lexicon candidates are reported. Model comprehension on the wire format remains under evaluation.
+Agent-to-agent traffic is billed by tokenizer output, not by human readability. ABIOS is a family of wire encodings for structured forge lifecycle commands that minimize **o200k_base** token cost under honest decoder setup accounting. Encoders share a tokenizer-tuned lexicon, session-scoped identifiers, optional content-addressed blobs, positional field schemas, default-value omission, and an adaptive mode that picks the cheapest variant per message. Primary totals count **POST ack + decode-sufficient minimal setup + messages**. On 11 synthetic lifecycle messages, ABIOS **refs** totals **766** versus **738** compact JSON (with `action` field) and **686** lossless English; on 40- and 200-message transcripts refs totals **1990** and **7901** versus JSON **5570** and **28498**. Setup includes explicit session id bindings and schema defaults (S-12). Negative results from SYM-2P v1 packets, SYM-2P v2 dense pilots, and multilingual lexicon candidates are reported. Model comprehension on the wire format remains under evaluation.
 
 ## Motivation
 
@@ -18,7 +18,7 @@ ABIOS targets **lossless** reconstruction of forge commands relative to compact 
 
 **Agora** ([arXiv:2410.11905](https://arxiv.org/abs/2410.11905)) describes hash-referenced, content-addressed agent envelopes; ABIOS **refs** follows a similar content-store pattern and is the closest prior-art row in our benchmark (11-message total **1027** including Agora setup).
 
-**TOON** (`toon-format`) provides a compact textual serialization for nested structures; we include a TOON baseline on the same fixtures (**805** message tokens on 11 messages with the repo fallback encoder when the package encoder is unavailable).
+**TOON** (`toon-format`) provides a compact textual serialization for nested structures; we include a TOON baseline on the same fixtures (**809** total on 11 messages with the in-repo fallback encoder when the package encoder is unavailable).
 
 **LLMLingua / LLMLingua-2** compress natural-language prompts by dropping tokens; they optimize single-turn context, not a **session** with evolving shared state and repeated digests.
 
@@ -58,53 +58,47 @@ Round-trip goal: given decoder context + lines, reconstruct canonical JSON-equiv
 
 ## Results
 
-All numbers below are taken from [docs/abios-bench.md](../docs/abios-bench.md) (verified by `make bench` against committed tables). Primary accounting: **setup (min, decode-sufficient) + messages**, **o200k_base**.
+All numbers below are taken from [docs/abios-bench.md](../docs/abios-bench.md) (verified by `make bench` against committed tables). Primary accounting: **POST ack + setup (min, decode-sufficient) + messages**, **o200k_base**. Compact JSON includes an `action` field per message.
 
 ### lifecycle_11 (11 messages)
 
 | Format | setup (min) | messages | total (primary) |
 | --- | ---: | ---: | ---: |
-| compact JSON | 0 | 682 | 682 |
+| compact JSON | 0 | 738 | 738 |
 | English (lossless) | 0 | 686 | 686 |
 | English (lossless, key=value one-line) | 0 | 691 | 691 |
-| ABIOS refs | 250 | 241 | **491** |
-| ABIOS adaptive | 271 | 241 | **512** |
-| ABIOS combined | 250 | 334 | 584 |
-| ABIOS delta | 250 | 349 | 599 |
+| ABIOS refs | 525 | 241 | **766** |
+| ABIOS adaptive | 525 | 241 | **766** |
 | Agora envelope | 48 | 979 | 1027 |
-| TOON | 0 | 805 | 805 |
+| TOON (approx fallback) | 0 | 809 | 809 |
 
-Under **full** setup (524 + messages), ABIOS refs/adaptive totals **765**—above compact JSON at 11 messages. Do not compare against English (lossy summary) for information equivalence.
-
-**Break-even (messages to beat compact JSON / lossless English):** adaptive **7** / **7**; refs **7** / **7**; combined **8** / **8**; delta **9** / **9**; omit **9** / **9**; positional **7** / **7**.
+Under **full** setup + messages, ABIOS refs/adaptive totals exceed compact JSON at 11 messages. Cumulative crossover vs compact JSON: **never** on this transcript; vs lossless English: **never**.
 
 ### lifecycle_40 (40 messages)
 
 | Format | total (primary) | total (cached†) |
 | --- | ---: | ---: |
-| compact JSON | 5343 | 5343.0 |
+| compact JSON | 5570 | 5570.0 |
 | English (lossless) | 5242 | 5242.0 |
-| ABIOS adaptive | **1738** | 1490.5 |
-| ABIOS refs | **1717** | 1488.4 |
-| ABIOS combined | 2566 | 2337.4 |
+| ABIOS adaptive | **1990** | 1741.5 |
+| ABIOS refs | **1990** | 1741.5 |
 
-Break-even vs compact JSON: adaptive **3**, refs **3**, combined **4**, delta **6**, omit **6**, positional **4** messages.
+Cumulative crossover vs compact JSON: refs/adaptive **12** messages.
 
 ### lifecycle_200 (200 messages)
 
 | Format | total (primary) | total (cached†) |
 | --- | ---: | ---: |
-| compact JSON | 27363 | 27363.0 |
+| compact JSON | 28498 | 28498.0 |
 | English (lossless) | 26754 | 26754.0 |
-| ABIOS adaptive | **7649** | 7401.5 |
-| ABIOS refs | **7628** | 7399.4 |
-| ABIOS combined | 11873 | 11644.4 |
+| ABIOS adaptive | **7901** | 7652.5 |
+| ABIOS refs | **7901** | 7652.5 |
 
-Break-even vs compact JSON: adaptive **3**, refs **3**, combined **4**, delta **6**, omit **6**, positional **4** messages.
+Cumulative crossover vs compact JSON: refs/adaptive **12** messages.
 
 ### Verdict
 
-On the shortest transcript, ABIOS **refs** and **adaptive** beat compact JSON and lossless English under primary accounting. Savings increase with transcript length and repeated content. Cached† totals improve further but rely on the 10% setup assumption.
+ABIOS **refs** and **adaptive** beat compact JSON on 40- and 200-message transcripts under primary accounting; on 11 messages they do not. Transcript fixtures repeat identical messages, which favors ref compression. Cached† totals improve further but rely on the 10% setup assumption.
 
 ## Model comprehension
 
