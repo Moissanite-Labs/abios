@@ -216,7 +216,8 @@ def main(argv: list[str]) -> int:
         return 0
     print("ABIOS sealed-session bench mismatch. Generated tables follow; review them before --write.")
     print(f"----- BEGIN {MD_PATH.relative_to(ROOT)} -----\n{md}----- END -----")
-    print(f"----- BEGIN {JSON_PATH.relative_to(ROOT)} -----\n{js}----- END -----")
+    # One line: the markdown is a pure function of this payload (format_markdown).
+    print("ABIOS-AUTH-BENCH-PAYLOAD " + json.dumps(payload, sort_keys=True, separators=(",", ":")))
     return 1
 
 
