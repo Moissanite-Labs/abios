@@ -13,6 +13,9 @@ Two independent detectors:
                       example of one.
 
 Usage: python3 gates/check-internal-names.py [path/to/repo]
+       git log --format='%an%n%ae%n%cn%n%ce%n%B' <range> | \
+           python3 gates/check-internal-names.py --stdin
+--stdin scans text such as commit metadata, which never lands in the tree.
 Exit: 0 clean; 1 leak found.
 """
 import hashlib
@@ -72,29 +75,41 @@ def scan(repo, digests):
                     text = fh.read()
             except OSError:
                 continue
-            for lineno, line in enumerate(text.splitlines(), 1):
-                for match in TOKEN_RE.finditer(line):
-                    digest = hashlib.sha256(
-                        match.group(0).lower().encode("utf-8")).hexdigest()
-                    if digest in digests:
-                        findings.append((rel, lineno, "token-digest"))
-                for rx in PATH_RES:
-                    if rx.search(line):
-                        findings.append((rel, lineno, "private-path"))
+            findings.extend(scan_text(text, rel, digests))
     return scanned, findings
 
 
+def scan_text(text, rel, digests):
+    findings = []
+    for lineno, line in enumerate(text.splitlines(), 1):
+        for match in TOKEN_RE.finditer(line):
+            digest = hashlib.sha256(
+                match.group(0).lower().encode("utf-8")).hexdigest()
+            if digest in digests:
+                findings.append((rel, lineno, "token-digest"))
+        for rx in PATH_RES:
+            if rx.search(line):
+                findings.append((rel, lineno, "private-path"))
+    return findings
+
+
 def main():
-    repo = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
-    digests = load_blocklist(repo)
-    scanned, findings = scan(repo, digests)
+    if sys.argv[1:] == ["--stdin"]:
+        digests = load_blocklist()
+        findings = scan_text(sys.stdin.read(), "<stdin>", digests)
+        scanned = "stdin"
+    else:
+        repo = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
+        digests = load_blocklist(repo)
+        count, findings = scan(repo, digests)
+        scanned = str(count) + " files"
     if findings:
         print("LEAK: " + str(len(findings)) + " finding(s)")
         for rel, lineno, kind in findings[:40]:
             print("  " + rel + ":" + str(lineno) + " [" + kind + "]")
-        print("files scanned: " + str(scanned))
+        print("scanned: " + scanned)
         return 1
-    print("clean: " + str(scanned) + " files scanned, 0 findings")
+    print("clean: " + scanned + " scanned, 0 findings")
     return 0
 
 
