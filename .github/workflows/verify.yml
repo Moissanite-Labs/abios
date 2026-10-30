@@ -26,3 +26,17 @@ jobs:
           python3 tests/run-tests.py
       - name: Run tests
         run: python3 -m unittest discover -s tests -v
+  sym3-bench:
+    name: SYM-3 bench (reproduce)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install bench dependencies
+        run: python3 -m pip install -r requirements-bench.txt
+      - name: SYM-3 tests
+        run: PYTHONPATH=. python3 -m unittest tests.test_sym3 -v
+      - name: Bench drift check
+        run: make bench-check

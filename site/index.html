@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SYM-3 — protean-sym2p</title>
+  <link rel="stylesheet" href="style.css?v=2d93ed6">
+</head>
+<body>
+  <header>
+    <p class="eyebrow">Moissanite Labs · protean-sym2p</p>
+    <h1>SYM-3</h1>
+    <p class="lead">Token-aware shared-state messaging for agent-to-agent communication. Explicit on-wire state; no latent channels (L-18).</p>
+  </header>
+  <nav aria-label="Primary">
+    <a href="#results">Results</a>
+    <a href="#spec">Specification</a>
+    <a href="#paper">Paper</a>
+    <a href="#reproduce">Reproduce</a>
+  </nav>
+  <main>
+    <section id="results">
+      <h2>Headline results (primary accounting, o200k)</h2>
+      <table>
+        <thead><tr><th>Transcript</th><th>SYM-3 refs</th><th>Compact JSON</th><th>English lossless</th></tr></thead>
+        <tbody>
+          <tr><td>lifecycle_11</td><td><strong>491</strong></td><td>682</td><td>686</td></tr>
+          <tr><td>lifecycle_40</td><td><strong>1717</strong></td><td>5343</td><td>5242</td></tr>
+          <tr><td>lifecycle_200</td><td><strong>7628</strong></td><td>27363</td><td>26754</td></tr>
+        </tbody>
+      </table>
+      <p class="caveat">Totals = decode-sufficient setup (min) + messages. Full setup (~524 tokens) exceeds JSON at 11 messages. See caveats in <a href="../docs/sym3-bench.md">sym3-bench.md</a>.</p>
+    </section>
+    <section id="spec">
+      <h2>Specification</h2>
+      <p>Normative wire rules: <a href="../SPEC-V3.md">SPEC-V3.md</a>. Reference code under <code>sym3/</code>.</p>
+    </section>
+    <section id="paper">
+      <h2>Paper</h2>
+      <p><a href="../paper/sym3.md">sym3.md</a> · <a href="../paper/sym3.pdf">sym3.pdf</a> (if built)</p>
+      <p>DOI: pending</p>
+    </section>
+    <section id="reproduce">
+      <h2>Reproduce</h2>
+      <pre><code>make bench
+make bench-check</code></pre>
+      <p><a href="../docs/REPRODUCE.md">REPRODUCE.md</a></p>
+    </section>
+  </main>
+  <footer><p>Build 2d93ed6</p></footer>
+</body>
+</html>

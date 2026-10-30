@@ -34,6 +34,10 @@ python3 bench/sym2-score.py bench/tasks.jsonl answers.json
 
 See `EVAL.md` for the answers file format.
 
+## SYM-3 token bench
+
+SYM-3 lifecycle measurements live in `docs/sym3-bench.md`. Regenerate with `make bench` from the repo root (see `docs/REPRODUCE.md`). CI runs `make bench-check`.
+
 ## What this does not claim
 
 The harness measures encoding and comprehension. It does not run

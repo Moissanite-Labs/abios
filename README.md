@@ -110,3 +110,29 @@ performs zero network calls and fails closed when the cache entry is absent.
 ## License
 
 MIT. The committed `LICENSE` file is authoritative.
+
+## SYM-3 (token-aware messaging)
+
+SYM-3 is the third wire profile in this repository: one UTF-8 line per message, shared session state, content-addressed refs, and a decode-sufficient lexicon prefix. It respects **L-18** (no latent channels)—the same rule as SYM-2P/1.0 in `SPEC.md`.
+
+| Transcript (primary total: setup min + msgs, o200k) | SYM-3 refs | Compact JSON | English (lossless) |
+| --- | ---: | ---: | ---: |
+| lifecycle_11 | **491** | 682 | 686 |
+| lifecycle_40 | **1717** | 5343 | 5242 |
+| lifecycle_200 | **7628** | 27363 | 26754 |
+
+**Caveats:** savings come from repeated ids and large repeated fields; single-turn traffic benefits little. Full lexicon setup (~524 tokens) beats JSON only after several messages. English lossy summaries are smaller but not lossless. **DOI: pending.**
+
+| Path | Contents |
+| --- | --- |
+| `SPEC-V3.md` | normative SYM-3 specification |
+| `sym3/` | reference implementation, lexicon, encoders, fixtures |
+| `docs/sym3-bench.md` | full benchmark tables |
+| `docs/REPRODUCE.md` | `make bench` / `make bench-check` |
+| `paper/sym3.md` | design paper (PDF in `paper/sym3.pdf`) |
+| `site/` | static project overview |
+
+```bash
+make bench          # regenerate docs/sym3-bench.md + bench/sym3-results.json
+PYTHONPATH=. python3 -m unittest tests.test_sym3 -v
+```

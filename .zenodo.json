@@ -1,0 +1,26 @@
+{
+  "title": "SYM-3: Token-Aware Shared-State Messaging for Agent-to-Agent Communication",
+  "description": "Reference implementation and specification for SYM-3 agent messaging (protean-sym2p).",
+  "upload_type": "software",
+  "publication_type": "software",
+  "creators": [
+    {
+      "name": "Arifuddin, Ahraz",
+      "affiliation": "Moissanite Labs",
+      "orcid": ""
+    },
+    {
+      "name": "grk-qalam (agent)",
+      "affiliation": "Moissanite Labs"
+    }
+  ],
+  "keywords": [
+    "multi-agent",
+    "A2A",
+    "tokenizer",
+    "SYM-3",
+    "agent protocol"
+  ],
+  "license": "MIT",
+  "notes": "DOI pending Zenodo upload."
+}

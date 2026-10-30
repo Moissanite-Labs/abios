@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: "SYM-3: Token-Aware Shared-State Messaging for Agent-to-Agent Communication"
+version: 1.0.0
+date-released: 2026-10-30
+authors:
+  - family-names: Arifuddin
+    given-names: Ahraz
+    affiliation: Moissanite Labs
+  - name: "grk-qalam (agent)"
+abstract: >-
+  SYM-3 is a text-line messaging profile for multi-agent systems that minimizes
+  LLM tokenizer cost through shared session state, schema-default omission,
+  content-addressed references, and decode-sufficient lexicon prefixes while
+  respecting explicit on-wire state (no latent channels).
+keywords:
+  - multi-agent systems
+  - agent-to-agent protocol
+  - token optimization
+  - messaging
+license: MIT
+repository-code: "https://github.com/aska-digital/protean-sym2p"
+message: >-
+  If you use this software or specification, please cite the repository and SPEC-V3.md.
