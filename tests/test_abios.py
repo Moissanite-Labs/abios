@@ -85,6 +85,10 @@ class AbiosRoundTripTests(unittest.TestCase):
                 "priority": "normal",
                 "dependencies": [],
             }),
+            ("project.create", {"name": "[1]", "description": "brackets", "repository": ""}),
+            ("project.create", {"name": '{"a":1}', "description": "json-looking", "repository": ""}),
+            ("project.create", {"name": "C:\\new dir", "description": "backslash", "repository": ""}),
+            ("project.create", {"name": "trail\t", "description": "tab suffix", "repository": ""}),
         ]
         for encoder_name in all_encoders():
             for action, payload in cases:
@@ -115,6 +119,105 @@ class AbiosRoundTripTests(unittest.TestCase):
         self.assertIn(other_task, line)
         back = decode_transcript(enc, encode_transcript(enc, messages + [("task.transition", {"task_id": other_task, "status": "running"})]))
         self.assertEqual(back[-1][1]["task_id"], other_task)
+
+    def test_adaptive_mixed_family_ref_numbering(self):
+        from encoders import AdaptiveEncoder, decode_transcript, encode_transcript, fresh_session
+
+        title = "Implement the login form with validation and errors"
+        url = "https://example.com/very/long/repository/path/that/is/long"
+        messages = [
+            ("task.create", {
+                "project_id": "a1" * 16,
+                "title": title,
+                "description": "",
+                "criteria": [],
+                "scope": [],
+                "priority": "normal",
+                "dependencies": [],
+            }),
+            ("project.create", {"name": "demo", "description": "n", "repository": url}),
+            ("project.create", {"name": "again", "description": "m", "repository": url}),
+        ]
+        enc = AdaptiveEncoder()
+        lines = encode_transcript(enc, messages)
+        back = decode_transcript(enc, lines)
+        self.assertTrue(messages_equal(messages[-1], back[-1]))
+
+    def test_long_list_ref_round_trip_refs(self):
+        blob = ["x"] * 20
+        payload = {
+            "project_id": "a1" * 16,
+            "title": "t",
+            "description": "d",
+            "criteria": blob,
+            "scope": blob,
+            "priority": "normal",
+            "dependencies": [],
+        }
+        enc = all_encoders()["refs"]
+        msg = ("task.create", canonical_payload("task.create", payload))
+        lines = encode_transcript(enc, [msg, msg])
+        back = decode_transcript(enc, lines)
+        self.assertTrue(messages_equal(msg, back[1]))
+
+    def test_multibyte_inline_threshold_bytes(self):
+        from content_store import INLINE_REF_MIN_BYTES, serialized_byte_length
+
+        value = "日" * 20
+        self.assertLess(len(value), INLINE_REF_MIN_BYTES)
+        self.assertGreaterEqual(serialized_byte_length(value), INLINE_REF_MIN_BYTES)
+        enc = all_encoders()["refs"]
+        msg = ("project.create", {"name": value, "description": "", "repository": ""})
+        lines = encode_transcript(enc, [msg, msg])
+        back = decode_transcript(enc, lines)
+        self.assertTrue(messages_equal(msg, back[1]))
+
+    def test_st_x_not_delta_short_form(self):
+        enc = all_encoders()["combined"]
+        msg = ("project.create", {"name": "st=x", "description": "ok", "repository": ""})
+        lines = encode_transcript(enc, [msg])
+        back = decode_transcript(enc, lines)
+        self.assertEqual(back[0][1]["name"], "st=x")
+
+    def test_unknown_status_encode_raises(self):
+        from encoders import CombinedEncoder, fresh_session
+
+        enc = CombinedEncoder()
+        session = fresh_session()
+        session.apply_message("task.create", {
+            "project_id": "a1" * 16,
+            "title": "t",
+            "description": "",
+            "criteria": [],
+            "scope": [],
+            "priority": "normal",
+            "dependencies": [],
+        })
+        session.apply_message("task.claim", {"task_id": session.task_id})
+        with self.assertRaises(ValueError):
+            enc.encode("task.transition", {"task_id": session.task_id, "status": "blocked"}, session)
+
+    def test_omit_malformed_lines_fail(self):
+        from encoders import OmitEncoder, fresh_session
+
+        enc = OmitEncoder()
+        session = fresh_session()
+        cmd = enc.lex.word("cmd", "project.create").strip()
+        with self.assertRaises(ValueError):
+            enc.decode(f"{enc.tag}{cmd} name|name| a b", session)
+        with self.assertRaises(ValueError):
+            enc.decode(f"{enc.tag}{cmd} d  r", session)
+        with self.assertRaises(ValueError):
+            enc.decode(f"{enc.tag}{enc.lex.word('cmd', 'task.claim').strip()} x", session)
+
+    def test_bad_quoted_spacing_rejected(self):
+        from encoders import fresh_session
+
+        enc = all_encoders()["positional"]
+        session = fresh_session()
+        cmd = enc.lex.word("cmd", "project.create").strip()
+        with self.assertRaises(ValueError):
+            enc.decode(f'{enc.tag}{cmd} "a"b c d', session)
 
     def test_all_encoders_round_trip_11(self):
         messages = lifecycle_11()
@@ -168,6 +271,8 @@ class AbiosMinimalContextTests(unittest.TestCase):
         setup = parse_decoder_context(ctx)
         back = decode_transcript(all_encoders(setup.lexicon, setup.schema)["combined"], lines, setup=setup)
         self.assertEqual(len(back), len(messages))
+        for exp, got in zip(messages, back):
+            self.assertTrue(messages_equal(exp, got))
 
 
 class AbiosBenchSmokeTests(unittest.TestCase):
@@ -222,7 +327,24 @@ class AbiosPostTests(unittest.TestCase):
 
     def test_post_header_only_rejected(self):
         with self.assertRaises(ValueError):
-            parse_post_handshake("POST ok abios/3 deadbeef\nabios/3\n")
+            parse_post_handshake("POST ok abios/3 deadbeefdeadbeef\nabios/3\n")
+
+    def test_post_garbage_body_rejected(self):
+        with self.assertRaises(ValueError):
+            parse_post_handshake(
+                "POST ok abios/3 0123456789abcdef\nabios/3\njunk\n"
+            )
+
+    def test_post_digest_no_trailing_spaces(self):
+        messages = lifecycle_11()
+        enc = all_encoders()["refs"]
+        lines = encode_transcript(enc, messages)
+        sizes = setup_sizes(messages, lines)
+        blob = render_post_handshake(sizes["minimal_text"])
+        ack = blob.split("\n", 1)[0]
+        bad = blob.replace(ack, ack + " ", 1)
+        with self.assertRaises(ValueError):
+            parse_post_handshake(bad)
 
     def test_post_sym3_profile_requires_matching_ack(self):
         messages = lifecycle_11()
