@@ -1,17 +1,21 @@
-"""Content-addressed store with tokenizer-cheap ref labels."""
+"""Content-addressed store with deterministic ref labels."""
 from __future__ import annotations
 
 import hashlib
 import json
 from dataclasses import dataclass, field
 
-from tokens import load_tokenizers, pick_cheapest
+INLINE_REF_MIN_BYTES = 48
 
 
 def _canonical_bytes(value: str | list | dict) -> bytes:
     if isinstance(value, str):
         return value.encode("utf-8")
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def serialized_byte_length(value: str | list | dict) -> int:
+    return len(_canonical_bytes(value))
 
 
 def content_digest(value: str | list | dict) -> str:
@@ -26,10 +30,9 @@ class ContentStore:
     published_on_wire: set[str] = field(default_factory=set)
     _seq: int = 0
 
-    def intern(self, value: str | list | dict, *, min_len: int = 48) -> str | list | dict:
+    def intern(self, value: str | list | dict, *, min_bytes: int = INLINE_REF_MIN_BYTES) -> str | list | dict:
         raw = value
-        serialized = value if isinstance(value, str) else json.dumps(value, sort_keys=True, separators=(",", ":"))
-        if len(serialized) < min_len:
+        if serialized_byte_length(value) < min_bytes:
             return value
         dg = content_digest(value)
         self.by_digest[dg] = raw
@@ -38,21 +41,20 @@ class ContentStore:
             if dg in self.published_on_wire:
                 return ref
             return raw
-        ref = self._alloc_ref(dg)
+        ref = self._alloc_ref()
         self.digest_to_ref[dg] = ref
         self.ref_to_digest[ref] = dg
         return raw
 
     def ref_if_published(self, value: str | list | dict) -> str | list | dict:
-        """After first inline publish, emit cheap ref token."""
-        serialized = value if isinstance(value, str) else json.dumps(value, sort_keys=True, separators=(",", ":"))
-        if len(serialized) < 48:
+        """After first inline publish, emit ref token."""
+        if serialized_byte_length(value) < INLINE_REF_MIN_BYTES:
             return value
         dg = content_digest(value)
         if dg not in self.by_digest:
             self.by_digest[dg] = value
         if dg not in self.digest_to_ref:
-            ref = self._alloc_ref(dg)
+            ref = self._alloc_ref()
             self.digest_to_ref[dg] = ref
             self.ref_to_digest[ref] = dg
         if dg in self.published_on_wire:
@@ -75,31 +77,20 @@ class ContentStore:
         raise KeyError(f"unknown content ref {token!r}")
 
     def observe_inline(self, value: str | list | dict) -> None:
-        serialized = value if isinstance(value, str) else json.dumps(value, sort_keys=True, separators=(",", ":"))
-        if len(serialized) < 48:
+        if serialized_byte_length(value) < INLINE_REF_MIN_BYTES:
             return
         dg = content_digest(value)
         self.by_digest[dg] = value
         if dg not in self.digest_to_ref:
-            ref = self._alloc_ref(dg)
+            ref = self._alloc_ref()
             self.digest_to_ref[dg] = ref
             self.ref_to_digest[ref] = dg
         self.published_on_wire.add(dg)
 
-    def _alloc_ref(self, digest: str) -> str:
-        from tokens import is_single_token
-
-        specs = load_tokenizers()
-        candidates: list[str] = []
-        for i in range(1, 512):
-            for prefix in ("#", " r", " x", " z"):
-                candidates.append(f"{prefix}{i}")
-        singles = [c for c in candidates if specs and is_single_token(c, specs)]
-        pool = singles or candidates
-        for _ in range(3):
-            best, _ = pick_cheapest(pool, specs)
-            if best not in self.ref_to_digest:
-                return best
-            pool = [c for c in pool if c != best]
+    def _alloc_ref(self) -> str:
+        for i in range(1, 65536):
+            ref = f"#{i}"
+            if ref not in self.ref_to_digest:
+                return ref
         self._seq += 1
         return f"#h{self._seq:x}"

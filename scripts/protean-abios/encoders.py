@@ -16,7 +16,55 @@ from schema import POSITIONAL_ORDER
 from state import Sym3Session
 
 _QUOTED = re.compile(r'"((?:\\.|[^"\\])*)"')
-_REF_LABEL = re.compile(r"^#(?:\d+|[0-9a-f]+)$|^ [rxz]\d+$")
+_REF_LABEL = re.compile(r"^#\d+$|^#h[0-9a-f]+$")
+
+
+def _unquote_content(s: str) -> str:
+    out: list[str] = []
+    i = 0
+    while i < len(s):
+        if s[i] == "\\" and i + 1 < len(s):
+            nxt = s[i + 1]
+            if nxt == "n":
+                out.append("\n")
+            elif nxt == "r":
+                out.append("\r")
+            elif nxt == '"':
+                out.append('"')
+            elif nxt == "\\":
+                out.append("\\")
+            else:
+                out.append(nxt)
+            i += 2
+            continue
+        out.append(s[i])
+        i += 1
+    return "".join(out)
+
+
+def _is_ref_label(token: str) -> bool:
+    return bool(_REF_LABEL.match(token))
+
+
+def _register_inline(content: ContentStore, value: str | list | dict) -> None:
+    content.observe_inline(value)
+
+
+def _is_delta_short_form(parts: list[WireToken], lex: Lexicon) -> bool:
+    if len(parts) != 3 or not parts[2].text.startswith("st="):
+        return False
+    try:
+        action = _cmd_from_lex(lex, parts[0].text)
+    except ValueError:
+        return False
+    return action == "task.transition"
+
+
+def _lex_status(lex: Lexicon, status: str) -> str:
+    try:
+        return lex.word("status", status).strip()
+    except KeyError as exc:
+        raise ValueError(f"unknown status {status!r}") from exc
 
 
 def _quote(s: str) -> str:
@@ -27,18 +75,6 @@ def _quote(s: str) -> str:
         .replace("\r", "\\r")
     )
     return f'"{esc}"'
-
-
-def _unquote_content(s: str) -> str:
-    return s.replace("\\n", "\n").replace("\\r", "\r").replace('\\"', '"').replace("\\\\", "\\")
-
-
-def _is_ref_label(token: str) -> bool:
-    if token.startswith("#"):
-        return True
-    if len(token) >= 3 and token[0] == " " and token[1] in "rxz" and token[2:].isdigit():
-        return True
-    return False
 
 
 def _string_must_quote(value: str, session: Sym3Session) -> bool:
@@ -54,7 +90,15 @@ def _string_must_quote(value: str, session: Sym3Session) -> bool:
         return True
     if _is_ref_label(value):
         return True
-    if " " in value or ";" in value or "," in value or '"' in value or "\n" in value or value.startswith("http"):
+    if (
+        " " in value
+        or ";" in value
+        or "," in value
+        or '"' in value
+        or "\n" in value
+        or "\r" in value
+        or value.startswith("http")
+    ):
         return True
     return False
 
@@ -69,15 +113,20 @@ def _escape_token(value: Any, session: Sym3Session, content: ContentStore, use_r
     if isinstance(value, (list, dict)):
         blob = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         if use_refs:
-            return _escape_token(session.content.ref_if_published(value), session, content, False)
-        content.observe_inline(value)
-        return _quote(blob)
+            published = session.content.ref_if_published(value)
+            if isinstance(published, str) and published in session.content.ref_to_digest:
+                return published
+            return _escape_token(published, session, content, False)
+        _register_inline(content, value)
+        if " " in blob or "\n" in blob or "\r" in blob:
+            return _quote(blob)
+        return blob
     if isinstance(value, str):
         if _is_ref_label(value):
             return _quote(value)
         if use_refs:
             published = session.content.ref_if_published(value)
-            if isinstance(published, str) and published != value and published in session.content.ref_to_digest:
+            if isinstance(published, str) and published in session.content.ref_to_digest and published != value:
                 return published
             if published is value or (isinstance(published, str) and published == value):
                 if not _string_must_quote(value, session):
@@ -91,7 +140,7 @@ def _escape_token(value: Any, session: Sym3Session, content: ContentStore, use_r
                         return "h"
                     if value == session.artifact_id:
                         return "f"
-                    content.observe_inline(value)
+                    _register_inline(session.content, value)
                     return value
             value = published if isinstance(published, str) else value
         if value == session.project_id:
@@ -105,8 +154,9 @@ def _escape_token(value: Any, session: Sym3Session, content: ContentStore, use_r
         if value == session.artifact_id:
             return "f"
         if _string_must_quote(value, session):
+            _register_inline(session.content, value)
             return _quote(value)
-        content.observe_inline(value)
+        _register_inline(session.content, value)
         return value
     return _quote(str(value))
 
@@ -129,12 +179,20 @@ def _split_line(line: str) -> list[WireToken]:
                 raise ValueError("bad quoted token")
             parts.append(WireToken(_unquote_content(m.group(1)), quoted=True))
             i = m.end()
+            if i < len(line) and line[i] != " ":
+                raise ValueError("bad quoted token spacing")
             if i < len(line) and line[i] == " ":
                 i += 1
             continue
         j = i
         while j < len(line) and line[j] != " ":
             j += 1
+        if j == i:
+            if j < len(line) and line[j] == " ":
+                parts.append(WireToken("", quoted=False))
+                i = j + 1
+                continue
+            break
         parts.append(WireToken(line[i:j], quoted=False))
         i = j + 1 if j < len(line) and line[j] == " " else j
     return parts
@@ -146,17 +204,11 @@ def _token_texts(tokens: list[WireToken]) -> list[str]:
 
 def _unescape_token(token: WireToken, session: Sym3Session, content: ContentStore) -> Any:
     if token.quoted:
-        text = token.text
-        if text.startswith("[") or text.startswith("{"):
-            try:
-                val = json.loads(text)
-                content.observe_inline(val)
-                return val
-            except json.JSONDecodeError:
-                pass
-        content.observe_inline(text)
-        return text
+        _register_inline(content, token.text)
+        return token.text
     raw = token.text
+    if raw == "":
+        raise ValueError("empty wire token")
     if raw == "-":
         return None
     if raw in content.ref_to_digest:
@@ -169,7 +221,7 @@ def _unescape_token(token: WireToken, session: Sym3Session, content: ContentStor
     if raw.startswith("[") or raw.startswith("{"):
         try:
             val = json.loads(raw)
-            content.observe_inline(val)
+            _register_inline(content, val)
             return val
         except json.JSONDecodeError as exc:
             raise ValueError(f"bad inline JSON token {raw!r}") from exc
@@ -177,7 +229,7 @@ def _unescape_token(token: WireToken, session: Sym3Session, content: ContentStor
         return int(raw)
     if raw in {"0", "1"}:
         return raw == "1"
-    content.observe_inline(raw)
+    _register_inline(content, raw)
     return raw
 
 
@@ -238,7 +290,7 @@ class PositionalEncoder(Encoder):
         return f"{self.tag}{_lex_cmd(self.lex, action)} {' '.join(vals)}"
 
     def decode(self, line: str, session: Sym3Session) -> ForgeMessage:
-        body = _require_tag(line, self.tag).strip()
+        body = _require_tag(line, self.tag)
         parts = _split_line(body)
         if not parts:
             raise ValueError("empty positional line")
@@ -268,12 +320,14 @@ class OmitEncoder(Encoder):
             raise ValueError("empty omit line")
         action = _cmd_from_lex(self.lex, parts[0].text)
         allowed = set(self.schema[action])
-        if len(parts) > 2 and parts[1].text.endswith("|"):
-            keys = parts[1].text[:-1].split("|") if parts[1].text[:-1] else []
-            vals = parts[2:]
-        else:
-            keys = self.schema[action]
-            vals = parts[1:]
+        if len(parts) < 3 or not parts[1].text.endswith("|"):
+            raise ValueError("omit line missing key list")
+        keys = parts[1].text[:-1].split("|") if parts[1].text[:-1] else []
+        vals = parts[2:]
+        if len(parts) > 2 + len(vals):
+            raise ValueError("extra tokens on omit line")
+        if len(keys) != len(set(keys)):
+            raise ValueError("duplicate omit keys")
         for k in keys:
             if k not in allowed:
                 raise ValueError(f"unknown omit key {k!r} for {action}")
@@ -285,7 +339,7 @@ class OmitEncoder(Encoder):
         return normalize_message(action, session.restore_defaults(action, payload))
 
     def decode(self, line: str, session: Sym3Session) -> ForgeMessage:
-        body = _require_tag(line, self.tag).strip()
+        body = _require_tag(line, self.tag)
         return self._decode_sparse(_split_line(body), session)
 
 
@@ -319,7 +373,7 @@ class RefsEncoder(Encoder):
         return normalize_message(action, payload)
 
     def decode(self, line: str, session: Sym3Session) -> ForgeMessage:
-        body = _require_tag(line, self.tag).strip()
+        body = _require_tag(line, self.tag)
         return self._decode_positional(_split_line(body), session)
 
 
@@ -329,27 +383,25 @@ class DeltaEncoder(Encoder):
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
         delta = session.delta_payload(action, payload)
         if delta and action == "task.transition" and session.task_id == canonical_payload(action, payload)["task_id"]:
-            st_word = self.lex.word("status", delta["status"]).strip()
+            st_word = _lex_status(self.lex, delta["status"])
             return f"{self.tag}{_lex_cmd(self.lex, action)} t st={st_word}"
         omit = OmitEncoder(self.lex, self.schema)
         line = omit.encode(action, payload, session)
         return line.replace(omit.tag, self.tag, 1)
 
     def decode(self, line: str, session: Sym3Session) -> ForgeMessage:
-        body = _require_tag(line, self.tag).strip()
+        body = _require_tag(line, self.tag)
         parts = _split_line(body)
         if not parts:
             raise ValueError("empty delta line")
         action = _cmd_from_lex(self.lex, parts[0].text)
-        if len(parts) >= 3 and parts[2].text.startswith("st="):
-            if len(parts) != 3:
-                raise ValueError("extra tokens on delta short form")
+        if _is_delta_short_form(parts, self.lex):
             task_id = _unescape_token(parts[1], session, session.content)
             st_word = parts[2].text[3:]
             status = _status_from_lex(self.lex, st_word)
             return normalize_message(action, {"task_id": task_id, "status": status})
         omit = OmitEncoder(self.lex, self.schema)
-        return omit._decode_sparse(_split_line(body), session)
+        return omit._decode_sparse(parts, session)
 
 
 class CombinedEncoder(Encoder):
@@ -378,29 +430,23 @@ class CombinedEncoder(Encoder):
     def decode(self, line: str, session: Sym3Session) -> ForgeMessage:
         if not line.startswith(self.tag):
             raise ValueError(f"expected format tag {self.tag!r}")
-        if " st=" in line:
-            body = _require_tag(line, self.tag).strip()
-            parts = _split_line(body)
-            if not parts:
-                raise ValueError("empty combined delta line")
-            action = _cmd_from_lex(self.lex, parts[0].text)
-            if len(parts) >= 3 and parts[2].text.startswith("st="):
-                if len(parts) != 3:
-                    raise ValueError("extra tokens on delta short form")
-                task_id = _unescape_token(parts[1], session, session.content)
-                st_word = parts[2].text[3:]
-                status = _status_from_lex(self.lex, st_word)
-                return normalize_message(action, {"task_id": task_id, "status": status})
-            return OmitEncoder(self.lex, self.schema)._decode_sparse(parts, session)
-        body = line[len(self.tag) :].strip()
+        body = _require_tag(line, self.tag)
         parts = _split_line(body)
         if not parts:
             raise ValueError("empty combined line")
+        if _is_delta_short_form(parts, self.lex):
+            action = _cmd_from_lex(self.lex, parts[0].text)
+            task_id = _unescape_token(parts[1], session, session.content)
+            st_word = parts[2].text[3:]
+            status = _status_from_lex(self.lex, st_word)
+            return normalize_message(action, {"task_id": task_id, "status": status})
         action = _cmd_from_lex(self.lex, parts[0].text)
         if len(parts) > 2 and parts[1].text.endswith("|"):
             keys = parts[1].text[:-1].split("|") if parts[1].text[:-1] else []
             vals = parts[2:]
             allowed = set(self.schema[action])
+            if len(keys) != len(set(keys)):
+                raise ValueError("duplicate omit keys")
             for k in keys:
                 if k not in allowed:
                     raise ValueError(f"unknown omit key {k!r} for {action}")

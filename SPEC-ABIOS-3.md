@@ -26,7 +26,7 @@ and updated bench golden files when accounting rules change.
 | S-6 | **Positional field order is schema-defined.** For each action, field order is the sorted set of allowed keys (required-first convention: all keys sorted lexicographically in the example Synbios schema). Decoders bind tokens to keys by position or by explicit key list (omit/combined). |
 | S-7 | **Default omission.** Fields equal to **schema defaults** MAY be omitted on the wire in `omit`, `combined`, and `delta` (fallback) encodings. Decoders MUST restore defaults before canonical validation. Defaults are normative per schema profile. |
 | S-8 | **Session-scoped ref tokens.** When encoder and decoder share mirrored session state, stable ids MAY encode as single-letter tokens: `p` project, `t` task, `a` agent, `h` human, `f` artifact. Unknown tokens that match session ref tables resolve to full ids; otherwise tokens are literal strings or content refs. |
-| S-9 | **Content-addressed refs.** Serialized values (UTF-8 string or canonical JSON) of length ≥ 48 bytes MAY be published once inline, then referenced by a **ref label** allocated from a tokenizer-cheap pool (committed algorithm: SHA-256 digest truncated to 16 hex chars, ref labels chosen to minimize max tokenizer count across registered tokenizers). Refs MUST resolve to the same bytes the publisher first sent on the wire. |
+| S-9 | **Content-addressed refs.** Serialized values (UTF-8 string or canonical JSON) of **≥ 48 UTF-8 bytes** MAY be published once inline, then referenced by a **ref label** (`#1`, `#2`, … allocated in order on first use). Refs MUST resolve to the same bytes the publisher first sent on the wire. |
 | S-10 | **State deltas.** When session snapshots prove only a bounded change, `delta` MAY emit a specialized short form. For `task.transition`, when only `status` changes and `task_id` matches the session task, the wire form is: `{tag}{cmd_lexeme} t st={status_lexeme}`. Other actions fall back to omit-shaped delta lines. |
 | S-11 | **Tokenizer-cost lexicon.** Wire lexemes for commands, statuses, kinds, and format tags are chosen offline so each **format tag** is a **single token** under every tokenizer listed in `lexicon.json` `tokenizers`. Regeneration uses the algorithm in `scripts/protean-abios/generate_lexicon.py`. Committed `lexicon.json` is authoritative until the next ABIOS revision. |
 | S-12 | **Decode-sufficient setup.** A receiver MUST accept either **full** setup (entire committed lexicon plus full positional schema) or **minimal** setup: only `concepts` entries for cmd/status/kind values appearing in the transcript, format tags used on the wire (if `adaptive` appears, **all** format tags), and positional key lists only for commands used. Minimal setup MUST decode the transcript; full setup is a convenience default. |
@@ -62,12 +62,12 @@ Tokens are space-separated except where noted. Parsing rules:
 | Construct | Rule |
 |---|---|
 | Whitespace | ASCII space separates tokens; no empty tokens. |
-| Quoted string | `"..."` with `\"`, `\\`, and `\n` (U+000A) escapes; used when a string would otherwise parse as another token type, is empty, contains space, `;`, `,`, `"`, newline, or starts with `http`. Quoted tokens always decode as strings. |
+| Quoted string | `"..."` with `\"`, `\\`, `\n`, and `\r` escapes; used when a string would otherwise parse as another token type, is empty, contains space, `;`, `,`, `"`, newline, carriage return, or starts with `http`. **Quoted tokens always decode as strings** (never re-parsed as JSON). |
 | Null | `-` |
-| Boolean | `1` / `0` (Synbios misc lexicon) |
-| Integer | digit sequence, parsed as int |
-| Inline JSON | token starting with `[` or `{`, canonical JSON |
-| Content ref | opaque label present in session `ref_to_digest` (e.g. `#1`, ` r42`) |
+| Boolean | unquoted `1` / `0` |
+| Integer | unquoted digit sequence |
+| Inline JSON | unquoted token starting with `[` or `{`, canonical JSON (lists/objects in payloads) |
+| Content ref | opaque `#n` label present in session `ref_to_digest` (e.g. `#1`) |
 | List in payload | encoded as quoted canonical JSON unless refs encoder applies ref_if_published |
 
 Command lexeme follows the format tag immediately. Remaining tokens are positional values or omit metadata.
@@ -135,10 +135,10 @@ Delta rule (locked): for `task.transition`, if prior snapshot matches `task_id` 
 Normative behavior:
 
 1. **Digest:** SHA-256 over UTF-8 bytes (string) or canonical JSON (object/array), first 16 hex chars.
-2. **Inline threshold:** serialized length &lt; 48 → always inline, no ref.
+2. **Inline threshold:** serialized UTF-8 byte length &lt; 48 → always inline, no ref.
 3. **First publish:** value sent literally; digest marked published on wire.
 4. **Later mentions:** emit ref label if digest already published.
-5. **Ref allocation:** scan candidate pool `#1`…, ` r1`…, ` x1`…, ` z1`…; pick cheapest single-token label not in use; fallback `#h{seq}`.
+5. **Ref allocation:** assign `#1`, `#2`, … in order for each new digest; skip labels already bound. Fallback `#h{seq}` only if the numeric pool is exhausted.
 
 Decoders observing inline large values register them for future ref resolution (`observe_inline`, `mark_from_wire`).
 

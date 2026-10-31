@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from typing import Any
 
 from schemas.synbios.command_fields import COMMAND_FIELDS
@@ -51,8 +52,29 @@ def canonical_payload(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def coerce_wire_types(action: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Promote quoted JSON strings to list values where schema defaults are lists."""
+    defaults = SCHEMA_DEFAULTS.get(action, {})
+    out = {**payload}
+    for key, val in list(out.items()):
+        if not isinstance(val, str) or key not in defaults:
+            continue
+        default = defaults[key]
+        if isinstance(default, list):
+            if val.startswith("["):
+                try:
+                    parsed = json.loads(val)
+                    if isinstance(parsed, list):
+                        out[key] = parsed
+                except json.JSONDecodeError:
+                    pass
+            elif val == "[]":
+                out[key] = []
+    return out
+
+
 def normalize_message(action: str, payload: dict[str, Any]) -> ForgeMessage:
-    return action, canonical_payload(action, payload)
+    return action, canonical_payload(action, coerce_wire_types(action, payload))
 
 
 def messages_equal(a: ForgeMessage, b: ForgeMessage) -> bool:
