@@ -168,10 +168,10 @@ footer a{color:var(--muted)}
     <h1>ABIOS</h1>
     <p class="tag">Token-aware shared-state messaging for agents.</p>
     <p class="lede"><strong>ABIOS/3</strong> compresses multi-turn forge command streams for tokenizer billing while keeping decode explicit. Each session opens with <strong>POST</strong>—a one-time handshake that exchanges decode-sufficient lexicon and schema before refs, deltas, or content-addressed lines (rule <strong>L-18</strong>: no latent channel).</p>
-    <p class="lede">Primary metric: <strong>o200k_base</strong> POST ack + decode-sufficient minimal setup + messages. On 11 synthetic lifecycle messages, ABIOS <strong>refs</strong> totals <strong>766</strong> tokens versus <strong>738</strong> compact JSON (with <code>action</code> field) and <strong>686</strong> lossless English; on 40- and 200-message transcripts refs totals beat JSON (<code>make bench</code> verifies committed tables).</p>
+    <p class="lede">Primary metric: <strong>o200k_base</strong> POST ack + decode-sufficient minimal setup + messages. On 11 synthetic lifecycle messages, ABIOS <strong>refs</strong> totals <strong>761</strong> tokens versus <strong>738</strong> compact JSON (with <code>action</code> field) and <strong>686</strong> lossless English; on 40- and 200-message transcripts refs totals beat JSON (<code>make bench</code> verifies committed tables).</p>
     <p class="lede">This repo also ships legacy wire: <strong>ABIOS/1 (formerly SYM-2P)</strong> v1 JSON packets and superseded v2 dense experiments—documented under <a href="#legacy">Legacy</a>, not the forward path.</p>
     <div class="stats">
-      <div class="stat"><b>766</b><span>ABIOS refs (11 msgs, POST + min setup + wire)</span></div>
+      <div class="stat"><b>761</b><span>ABIOS refs (11 msgs, POST + min setup + wire)</span></div>
       <div class="stat"><b>738</b><span>compact JSON baseline</span></div>
       <div class="stat"><b>POST</b><span>session handshake (counted in totals)</span></div>
       <div class="stat"><b>0</b><span>hidden decoder cache</span></div>
@@ -331,10 +331,10 @@ Expires in 40s.</code></pre>
     <div class="secnum">07b</div>
     <h2>ABIOS — token-aware sessions</h2>
     <p><span class="lead">Canonical home.</span> ABIOS/3 (<code>SPEC-ABIOS-3.md</code>) compresses multi-message forge command streams for tokenizer billing while respecting rule <strong>L-18</strong> (no latent channel): decoder setup is explicit text, not a hidden cache. Sessions begin with <strong>POST</strong>, a one-time handshake that verifies decode-sufficient context before compressed traffic.</p>
-    <p>The v2 dense draft (<code>SPEC-V2-DRAFT.md</code>) is <strong>superseded</strong> for token efficiency (not a migration target). Measured on 11 messages (o200k, POST + min setup + messages): ABIOS <strong>refs</strong> <strong>766</strong> vs compact JSON <strong>738</strong>; v2 dense pilot total <strong>1415</strong> (external PR #6 constant); raw v2 wire <strong>3386</strong>.</p>
+    <p>The v2 dense draft (<code>SPEC-V2-DRAFT.md</code>) is <strong>superseded</strong> for token efficiency (not a migration target). Measured on 11 messages (o200k, POST + min setup + messages): ABIOS <strong>refs</strong> <strong>761</strong> vs compact JSON <strong>738</strong>; v2 dense pilot total <strong>1415</strong> (external PR #6 constant); raw v2 wire <strong>3386</strong>.</p>
     <table>
       <tr><th>Transcript</th><th>Compact JSON</th><th>ABIOS refs</th><th>ABIOS adaptive</th></tr>
-      <tr><td>11 msgs</td><td>738</td><td><strong>766</strong></td><td>766</td></tr>
+      <tr><td>11 msgs</td><td>738</td><td><strong>761</strong></td><td>761</td></tr>
       <tr><td>40 msgs</td><td>5570</td><td><strong>1990</strong></td><td>1990</td></tr>
       <tr><td>200 msgs</td><td>28498</td><td><strong>7901</strong></td><td>7901</td></tr>
     </table>
