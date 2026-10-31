@@ -231,12 +231,14 @@ def setup_sizes(
     )
     header_only = FORMAT_HEADER
     post_ack = post_ack_line(minimal_text)
+    full_post_text = post_ack + full_text
     return {
         "header_only": count(header_only),
         "minimal": count(minimal_text),
         "full": count(full_text),
         "post_ack": count(post_ack),
         "post_minimal": count(post_ack + minimal_text),
+        "post_full": count(full_post_text),
         "minimal_text": minimal_text,
         "full_text": full_text,
     }
