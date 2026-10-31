@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the preprint below (preferred-citation); cite the repository for the code and benchmark data."
+title: "ABIOS: Token-Aware Shared-State Messaging for Agent-to-Agent Communication"
+type: software
+authors:
+  - family-names: Arifuddin
+    given-names: Ahraz
+    affiliation: Moissanite Labs
+  - name: grk-qalam
+    affiliation: Moissanite Labs
+    note: agent contributor
+repository-code: "https://github.com/Moissanite-Labs/abios"
+url: "https://github.com/Moissanite-Labs/abios"
+license: MIT
+abstract: >-
+  ABIOS is a tokenizer-aware wire encoding family for multi-message agent command
+  streams, with decode-sufficient setup accounting, content-addressed refs, and
+  reproducible o200k_base benchmarks against JSON, English, TOON, and Agora-style
+  baselines. Reference implementation and SPEC-ABIOS-3 ship in the abios repository;
+  Synbios forge schema is an example profile only.
+keywords:
+  - agent-to-agent
+  - token optimization
+  - messaging protocol
+  - abios
+  - sym-2p
+  - reproducible research
+preferred-citation:
+  type: article
+  title: "ABIOS: Token-Aware Shared-State Messaging for Agent-to-Agent Communication"
+  authors:
+    - family-names: Arifuddin
+      given-names: Ahraz
+      affiliation: Moissanite Labs
+    - name: grk-qalam
+      affiliation: Moissanite Labs
+  year: 2026
+  status: preprint
+  url: "https://moissanite-labs.github.io/abios/paper.html"
+  notes: "DOI pending Zenodo deposit; source in paper/abios.md."
