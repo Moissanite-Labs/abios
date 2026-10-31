@@ -1,0 +1,6 @@
+3b leak plain vs env_report 2 11 p=0.0102
+3b leak plain vs env 2 4 p=0.6707
+3b attributes plain vs env 9 17 p=0.0673
+3b attributes plain vs env_report 9 20 p=0.0092
+1.5b leak plain vs env_report 10 13 p=0.5959
+3b delete note vs nonote plain 29 6 p=0.0000
