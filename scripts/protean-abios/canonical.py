@@ -62,6 +62,12 @@ def coerce_wire_types(action: str, payload: dict[str, Any]) -> dict[str, Any]:
         default = defaults[key]
         if isinstance(default, list):
             if val.startswith("["):
+                from wire_lists import decode_string_list
+
+                wire = decode_string_list(val)
+                if wire is not None:
+                    out[key] = wire
+                    continue
                 try:
                     parsed = json.loads(val)
                     if isinstance(parsed, list):

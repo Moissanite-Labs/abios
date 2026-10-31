@@ -25,7 +25,7 @@ and updated bench golden files when accounting rules change.
 | S-5 | **Six encoders, one decode contract.** Every encoder MUST round-trip canonical messages for the same session evolution. `adaptive` MUST decode by trying inner families in order: `delta`, `combined`, `refs`, `omit`, `positional`. |
 | S-6 | **Positional field order is schema-defined.** For each action, field order is the sorted set of allowed keys (required-first convention: all keys sorted lexicographically in the example Synbios schema). Decoders bind tokens to keys by position or by explicit key list (omit/combined). |
 | S-7 | **Default omission.** Fields equal to **schema defaults** MAY be omitted on the wire in `omit`, `combined`, and `delta` (fallback) encodings. Decoders MUST restore defaults before canonical validation. Defaults are normative per schema profile. |
-| S-8 | **Session-scoped ref tokens.** When encoder and decoder share mirrored session state, stable ids MAY encode as single-letter tokens: `p` project, `t` task, `a` agent, `h` human, `f` artifact. Unknown tokens that match session ref tables resolve to full ids; otherwise tokens are literal strings or content refs. |
+| S-8 | **Session-scoped ref tokens.** When encoder and decoder share mirrored session state, stable ids MAY encode as single-letter tokens: `p` project, `t` task, `a` agent, `h` human, `f` artifact. Setup `hex` aliases (e.g. `v` revision, `g` digest) bind other repeated hex strings. Unknown tokens that match session ref tables resolve to full ids; otherwise tokens are literal strings or content refs. |
 | S-9 | **Content-addressed refs.** Serialized values (UTF-8 string or canonical JSON) of **≥ 48 UTF-8 bytes** MAY be published once inline, then referenced by a **ref label** (`#1`, `#2`, … allocated in order on first use). Refs MUST resolve to the same bytes the publisher first sent on the wire. |
 | S-10 | **State deltas.** When session snapshots prove only a bounded change, `delta` MAY emit a specialized short form. For `task.transition`, when only `status` changes and `task_id` matches the session task, the wire form is: `{tag}{cmd_lexeme} t st={status_lexeme}`. Other actions fall back to omit-shaped delta lines. |
 | S-11 | **Tokenizer-cost lexicon.** Wire lexemes for commands, statuses, kinds, and format tags are chosen offline so each **format tag** is a **single token** under every tokenizer listed in `lexicon.json` `tokenizers`. Regeneration uses the algorithm in `scripts/protean-abios/generate_lexicon.py`. Committed `lexicon.json` is authoritative until the next ABIOS revision. |
@@ -67,8 +67,9 @@ Tokens are space-separated except where noted. Parsing rules:
 | Boolean | unquoted `1` / `0` |
 | Integer | unquoted digit sequence |
 | Inline JSON | unquoted token starting with `[` or `{`, canonical JSON (lists/objects in payloads) |
+| Wire string list | unquoted `[` … `]` with items separated by `;` (lexicon `list_sep`); `\;` and `\\` escapes inside items; bracket spans may contain spaces (one token). Falls back to canonical JSON when an item needs quoting or non-string elements appear. |
 | Content ref | opaque `#n` label present in session `ref_to_digest` (e.g. `#1`) |
-| List in payload | encoded as quoted canonical JSON unless refs encoder applies ref_if_published |
+| List in payload | string lists prefer wire form above; otherwise quoted canonical JSON unless refs encoder applies ref_if_published |
 
 Command lexeme follows the format tag immediately. Remaining tokens are positional values or omit metadata.
 
@@ -94,7 +95,7 @@ Only non-default fields appear. Keys list ends with `|`; values align to keys. D
 
 ### 5.3 `refs` (`E`)
 
-Same shape as positional, but structured/string values ≥48 serialized bytes use **content refs** after first inline publication (S-9).
+Each line begins with a **single fused command lexeme** from setup `refs_cmd` (one tokenizer token under S-11, e.g. `Eb` for `project.create`), not a separate format tag plus command word. Same positional values as §5.1, but structured/string values ≥48 serialized bytes use **content refs** after first inline publication (S-9). Revision and digest strings MAY compress to setup `hex` aliases (`v`, `g` by default in the Synbios fixtures).
 
 ### 5.4 `delta` (`A`)
 
@@ -180,13 +181,15 @@ schema:
 {...json...}
 ids:
 {...json...}
+hex:
+{...json...}
 defaults:
 {...json...}
 ```
 
 `schema` maps each command to ordered field name list. **Full schema** = all commands in profile. **Minimal schema** = only commands used in transcript (S-12).
 
-`ids` binds session ref tokens (`p`, `t`, `a`, `h`, `f`) to full id strings. Decoders MUST NOT rely on hard-coded fixture ids outside this block (S-14).
+`ids` binds session ref tokens (`p`, `t`, `a`, `h`, `f`) to full id strings. Optional `hex` binds short wire tokens to repeated hex digests (revision, artifact digest, etc.). Decoders MUST NOT rely on hard-coded fixture ids outside these blocks (S-14).
 
 `defaults` maps each command in the schema to its default payload fields (S-7). Minimal setup carries defaults only for commands present in the minimal schema.
 

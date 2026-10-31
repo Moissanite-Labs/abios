@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from schemas.synbios.command_fields import COMMAND_FIELDS
@@ -22,6 +22,7 @@ class DecoderSetup:
     schema: dict[str, list[str]]
     session_ids: dict[str, str]
     schema_defaults: dict[str, dict[str, Any]]
+    hex_aliases: dict[str, str] = field(default_factory=dict)
     profile: str = "abios/3"
 
 
@@ -30,10 +31,108 @@ def full_positional_schema() -> dict[str, list[str]]:
 
 
 def fixture_session_ids() -> dict[str, str]:
-    from encoders import fresh_session
+    from schemas.synbios.fixtures import (
+        FIXTURE_AGENT,
+        FIXTURE_ARTIFACT,
+        FIXTURE_HUMAN,
+        FIXTURE_PROJECT,
+        FIXTURE_TASK,
+    )
 
-    session = fresh_session()
-    return {key: getattr(session, key) for key in SESSION_ID_KEYS}
+    return {
+        "project_id": FIXTURE_PROJECT,
+        "task_id": FIXTURE_TASK,
+        "agent_id": FIXTURE_AGENT,
+        "human_id": FIXTURE_HUMAN,
+        "artifact_id": FIXTURE_ARTIFACT,
+    }
+
+
+def infer_hex_candidates(messages: list[tuple[str, dict]]) -> dict[str, str]:
+    """Map wire hex alias keys to revision/digest values appearing in the transcript."""
+    from canonical import canonical_payload
+
+    revision = ""
+    digest = ""
+    for action, payload in messages:
+        full = canonical_payload(action, payload)
+        if "revision" in full and isinstance(full["revision"], str):
+            revision = full["revision"]
+        for key in ("digest", "artifact_digest"):
+            if key in full and isinstance(full[key], str) and full[key]:
+                digest = full[key]
+    out: dict[str, str] = {}
+    if revision:
+        out["v"] = revision
+    if digest:
+        out["g"] = digest
+    return out
+
+
+@dataclass(frozen=True)
+class RefsWirePlan:
+    hex_aliases: dict[str, str]
+    fused_refs_cmd: bool
+
+
+def plan_refs_wire(
+    messages: list[tuple[str, dict]],
+    session_ids: dict[str, str],
+    hex_candidates: dict[str, str],
+    lex: Lexicon | None = None,
+) -> RefsWirePlan:
+    """Pick hex aliases and fused refs cmd only when they reduce POST+messages total."""
+    if not hex_candidates and not messages:
+        return RefsWirePlan({}, True)
+    from encoders import all_encoders, fresh_session
+
+    lex = lex or load_lexicon()
+    from tokens import load_tokenizers, token_count
+
+    spec = load_tokenizers()[0]
+    enc = all_encoders(lex)["refs"]
+    best = RefsWirePlan({}, True)
+    best_total = 10**9
+
+    for fused in (True, False):
+        for use_hex in (False, True):
+            hex_map = dict(hex_candidates) if use_hex else {}
+            session = fresh_session(session_ids, hex_map)
+            session.fused_refs_cmd = fused
+            lines: list[str] = []
+            for action, payload in messages:
+                lines.append(enc.encode(action, payload, session))
+                session.apply_message(action, payload)
+            sizes = setup_sizes(
+                messages,
+                lines,
+                lex,
+                session_ids=session_ids,
+                hex_aliases=hex_map,
+                fused_refs_cmd=fused,
+                plan_wire=False,
+            )
+            total = sizes["post_minimal"] + token_count("\n".join(lines), spec)
+            if total < best_total:
+                best_total = total
+                best = RefsWirePlan(hex_map, fused)
+    return best
+
+
+def plan_hex_aliases(
+    messages: list[tuple[str, dict]],
+    session_ids: dict[str, str],
+    hex_candidates: dict[str, str],
+    lex: Lexicon | None = None,
+) -> dict[str, str]:
+    """Backward-compatible wrapper returning only the hex portion of the wire plan."""
+    return plan_refs_wire(messages, session_ids, hex_candidates, lex).hex_aliases
+
+
+def fixture_hex_aliases() -> dict[str, str]:
+    from schemas.synbios.fixtures import FIXTURE_DIGEST, FIXTURE_REVISION
+
+    return {"v": FIXTURE_REVISION, "g": FIXTURE_DIGEST}
 
 
 def _collect_used_from_transcript(
@@ -73,6 +172,8 @@ def _minimal_lexicon_payload(
     statuses: set[str],
     kinds: set[str],
     tag_names: set[str],
+    *,
+    fused_refs_cmd: bool = True,
 ) -> dict[str, Any]:
     """Decode-sufficient lexicon: every used cmd/status/kind wire mapping + format tags."""
     out: dict[str, Any] = {"concepts": {}, "format_tags": {}}
@@ -86,6 +187,13 @@ def _minimal_lexicon_payload(
             if concept not in block:
                 continue
             out["concepts"].setdefault(cat, {})[concept] = block[concept]
+    refs_out: dict[str, str] = {}
+    if fused_refs_cmd:
+        for cmd in sorted(cmds):
+            if cmd in lex.refs_cmd:
+                refs_out[cmd] = lex.refs_cmd[cmd]
+    if refs_out:
+        out["refs_cmd"] = refs_out
     for name in sorted(tag_names):
         out["format_tags"][name] = lex.format_tags[name]
     return out
@@ -113,6 +221,7 @@ def parse_decoder_context(text: str) -> DecoderSetup:
     lex_payload: dict[str, Any] = {"concepts": {}, "format_tags": {}}
     schema: dict[str, list[str]] = {}
     session_ids: dict[str, str] = {k: "" for k in SESSION_ID_KEYS}
+    hex_aliases: dict[str, str] = {}
     schema_defaults: dict[str, dict[str, Any]] = {}
     i = 1
     while i < len(lines):
@@ -132,6 +241,11 @@ def parse_decoder_context(text: str) -> DecoderSetup:
             session_ids = {**session_ids, **json.loads(lines[i])}
             i += 1
             continue
+        if line == "hex:":
+            i += 1
+            hex_aliases = json.loads(lines[i])
+            i += 1
+            continue
         if line == "defaults:":
             i += 1
             schema_defaults = json.loads(lines[i])
@@ -140,15 +254,17 @@ def parse_decoder_context(text: str) -> DecoderSetup:
         i += 1
     concepts = lex_payload.get("concepts") or {}
     format_tags = lex_payload.get("format_tags") or {}
+    refs_cmd = lex_payload.get("refs_cmd") or {}
     if not schema:
         raise ValueError("decoder context missing schema block")
     if not session_ids or not any(session_ids.values()):
         raise ValueError("decoder context missing ids block")
     return DecoderSetup(
-        lexicon=Lexicon(raw=concepts, format_tags=format_tags),
+        lexicon=Lexicon(raw=concepts, format_tags=format_tags, refs_cmd=refs_cmd),
         schema=schema,
         session_ids=session_ids,
         schema_defaults=schema_defaults or _minimal_defaults(set(schema.keys())),
+        hex_aliases=hex_aliases,
         profile=profile,
     )
 
@@ -158,6 +274,7 @@ def render_decoder_context(
     lexicon_payload: dict[str, Any] | None,
     schema: dict[str, list[str]],
     session_ids: dict[str, str] | None = None,
+    hex_aliases: dict[str, str] | None = None,
     schema_defaults: dict[str, dict[str, Any]] | None = None,
     include_full_lexicon_file: bool = False,
     profile: str = "abios/3",
@@ -175,6 +292,9 @@ def render_decoder_context(
     if session_ids is not None:
         parts.append("ids:")
         parts.append(json.dumps(session_ids, sort_keys=True, separators=(",", ":")))
+    if hex_aliases:
+        parts.append("hex:")
+        parts.append(json.dumps(hex_aliases, sort_keys=True, separators=(",", ":")))
     if schema_defaults is not None:
         parts.append("defaults:")
         parts.append(json.dumps(schema_defaults, sort_keys=True, separators=(",", ":")))
@@ -187,6 +307,8 @@ def session_from_setup(setup: DecoderSetup):
     session = Sym3Session()
     for key in SESSION_ID_KEYS:
         setattr(session, key, setup.session_ids.get(key, ""))
+    session.hex_aliases = dict(setup.hex_aliases)
+    session.fused_refs_cmd = bool(setup.lexicon.refs_cmd)
     session.schema_defaults = setup.schema_defaults
     return session
 
@@ -195,6 +317,11 @@ def setup_sizes(
     messages: list[tuple[str, dict]],
     encoded_lines: list[str],
     lex: Lexicon | None = None,
+    *,
+    session_ids: dict[str, str] | None = None,
+    hex_aliases: dict[str, str] | None = None,
+    fused_refs_cmd: bool | None = None,
+    plan_wire: bool = True,
 ) -> dict[str, int]:
     from post import post_ack_line
     from tokens import load_tokenizers, token_count
@@ -210,23 +337,37 @@ def setup_sizes(
 
     full_lex = json.loads(LEXICON_PATH.read_text(encoding="utf-8"))
     full_schema = full_positional_schema()
-    ids = fixture_session_ids()
+    ids = session_ids or fixture_session_ids()
+    if plan_wire:
+        wire_plan = plan_refs_wire(messages, ids, infer_hex_candidates(messages), lex)
+        if hex_aliases is None:
+            hex_aliases = wire_plan.hex_aliases
+        if fused_refs_cmd is None:
+            fused_refs_cmd = wire_plan.fused_refs_cmd
+    if hex_aliases is None:
+        hex_aliases = {}
+    if fused_refs_cmd is None:
+        fused_refs_cmd = True
     full_defaults = {k: dict(v) for k, v in SCHEMA_DEFAULTS.items()}
     full_text = render_decoder_context(
         lexicon_payload=full_lex,
         schema=full_schema,
         session_ids=ids,
+        hex_aliases=hex_aliases,
         schema_defaults=full_defaults,
         include_full_lexicon_file=False,
     )
     cmds, statuses, kinds, tag_names = _collect_used_from_transcript(messages, encoded_lines, lex)
-    minimal_lex = _minimal_lexicon_payload(lex, cmds, statuses, kinds, tag_names)
+    minimal_lex = _minimal_lexicon_payload(
+        lex, cmds, statuses, kinds, tag_names, fused_refs_cmd=fused_refs_cmd
+    )
     minimal_schema = _minimal_schema(cmds)
     minimal_defaults = _minimal_defaults(cmds)
     minimal_text = render_decoder_context(
         lexicon_payload=minimal_lex,
         schema=minimal_schema,
         session_ids=ids,
+        hex_aliases=hex_aliases,
         schema_defaults=minimal_defaults,
     )
     header_only = FORMAT_HEADER
