@@ -13,6 +13,7 @@ LEXICON_PATH = Path(__file__).resolve().parent / "lexicon.json"
 class Lexicon:
     raw: dict[str, dict[str, str]]
     format_tags: dict[str, str]
+    refs_cmd: dict[str, str]
 
     def word(self, category: str, concept: str) -> str:
         block = self.raw.get(category) or {}
@@ -23,8 +24,20 @@ class Lexicon:
     def tag(self, name: str) -> str:
         return self.format_tags[name]
 
+    def refs_cmd_lexeme(self, action: str) -> str:
+        if action in self.refs_cmd:
+            return self.refs_cmd[action].strip()
+        return self.word("cmd", action).strip()
+
 
 @lru_cache(maxsize=1)
 def load_lexicon(path: Path | None = None) -> Lexicon:
     data = json.loads((path or LEXICON_PATH).read_text(encoding="utf-8"))
-    return Lexicon(raw=data["concepts"], format_tags=data["format_tags"])
+    refs_cmd = data.get("refs_cmd") or {}
+    if not refs_cmd:
+        tag = data["format_tags"]["refs"]
+        refs_cmd = {
+            cmd: f"{tag}{word.strip()}"
+            for cmd, word in data["concepts"]["cmd"].items()
+        }
+    return Lexicon(raw=data["concepts"], format_tags=data["format_tags"], refs_cmd=refs_cmd)
