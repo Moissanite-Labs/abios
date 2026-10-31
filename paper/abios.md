@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Agent-to-agent traffic is billed by tokenizer output, not by human readability. ABIOS is a family of wire encodings for structured forge lifecycle commands that minimize **o200k_base** token cost under honest decoder setup accounting. Encoders share a tokenizer-tuned lexicon, session-scoped identifiers, optional content-addressed blobs, positional field schemas, default-value omission, and an adaptive mode that picks the cheapest variant per message. Primary totals count **POST ack + decode-sufficient minimal setup + messages**. On 11 synthetic lifecycle messages, ABIOS **refs** totals **761** versus **738** compact JSON (with `action` field) and **686** lossless English; on 40- and 200-message transcripts refs totals **1983** and **7791** versus JSON **5570** and **28498**. Setup includes explicit session id bindings and schema defaults (S-12). Negative results from SYM-2P v1 packets, SYM-2P v2 dense pilots, and multilingual lexicon candidates are reported. Model comprehension on the wire format remains under evaluation.
+Agent-to-agent traffic is billed by tokenizer output, not by human readability. ABIOS is a family of wire encodings for structured forge lifecycle commands that minimize **o200k_base** token cost under honest decoder setup accounting. Encoders share a tokenizer-tuned lexicon, session-scoped identifiers, optional content-addressed blobs, positional field schemas, default-value omission, and an adaptive mode that picks the cheapest variant per message. Primary totals count **POST ack + decode-sufficient minimal setup + messages**. On 11 synthetic lifecycle messages (fixture hex), ABIOS **refs** totals **789** versus **738** compact JSON (with `action` field) and **686** lossless English; with seeded random hex ids (seed 1) refs totals **768** versus JSON **694**. On 40- and 200-message transcripts refs totals **1718** and **6198** versus JSON **5570** and **28498**. Setup includes explicit session id bindings, optional `hex` aliases, and schema defaults (S-12). REFS decode rules text (`decode_rules.py`) adds **102** o200k tokens. Negative results from SYM-2P v1 packets, SYM-2P v2 dense pilots, and multilingual lexicon candidates are reported. Model comprehension on the wire format remains under evaluation.
 
 ## Motivation
 
@@ -67,8 +67,8 @@ All numbers below are taken from [docs/abios-bench.md](../docs/abios-bench.md) (
 | compact JSON | 0 | 738 | 738 |
 | English (lossless) | 0 | 686 | 686 |
 | English (lossless, key=value one-line) | 0 | 691 | 691 |
-| ABIOS refs | 525 | 236 | **761** |
-| ABIOS adaptive | 525 | 236 | **761** |
+| ABIOS refs | 604 | 185 | **789** |
+| ABIOS adaptive | 607 | 290 | **897** |
 | Agora envelope | 48 | 979 | 1027 |
 | TOON (approx fallback) | 0 | 809 | 809 |
 
@@ -80,8 +80,8 @@ Under **full** setup + messages, ABIOS refs/adaptive totals exceed compact JSON 
 | --- | ---: | ---: |
 | compact JSON | 5570 | 5570.0 |
 | English (lossless) | 5242 | 5242.0 |
-| ABIOS adaptive | **1983** | 1508.7 |
-| ABIOS refs | **1983** | 1508.7 |
+| ABIOS adaptive | **1718** | 1169.9 |
+| ABIOS refs | **1718** | 1169.9 |
 
 Cumulative crossover vs compact JSON: refs/adaptive **12** messages.
 
@@ -91,8 +91,8 @@ Cumulative crossover vs compact JSON: refs/adaptive **12** messages.
 | --- | ---: | ---: |
 | compact JSON | 28498 | 28498.0 |
 | English (lossless) | 26754 | 26754.0 |
-| ABIOS adaptive | **7791** | 7316.7 |
-| ABIOS refs | **7791** | 7316.7 |
+| ABIOS adaptive | **6198** | 5649.9 |
+| ABIOS refs | **6198** | 5649.9 |
 
 Cumulative crossover vs compact JSON: refs/adaptive **12** messages.
 

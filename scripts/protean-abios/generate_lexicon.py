@@ -162,6 +162,26 @@ def _format_tag_candidates() -> dict[str, list[str]]:
     return tags
 
 
+def _pick_refs_cmd_lexemes(cmd_words: dict[str, str], specs) -> dict[str, str]:
+    tag = "E"
+    pool = [f"{tag}{ch}" for ch in "abcdefghijklmnopqrstuvwxyz0123456789"]
+    singles = [c for c in pool if is_single_token(c, specs)]
+    used: set[str] = set()
+    out: dict[str, str] = {}
+    for cmd in sorted(cmd_words):
+        pick = None
+        for cand in singles:
+            if cand not in used:
+                pick = cand
+                used.add(cand)
+                break
+        if pick is None:
+            fused = f"{tag}{cmd_words[cmd].strip()}"
+            pick = fused
+        out[cmd] = pick
+    return out
+
+
 def main(out_path: Path | None = None) -> int:
     specs = load_tokenizers()
     if not specs:
@@ -203,10 +223,11 @@ def main(out_path: Path | None = None) -> int:
         format_tags[name] = pick
 
     payload = {
-        "version": 1,
+        "version": 2,
         "tokenizers": [s.name for s in specs],
         "concepts": chosen,
         "format_tags": format_tags,
+        "refs_cmd": _pick_refs_cmd_lexemes(chosen["cmd"], specs),
     }
     target = out_path or OUT
     target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

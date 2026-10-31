@@ -144,9 +144,10 @@ The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mo
 
 | Transcript | Compact JSON | Lossless English | ABIOS refs | ABIOS adaptive |
 | --- | ---: | ---: | ---: | ---: |
-| 11 messages | 738 | 686 | **761** | **761** |
-| 40 messages | 5570 | 5242 | **1983** | **1983** |
-| 200 messages | 28498 | 26754 | **7791** | **7791** |
+| 11 messages (fixture hex) | 738 | 686 | **789** | **789** |
+| 11 messages (random hex, seed 1) | 694 | 686 | **768** | **768** |
+| 40 messages | 5570 | 5242 | **1718** | **1718** |
+| 200 messages | 28498 | 26754 | **6198** | **6198** |
 
 Also on 11 messages: TOON approx fallback **809**, Agora envelope **1027** (see `docs/abios-bench.md`). Compact JSON rows include an `action` field like ABIOS command names. **DOI: pending** (Zenodo deposit planned).
 

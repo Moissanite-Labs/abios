@@ -84,9 +84,22 @@
     "positional": "I",
     "refs": "E"
   },
+  "refs_cmd": {
+    "artifact.add": "Eb",
+    "evidence.add": "Ec",
+    "grant.create": "Ed",
+    "grant.revoke": "Ef",
+    "principal.create": "Ek",
+    "principal.revoke": "El",
+    "project.create": "Em",
+    "review.create": "En",
+    "task.claim": "Ep",
+    "task.create": "Eq",
+    "task.transition": "Er"
+  },
   "tokenizers": [
     "o200k_base",
     "cl100k_base"
   ],
-  "version": 1
+  "version": 2
 }

@@ -18,6 +18,7 @@ class Sym3Session:
     agent_id: str = ""
     human_id: str = ""
     artifact_id: str = ""
+    hex_aliases: dict[str, str] = field(default_factory=dict)
     task_status: str = "open"
     content: ContentStore = field(default_factory=ContentStore)
     snapshots: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -54,6 +55,15 @@ class Sym3Session:
         if token in table:
             return table[token]
         raise KeyError(token)
+
+    def resolve_hex_alias(self, token: str) -> str | None:
+        return self.hex_aliases.get(token)
+
+    def hex_alias_for(self, value: str) -> str | None:
+        for wire, full in self.hex_aliases.items():
+            if full == value:
+                return wire
+        return None
 
     def snapshot_key(self, action: str, payload: dict[str, Any]) -> str | None:
         full = canonical_payload(action, payload)

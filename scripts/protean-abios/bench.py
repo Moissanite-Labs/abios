@@ -8,9 +8,19 @@ import sys
 from schemas.synbios.sym2p.codec import EncodeContext, encode_command
 
 from decoder_context import cached_setup_cost, setup_sizes
-from encoders import all_encoders, encode_transcript
+from decode_rules import REFS_DECODE_RULES
+from encoders import all_encoders, encode_transcript, fresh_session
 from english import render_english_lossless, render_english_lossy
-from schemas.synbios.fixtures import lifecycle_11, lifecycle_40, lifecycle_200
+from schemas.synbios.fixtures import (
+    lifecycle_11,
+    lifecycle_11_random,
+    lifecycle_40,
+    lifecycle_40_random,
+    lifecycle_200,
+    lifecycle_200_random,
+    lifecycle_hex_aliases,
+    lifecycle_session_ids,
+)
 from lexicon import load_lexicon
 from prior_art import (
     AGORA_ARXIV,
@@ -116,7 +126,13 @@ def _row_from_lines(
     }
 
 
-def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dict:
+def run_bench_for_transcript(
+    name: str,
+    messages: list[tuple[str, dict]],
+    *,
+    session_ids: dict[str, str] | None = None,
+    hex_aliases: dict[str, str] | None = None,
+) -> dict:
     specs = load_tokenizers()
     primary = _primary(specs)
     lex = load_lexicon()
@@ -202,8 +218,14 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
 
     sym3_rows: list[dict] = []
     for enc_name, enc in encoders.items():
-        lines = encode_transcript(enc, messages)
-        sizes = setup_sizes(messages, lines, lex)
+        lines = encode_transcript(enc, messages, session=fresh_session(session_ids, hex_aliases))
+        sizes = setup_sizes(
+            messages,
+            lines,
+            lex,
+            session_ids=session_ids,
+            hex_aliases=hex_aliases,
+        )
         post_setup = sizes["post_minimal"]
         row = _row_from_lines(
             f"ABIOS {enc_name}",
@@ -221,7 +243,11 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
     break_even: dict[str, dict] = {}
     for row in sym3_rows:
         enc = row["label"].replace("ABIOS ", "")
-        enc_lines = encode_transcript(encoders[enc], messages)
+        enc_lines = encode_transcript(
+            encoders[enc],
+            messages,
+            session=fresh_session(session_ids, hex_aliases),
+        )
         setup_used = row["setup_min_n"]
         break_even[enc] = {
             "vs_compact_json": _cumulative_crossover(
@@ -241,7 +267,7 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
     }
 
 
-def format_markdown(results: list[dict], primary: str) -> str:
+def format_markdown(results: list[dict], primary: str, *, rules_tokens: int = 0) -> str:
     lines = [
         "# ABIOS benchmark",
         "",
@@ -252,6 +278,8 @@ def format_markdown(results: list[dict], primary: str) -> str:
         "Minimal setup is **decode-sufficient**: all used cmd/status/kind wire mappings and format tags "
         "for the transcript (plus all format tags when `adaptive` appears). "
         "Primary setup (min) counts POST ack line plus minimal decoder context (section 8.1).",
+        "",
+        f"REFS decode rules overhead (informative, `decode_rules.py`): **{rules_tokens}** tokens ({primary}).",
         "",
     ]
     for block in results:
@@ -294,6 +322,7 @@ def format_markdown(results: list[dict], primary: str) -> str:
     lines.append("## Verdict (primary accounting, o200k_base)")
     lines.append("")
     l11 = next(b for b in results if b["transcript"] == "lifecycle_11")
+    l11r = next(b for b in results if b["transcript"] == "lifecycle_11_random")
     refs = next(r for r in l11["rows"] if r["label"] == "ABIOS refs")
     adaptive = next(r for r in l11["rows"] if r["label"] == "ABIOS adaptive")
     compact = next(r for r in l11["rows"] if r["label"] == "compact JSON")
@@ -301,13 +330,16 @@ def format_markdown(results: list[dict], primary: str) -> str:
     toon = next(r for r in l11["rows"] if "TOON" in r["label"])
     primary = _primary(load_tokenizers())
     refs_total = refs["total_primary"][primary]
+    refs_random = next(r for r in l11r["rows"] if r["label"] == "ABIOS refs")["total_primary"][primary]
     adaptive_total = adaptive["total_primary"][primary]
     compact_total = compact["total_primary"][primary]
+    compact_random = next(r for r in l11r["rows"] if r["label"] == "compact JSON")["total_primary"][primary]
     english_total = english["total_primary"][primary]
     toon_total = toon["total_primary"][primary]
     lines.append(
-        f"On lifecycle_11, ABIOS **refs** total **{refs_total}** vs compact JSON **{compact_total}** "
+        f"On lifecycle_11 (fixture hex), ABIOS **refs** total **{refs_total}** vs compact JSON **{compact_total}** "
         f"and lossless English **{english_total}** (primary = POST + minimal setup + messages). "
+        f"Same task with **seeded random hex ids** (see `lifecycle_*_random`): refs **{refs_random}** vs JSON **{compact_random}**. "
         f"**Adaptive** total **{adaptive_total}**. TOON fallback row **{toon_total}** (approximation). "
         "lifecycle_40/200 repeat many messages verbatim, which inflates refs savings; see transcript notes. "
         "SYM-2P v2 rows are external PR #6 constants, not live bench output."
@@ -316,17 +348,41 @@ def format_markdown(results: list[dict], primary: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def compute_bench_payload() -> tuple[list[dict], str, str]:
+def compute_bench_payload() -> tuple[list[dict], str, str, dict]:
     specs = load_tokenizers()
     primary = _primary(specs)
+    rules_tokens = token_count(REFS_DECODE_RULES, specs[0]) if specs else 0
     assert len(lifecycle_11()) == 11 and len(lifecycle_40()) == 40 and len(lifecycle_200()) == 200
-    results = [
+    fixture_results = [
         run_bench_for_transcript("lifecycle_11", lifecycle_11()),
         run_bench_for_transcript("lifecycle_40", lifecycle_40()),
         run_bench_for_transcript("lifecycle_200", lifecycle_200()),
     ]
-    md = format_markdown(results, primary)
-    return results, md, primary
+    random_seed = 1
+    random_results = [
+        run_bench_for_transcript(
+            "lifecycle_11_random",
+            lifecycle_11_random(random_seed),
+            session_ids=lifecycle_session_ids(random_seed),
+            hex_aliases=lifecycle_hex_aliases(random_seed),
+        ),
+        run_bench_for_transcript(
+            "lifecycle_40_random",
+            lifecycle_40_random(random_seed),
+            session_ids=lifecycle_session_ids(random_seed),
+            hex_aliases=lifecycle_hex_aliases(random_seed),
+        ),
+        run_bench_for_transcript(
+            "lifecycle_200_random",
+            lifecycle_200_random(random_seed),
+            session_ids=lifecycle_session_ids(random_seed),
+            hex_aliases=lifecycle_hex_aliases(random_seed),
+        ),
+    ]
+    results = fixture_results + random_results
+    md = format_markdown(results, primary, rules_tokens=rules_tokens)
+    meta = {"refs_decode_rules_tokens": rules_tokens, "random_id_seed": random_seed}
+    return results, md, primary, meta
 
 
 def _normalize_md(text: str) -> str:
@@ -356,7 +412,7 @@ def _git_identifiers(root) -> tuple[str, str]:
     return git_sha, git_short
 
 
-def verify_against_committed(results: list[dict], md: str, primary: str, root) -> None:
+def verify_against_committed(results: list[dict], md: str, primary: str, root, meta: dict) -> None:
     from pathlib import Path
 
     md_path = Path(root) / "docs" / "abios-bench.md"
@@ -380,6 +436,7 @@ def verify_against_committed(results: list[dict], md: str, primary: str, root) -
         {
             "primary_tokenizer": primary,
             "tokenizers": [s.name for s in load_tokenizers()],
+            "meta": meta,
             "results": results,
         }
     )
@@ -390,7 +447,7 @@ def verify_against_committed(results: list[dict], md: str, primary: str, root) -
         )
 
 
-def write_committed(results: list[dict], md: str, primary: str, root) -> None:
+def write_committed(results: list[dict], md: str, primary: str, root, meta: dict) -> None:
     from pathlib import Path
 
     root = Path(root)
@@ -403,6 +460,7 @@ def write_committed(results: list[dict], md: str, primary: str, root) -> None:
         "git_short": git_short,
         "primary_tokenizer": primary,
         "tokenizers": [s.name for s in load_tokenizers()],
+        "meta": meta,
         "results": results,
     }
     json_path.parent.mkdir(parents=True, exist_ok=True)
@@ -425,12 +483,12 @@ def main() -> int:
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
-    results, md, primary = compute_bench_payload()
+    results, md, primary, meta = compute_bench_payload()
     if args.write:
-        write_committed(results, md, primary, root)
+        write_committed(results, md, primary, root, meta)
         print(md)
         return 0
-    verify_against_committed(results, md, primary, root)
+    verify_against_committed(results, md, primary, root, meta)
     print("ABIOS benchmark verification passed (docs/abios-bench.md and bench/results/abios-bench.json).")
     return 0
 

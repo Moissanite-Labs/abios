@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from schemas.synbios.command_fields import COMMAND_FIELDS
@@ -22,6 +22,7 @@ class DecoderSetup:
     schema: dict[str, list[str]]
     session_ids: dict[str, str]
     schema_defaults: dict[str, dict[str, Any]]
+    hex_aliases: dict[str, str] = field(default_factory=dict)
     profile: str = "abios/3"
 
 
@@ -30,10 +31,27 @@ def full_positional_schema() -> dict[str, list[str]]:
 
 
 def fixture_session_ids() -> dict[str, str]:
-    from encoders import fresh_session
+    from schemas.synbios.fixtures import (
+        FIXTURE_AGENT,
+        FIXTURE_ARTIFACT,
+        FIXTURE_HUMAN,
+        FIXTURE_PROJECT,
+        FIXTURE_TASK,
+    )
 
-    session = fresh_session()
-    return {key: getattr(session, key) for key in SESSION_ID_KEYS}
+    return {
+        "project_id": FIXTURE_PROJECT,
+        "task_id": FIXTURE_TASK,
+        "agent_id": FIXTURE_AGENT,
+        "human_id": FIXTURE_HUMAN,
+        "artifact_id": FIXTURE_ARTIFACT,
+    }
+
+
+def fixture_hex_aliases() -> dict[str, str]:
+    from schemas.synbios.fixtures import FIXTURE_DIGEST, FIXTURE_REVISION
+
+    return {"v": FIXTURE_REVISION, "g": FIXTURE_DIGEST}
 
 
 def _collect_used_from_transcript(
@@ -86,6 +104,12 @@ def _minimal_lexicon_payload(
             if concept not in block:
                 continue
             out["concepts"].setdefault(cat, {})[concept] = block[concept]
+    refs_out: dict[str, str] = {}
+    for cmd in sorted(cmds):
+        if cmd in lex.refs_cmd:
+            refs_out[cmd] = lex.refs_cmd[cmd]
+    if refs_out:
+        out["refs_cmd"] = refs_out
     for name in sorted(tag_names):
         out["format_tags"][name] = lex.format_tags[name]
     return out
@@ -113,6 +137,7 @@ def parse_decoder_context(text: str) -> DecoderSetup:
     lex_payload: dict[str, Any] = {"concepts": {}, "format_tags": {}}
     schema: dict[str, list[str]] = {}
     session_ids: dict[str, str] = {k: "" for k in SESSION_ID_KEYS}
+    hex_aliases: dict[str, str] = {}
     schema_defaults: dict[str, dict[str, Any]] = {}
     i = 1
     while i < len(lines):
@@ -132,6 +157,11 @@ def parse_decoder_context(text: str) -> DecoderSetup:
             session_ids = {**session_ids, **json.loads(lines[i])}
             i += 1
             continue
+        if line == "hex:":
+            i += 1
+            hex_aliases = json.loads(lines[i])
+            i += 1
+            continue
         if line == "defaults:":
             i += 1
             schema_defaults = json.loads(lines[i])
@@ -140,15 +170,17 @@ def parse_decoder_context(text: str) -> DecoderSetup:
         i += 1
     concepts = lex_payload.get("concepts") or {}
     format_tags = lex_payload.get("format_tags") or {}
+    refs_cmd = lex_payload.get("refs_cmd") or {}
     if not schema:
         raise ValueError("decoder context missing schema block")
     if not session_ids or not any(session_ids.values()):
         raise ValueError("decoder context missing ids block")
     return DecoderSetup(
-        lexicon=Lexicon(raw=concepts, format_tags=format_tags),
+        lexicon=Lexicon(raw=concepts, format_tags=format_tags, refs_cmd=refs_cmd),
         schema=schema,
         session_ids=session_ids,
         schema_defaults=schema_defaults or _minimal_defaults(set(schema.keys())),
+        hex_aliases=hex_aliases,
         profile=profile,
     )
 
@@ -158,6 +190,7 @@ def render_decoder_context(
     lexicon_payload: dict[str, Any] | None,
     schema: dict[str, list[str]],
     session_ids: dict[str, str] | None = None,
+    hex_aliases: dict[str, str] | None = None,
     schema_defaults: dict[str, dict[str, Any]] | None = None,
     include_full_lexicon_file: bool = False,
     profile: str = "abios/3",
@@ -175,6 +208,9 @@ def render_decoder_context(
     if session_ids is not None:
         parts.append("ids:")
         parts.append(json.dumps(session_ids, sort_keys=True, separators=(",", ":")))
+    if hex_aliases:
+        parts.append("hex:")
+        parts.append(json.dumps(hex_aliases, sort_keys=True, separators=(",", ":")))
     if schema_defaults is not None:
         parts.append("defaults:")
         parts.append(json.dumps(schema_defaults, sort_keys=True, separators=(",", ":")))
@@ -187,6 +223,7 @@ def session_from_setup(setup: DecoderSetup):
     session = Sym3Session()
     for key in SESSION_ID_KEYS:
         setattr(session, key, setup.session_ids.get(key, ""))
+    session.hex_aliases = dict(setup.hex_aliases)
     session.schema_defaults = setup.schema_defaults
     return session
 
@@ -195,6 +232,9 @@ def setup_sizes(
     messages: list[tuple[str, dict]],
     encoded_lines: list[str],
     lex: Lexicon | None = None,
+    *,
+    session_ids: dict[str, str] | None = None,
+    hex_aliases: dict[str, str] | None = None,
 ) -> dict[str, int]:
     from post import post_ack_line
     from tokens import load_tokenizers, token_count
@@ -210,12 +250,14 @@ def setup_sizes(
 
     full_lex = json.loads(LEXICON_PATH.read_text(encoding="utf-8"))
     full_schema = full_positional_schema()
-    ids = fixture_session_ids()
+    ids = session_ids or fixture_session_ids()
+    hex_aliases = hex_aliases if hex_aliases is not None else fixture_hex_aliases()
     full_defaults = {k: dict(v) for k, v in SCHEMA_DEFAULTS.items()}
     full_text = render_decoder_context(
         lexicon_payload=full_lex,
         schema=full_schema,
         session_ids=ids,
+        hex_aliases=hex_aliases,
         schema_defaults=full_defaults,
         include_full_lexicon_file=False,
     )
@@ -227,6 +269,7 @@ def setup_sizes(
         lexicon_payload=minimal_lex,
         schema=minimal_schema,
         session_ids=ids,
+        hex_aliases=hex_aliases,
         schema_defaults=minimal_defaults,
     )
     header_only = FORMAT_HEADER

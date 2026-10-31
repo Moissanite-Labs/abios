@@ -100,8 +100,8 @@ class AbiosRoundTripTests(unittest.TestCase):
 
         enc = all_encoders()["refs"]
         session = fresh_session()
-        cmd = enc.lex.word("cmd", "project.create").strip()
-        line = f"{enc.tag}{cmd} demo \"\" \"\" #9"
+        fused = enc._refs_prefix("project.create")
+        line = f'{fused} demo "" "" #9'
         with self.assertRaises(ValueError):
             enc.decode(line, session)
 
@@ -142,6 +142,26 @@ class AbiosRoundTripTests(unittest.TestCase):
         lines = encode_transcript(enc, messages)
         back = decode_transcript(enc, lines)
         self.assertTrue(messages_equal(messages[-1], back[-1]))
+
+    def test_wire_string_list_with_semicolon_in_item(self):
+        payload = {
+            "task_id": "a1" * 16,
+            "artifact_id": "e5" * 16,
+            "artifact_digest": "b" * 64,
+            "revision": "a" * 40,
+            "kind": "test",
+            "status": "passed",
+            "command": "pytest",
+            "summary": "ok",
+            "tool": "python",
+            "tool_version": "3.11",
+            "assumptions": ["Reported by agent; not executed by forge."],
+        }
+        enc = all_encoders()["refs"]
+        msg = ("evidence.add", canonical_payload("evidence.add", payload))
+        lines = encode_transcript(enc, [msg])
+        back = decode_transcript(enc, lines)
+        self.assertTrue(messages_equal(msg, back[0]))
 
     def test_long_list_ref_round_trip_refs(self):
         blob = ["x"] * 20
