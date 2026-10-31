@@ -1,6 +1,6 @@
 {
-  "git_sha": "c78d19e82a0e8e2a1973edf76da5477bc750269e",
-  "git_short": "c78d19e",
+  "git_sha": "f266dcc374556412da8bab100c927c2c74bc453c",
+  "git_short": "f266dcc",
   "primary_tokenizer": "o200k_base",
   "results": [
     {
@@ -326,164 +326,164 @@
         {
           "label": "ABIOS delta",
           "messages": {
-            "cl100k_base": 351,
-            "o200k_base": 349
+            "cl100k_base": 347,
+            "o200k_base": 345
           },
-          "msg_rate": 31.727272727272727,
+          "msg_rate": 31.363636363636363,
           "setup_cached": {
             "o200k_base": 52.5
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 799
           },
           "setup_min": {
             "o200k_base": 525
           },
           "setup_min_n": 525,
           "total_cached": {
-            "o200k_base": 401.5
+            "o200k_base": 397.5
           },
           "total_full": {
-            "o200k_base": 1131
+            "o200k_base": 1144
           },
           "total_primary": {
-            "o200k_base": 874
+            "o200k_base": 870
           }
         },
         {
           "label": "ABIOS refs",
           "messages": {
-            "cl100k_base": 243,
-            "o200k_base": 241
+            "cl100k_base": 238,
+            "o200k_base": 236
           },
-          "msg_rate": 21.90909090909091,
+          "msg_rate": 21.454545454545453,
           "note": "closest prior art: Agora (arXiv:2410.11905)",
           "setup_cached": {
             "o200k_base": 52.5
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 799
           },
           "setup_min": {
             "o200k_base": 525
           },
           "setup_min_n": 525,
           "total_cached": {
-            "o200k_base": 293.5
+            "o200k_base": 288.5
           },
           "total_full": {
-            "o200k_base": 1023
+            "o200k_base": 1035
           },
           "total_primary": {
-            "o200k_base": 766
+            "o200k_base": 761
           }
         },
         {
           "label": "ABIOS positional",
           "messages": {
-            "cl100k_base": 258,
-            "o200k_base": 256
+            "cl100k_base": 253,
+            "o200k_base": 251
           },
-          "msg_rate": 23.272727272727273,
+          "msg_rate": 22.818181818181817,
           "setup_cached": {
             "o200k_base": 52.5
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 798
           },
           "setup_min": {
             "o200k_base": 525
           },
           "setup_min_n": 525,
           "total_cached": {
-            "o200k_base": 308.5
+            "o200k_base": 303.5
           },
           "total_full": {
-            "o200k_base": 1038
+            "o200k_base": 1049
           },
           "total_primary": {
-            "o200k_base": 781
+            "o200k_base": 776
           }
         },
         {
           "label": "ABIOS omit",
           "messages": {
-            "cl100k_base": 359,
-            "o200k_base": 357
+            "cl100k_base": 355,
+            "o200k_base": 353
           },
-          "msg_rate": 32.45454545454545,
+          "msg_rate": 32.09090909090909,
           "setup_cached": {
             "o200k_base": 52.300000000000004
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 797
           },
           "setup_min": {
             "o200k_base": 523
           },
           "setup_min_n": 523,
           "total_cached": {
-            "o200k_base": 409.3
+            "o200k_base": 405.3
           },
           "total_full": {
-            "o200k_base": 1139
+            "o200k_base": 1150
           },
           "total_primary": {
-            "o200k_base": 880
+            "o200k_base": 876
           }
         },
         {
           "label": "ABIOS combined",
           "messages": {
-            "cl100k_base": 336,
-            "o200k_base": 334
+            "cl100k_base": 332,
+            "o200k_base": 330
           },
-          "msg_rate": 30.363636363636363,
+          "msg_rate": 30.0,
           "setup_cached": {
             "o200k_base": 52.400000000000006
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 798
           },
           "setup_min": {
             "o200k_base": 524
           },
           "setup_min_n": 524,
           "total_cached": {
-            "o200k_base": 386.4
+            "o200k_base": 382.4
           },
           "total_full": {
-            "o200k_base": 1116
+            "o200k_base": 1128
           },
           "total_primary": {
-            "o200k_base": 858
+            "o200k_base": 854
           }
         },
         {
           "label": "ABIOS adaptive",
           "messages": {
-            "cl100k_base": 243,
-            "o200k_base": 241
+            "cl100k_base": 238,
+            "o200k_base": 236
           },
-          "msg_rate": 21.90909090909091,
+          "msg_rate": 21.454545454545453,
           "setup_cached": {
             "o200k_base": 52.5
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 799
           },
           "setup_min": {
             "o200k_base": 525
           },
           "setup_min_n": 525,
           "total_cached": {
-            "o200k_base": 293.5
+            "o200k_base": 288.5
           },
           "total_full": {
-            "o200k_base": 1023
+            "o200k_base": 1035
           },
           "total_primary": {
-            "o200k_base": 766
+            "o200k_base": 761
           }
         }
       ],
@@ -741,164 +741,164 @@
         {
           "label": "ABIOS delta",
           "messages": {
-            "cl100k_base": 3423,
-            "o200k_base": 3356
+            "cl100k_base": 3417,
+            "o200k_base": 3350
           },
-          "msg_rate": 83.9,
+          "msg_rate": 83.75,
           "setup_cached": {
             "o200k_base": 53.1
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 801
           },
           "setup_min": {
             "o200k_base": 531
           },
           "setup_min_n": 531,
           "total_cached": {
-            "o200k_base": 3409.1
+            "o200k_base": 3403.1
           },
           "total_full": {
-            "o200k_base": 4138
+            "o200k_base": 4151
           },
           "total_primary": {
-            "o200k_base": 3887
+            "o200k_base": 3881
           }
         },
         {
           "label": "ABIOS refs",
           "messages": {
-            "cl100k_base": 1478,
-            "o200k_base": 1463
+            "cl100k_base": 1471,
+            "o200k_base": 1456
           },
-          "msg_rate": 36.575,
+          "msg_rate": 36.4,
           "note": "closest prior art: Agora (arXiv:2410.11905)",
           "setup_cached": {
             "o200k_base": 52.7
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 797
           },
           "setup_min": {
             "o200k_base": 527
           },
           "setup_min_n": 527,
           "total_cached": {
-            "o200k_base": 1515.7
+            "o200k_base": 1508.7
           },
           "total_full": {
-            "o200k_base": 2245
+            "o200k_base": 2253
           },
           "total_primary": {
-            "o200k_base": 1990
+            "o200k_base": 1983
           }
         },
         {
           "label": "ABIOS positional",
           "messages": {
-            "cl100k_base": 2574,
-            "o200k_base": 2507
+            "cl100k_base": 2567,
+            "o200k_base": 2500
           },
-          "msg_rate": 62.675,
+          "msg_rate": 62.5,
           "setup_cached": {
             "o200k_base": 52.7
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 796
           },
           "setup_min": {
             "o200k_base": 527
           },
           "setup_min_n": 527,
           "total_cached": {
-            "o200k_base": 2559.7
+            "o200k_base": 2552.7
           },
           "total_full": {
-            "o200k_base": 3289
+            "o200k_base": 3296
           },
           "total_primary": {
-            "o200k_base": 3034
+            "o200k_base": 3027
           }
         },
         {
           "label": "ABIOS omit",
           "messages": {
-            "cl100k_base": 3431,
-            "o200k_base": 3364
+            "cl100k_base": 3425,
+            "o200k_base": 3358
           },
-          "msg_rate": 84.1,
+          "msg_rate": 83.95,
           "setup_cached": {
             "o200k_base": 53.0
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 800
           },
           "setup_min": {
             "o200k_base": 530
           },
           "setup_min_n": 530,
           "total_cached": {
-            "o200k_base": 3417.0
+            "o200k_base": 3411.0
           },
           "total_full": {
-            "o200k_base": 4146
+            "o200k_base": 4158
           },
           "total_primary": {
-            "o200k_base": 3894
+            "o200k_base": 3888
           }
         },
         {
           "label": "ABIOS combined",
           "messages": {
-            "cl100k_base": 2327,
-            "o200k_base": 2312
+            "cl100k_base": 2321,
+            "o200k_base": 2306
           },
-          "msg_rate": 57.8,
+          "msg_rate": 57.65,
           "setup_cached": {
             "o200k_base": 52.900000000000006
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 799
           },
           "setup_min": {
             "o200k_base": 529
           },
           "setup_min_n": 529,
           "total_cached": {
-            "o200k_base": 2364.9
+            "o200k_base": 2358.9
           },
           "total_full": {
-            "o200k_base": 3094
+            "o200k_base": 3105
           },
           "total_primary": {
-            "o200k_base": 2841
+            "o200k_base": 2835
           }
         },
         {
           "label": "ABIOS adaptive",
           "messages": {
-            "cl100k_base": 1478,
-            "o200k_base": 1463
+            "cl100k_base": 1471,
+            "o200k_base": 1456
           },
-          "msg_rate": 36.575,
+          "msg_rate": 36.4,
           "setup_cached": {
             "o200k_base": 52.7
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 797
           },
           "setup_min": {
             "o200k_base": 527
           },
           "setup_min_n": 527,
           "total_cached": {
-            "o200k_base": 1515.7
+            "o200k_base": 1508.7
           },
           "total_full": {
-            "o200k_base": 2245
+            "o200k_base": 2253
           },
           "total_primary": {
-            "o200k_base": 1990
+            "o200k_base": 1983
           }
         }
       ],
@@ -1156,164 +1156,164 @@
         {
           "label": "ABIOS delta",
           "messages": {
-            "cl100k_base": 17659,
-            "o200k_base": 17324
+            "cl100k_base": 17629,
+            "o200k_base": 17294
           },
-          "msg_rate": 86.62,
+          "msg_rate": 86.47,
           "setup_cached": {
             "o200k_base": 53.1
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 801
           },
           "setup_min": {
             "o200k_base": 531
           },
           "setup_min_n": 531,
           "total_cached": {
-            "o200k_base": 17377.1
+            "o200k_base": 17347.1
           },
           "total_full": {
-            "o200k_base": 18106
+            "o200k_base": 18095
           },
           "total_primary": {
-            "o200k_base": 17855
+            "o200k_base": 17825
           }
         },
         {
           "label": "ABIOS refs",
           "messages": {
-            "cl100k_base": 7449,
-            "o200k_base": 7374
+            "cl100k_base": 7339,
+            "o200k_base": 7264
           },
-          "msg_rate": 36.87,
+          "msg_rate": 36.32,
           "note": "closest prior art: Agora (arXiv:2410.11905)",
           "setup_cached": {
             "o200k_base": 52.7
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 797
           },
           "setup_min": {
             "o200k_base": 527
           },
           "setup_min_n": 527,
           "total_cached": {
-            "o200k_base": 7426.7
+            "o200k_base": 7316.7
           },
           "total_full": {
-            "o200k_base": 8156
+            "o200k_base": 8061
           },
           "total_primary": {
-            "o200k_base": 7901
+            "o200k_base": 7791
           }
         },
         {
           "label": "ABIOS positional",
           "messages": {
-            "cl100k_base": 13414,
-            "o200k_base": 13079
+            "cl100k_base": 13379,
+            "o200k_base": 13044
           },
-          "msg_rate": 65.395,
+          "msg_rate": 65.22,
           "setup_cached": {
             "o200k_base": 52.7
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 796
           },
           "setup_min": {
             "o200k_base": 527
           },
           "setup_min_n": 527,
           "total_cached": {
-            "o200k_base": 13131.7
+            "o200k_base": 13096.7
           },
           "total_full": {
-            "o200k_base": 13861
+            "o200k_base": 13840
           },
           "total_primary": {
-            "o200k_base": 13606
+            "o200k_base": 13571
           }
         },
         {
           "label": "ABIOS omit",
           "messages": {
-            "cl100k_base": 17699,
-            "o200k_base": 17364
+            "cl100k_base": 17669,
+            "o200k_base": 17334
           },
-          "msg_rate": 86.82,
+          "msg_rate": 86.67,
           "setup_cached": {
             "o200k_base": 53.0
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 800
           },
           "setup_min": {
             "o200k_base": 530
           },
           "setup_min_n": 530,
           "total_cached": {
-            "o200k_base": 17417.0
+            "o200k_base": 17387.0
           },
           "total_full": {
-            "o200k_base": 18146
+            "o200k_base": 18134
           },
           "total_primary": {
-            "o200k_base": 17894
+            "o200k_base": 17864
           }
         },
         {
           "label": "ABIOS combined",
           "messages": {
-            "cl100k_base": 11694,
-            "o200k_base": 11619
+            "cl100k_base": 11589,
+            "o200k_base": 11514
           },
-          "msg_rate": 58.095,
+          "msg_rate": 57.57,
           "setup_cached": {
             "o200k_base": 52.900000000000006
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 799
           },
           "setup_min": {
             "o200k_base": 529
           },
           "setup_min_n": 529,
           "total_cached": {
-            "o200k_base": 11671.9
+            "o200k_base": 11566.9
           },
           "total_full": {
-            "o200k_base": 12401
+            "o200k_base": 12313
           },
           "total_primary": {
-            "o200k_base": 12148
+            "o200k_base": 12043
           }
         },
         {
           "label": "ABIOS adaptive",
           "messages": {
-            "cl100k_base": 7449,
-            "o200k_base": 7374
+            "cl100k_base": 7339,
+            "o200k_base": 7264
           },
-          "msg_rate": 36.87,
+          "msg_rate": 36.32,
           "setup_cached": {
             "o200k_base": 52.7
           },
           "setup_full": {
-            "o200k_base": 782
+            "o200k_base": 797
           },
           "setup_min": {
             "o200k_base": 527
           },
           "setup_min_n": 527,
           "total_cached": {
-            "o200k_base": 7426.7
+            "o200k_base": 7316.7
           },
           "total_full": {
-            "o200k_base": 8156
+            "o200k_base": 8061
           },
           "total_primary": {
-            "o200k_base": 7901
+            "o200k_base": 7791
           }
         }
       ],

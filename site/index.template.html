@@ -168,10 +168,10 @@ footer a{color:var(--muted)}
     <h1>ABIOS</h1>
     <p class="tag">Token-aware shared-state messaging for agents.</p>
     <p class="lede"><strong>ABIOS/3</strong> compresses multi-turn forge command streams for tokenizer billing while keeping decode explicit. Each session opens with <strong>POST</strong>—a one-time handshake that exchanges decode-sufficient lexicon and schema before refs, deltas, or content-addressed lines (rule <strong>L-18</strong>: no latent channel).</p>
-    <p class="lede">Primary metric: <strong>o200k_base</strong> POST ack + decode-sufficient minimal setup + messages. On 11 synthetic lifecycle messages, ABIOS <strong>refs</strong> totals <strong>766</strong> tokens versus <strong>738</strong> compact JSON (with <code>action</code> field) and <strong>686</strong> lossless English; on 40- and 200-message transcripts refs totals beat JSON (<code>make bench</code> verifies committed tables).</p>
+    <p class="lede">Primary metric: <strong>o200k_base</strong> POST ack + decode-sufficient minimal setup + messages. On 11 synthetic lifecycle messages, ABIOS <strong>refs</strong> totals <strong>761</strong> tokens versus <strong>738</strong> compact JSON (with <code>action</code> field) and <strong>686</strong> lossless English; on 40- and 200-message transcripts refs totals beat JSON (<code>make bench</code> verifies committed tables).</p>
     <p class="lede">This repo also ships legacy wire: <strong>ABIOS/1 (formerly SYM-2P)</strong> v1 JSON packets and superseded v2 dense experiments—documented under <a href="#legacy">Legacy</a>, not the forward path.</p>
     <div class="stats">
-      <div class="stat"><b>766</b><span>ABIOS refs (11 msgs, POST + min setup + wire)</span></div>
+      <div class="stat"><b>761</b><span>ABIOS refs (11 msgs, POST + min setup + wire)</span></div>
       <div class="stat"><b>738</b><span>compact JSON baseline</span></div>
       <div class="stat"><b>POST</b><span>session handshake (counted in totals)</span></div>
       <div class="stat"><b>0</b><span>hidden decoder cache</span></div>
@@ -218,11 +218,11 @@ footer a{color:var(--muted)}
       <div class="card">
         <h3 class="use">Reach for it</h3>
         <ul>
-          <li>Two agents must exchange messages as dense symbolic packets instead of English prose inside JSON.</li>
+          <li>Two agents exchange structured forge commands and you want tokenizer-aware wire compression (ABIOS/3) alongside SYM-2P/1.0 JSON packets.</li>
           <li>Agents must reason in symbols: bind values, branch on conditions, iterate, fan work across a swarm, dispatch subagents.</li>
-          <li>Packets cross untrusted relays and need corruption detection: the v2-rcp edition adds a checksum field.</li>
-          <li>You want to measure the win: the bench runs a paired v1/v2 corpus and scores model evals.</li>
-          <li>An operator must read what the agents said. The translator renders wire packets into English, and the validator gives typed diagnostics.</li>
+          <li>Packets cross untrusted relays and need corruption detection (SYM-2P v2-rcp checksum experiments remain in the repo as tooling).</li>
+          <li>You want reproducible token benchmarks with honest decoder setup accounting (<code>make bench</code>).</li>
+          <li>An operator must read what the agents said. SYM-2P translators render wire packets into English; ABIOS decodes to canonical JSON-shaped commands.</li>
         </ul>
       </div>
       <div class="card">
@@ -242,7 +242,7 @@ footer a{color:var(--muted)}
     <p><span class="lead">The bet.</span> Skip language-based processing where it is not needed. Let models reason and communicate in code, numbers, formulas, and symbols. Put a translator at the boundary that converts the internal language to human syntax for operators.</p>
     <p><span class="lead">Where the work stands.</span></p>
     <ul class="tight">
-      <li><span class="lead">Delivered.</span> The v2 wire format, the translator, the migration scaffold, the v2.1 reasoning dialect, the v2-rcp relay-protection edition, and the measurement harness.</li>
+      <li><span class="lead">Delivered.</span> SYM-2P/1.0 validator and templates; ABIOS/3 reference codec; reproducible benchmarks; GitHub Pages spec and paper sources.</li>
       <li><span class="lead">Not delivered.</span> Transport signing (proof of identity) is tracked separately; SYM-2P v2 is not a kit migration target.</li>
       <li><span class="lead">What stays.</span> English remains the render target for operators. Everything stays stdlib-only and offline-friendly. SYM-2P/1.0 stays the inter-agent packet profile.</li>
     </ul>
@@ -331,10 +331,10 @@ Expires in 40s.</code></pre>
     <div class="secnum">07b</div>
     <h2>ABIOS — token-aware sessions</h2>
     <p><span class="lead">Canonical home.</span> ABIOS/3 (<code>SPEC-ABIOS-3.md</code>) compresses multi-message forge command streams for tokenizer billing while respecting rule <strong>L-18</strong> (no latent channel): decoder setup is explicit text, not a hidden cache. Sessions begin with <strong>POST</strong>, a one-time handshake that verifies decode-sufficient context before compressed traffic.</p>
-    <p>The v2 dense draft (<code>SPEC-V2-DRAFT.md</code>) is <strong>superseded</strong> for token efficiency (not a migration target). Measured on 11 messages (o200k, POST + min setup + messages): ABIOS <strong>refs</strong> <strong>766</strong> vs compact JSON <strong>738</strong>; v2 dense pilot total <strong>1415</strong> (external PR #6 constant); raw v2 wire <strong>3386</strong>.</p>
+    <p>The v2 dense draft (<code>SPEC-V2-DRAFT.md</code>) is <strong>superseded</strong> for token efficiency (not a migration target). Measured on 11 messages (o200k, POST + min setup + messages): ABIOS <strong>refs</strong> <strong>761</strong> vs compact JSON <strong>738</strong>; v2 dense pilot total <strong>1415</strong> (external PR #6 constant); raw v2 wire <strong>3386</strong>.</p>
     <table>
       <tr><th>Transcript</th><th>Compact JSON</th><th>ABIOS refs</th><th>ABIOS adaptive</th></tr>
-      <tr><td>11 msgs</td><td>738</td><td><strong>766</strong></td><td>766</td></tr>
+      <tr><td>11 msgs</td><td>738</td><td><strong>761</strong></td><td>761</td></tr>
       <tr><td>40 msgs</td><td>5570</td><td><strong>1990</strong></td><td>1990</td></tr>
       <tr><td>200 msgs</td><td>28498</td><td><strong>7901</strong></td><td>7901</td></tr>
     </table>

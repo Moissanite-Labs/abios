@@ -75,12 +75,15 @@ def _primary(specs):
     return specs[0].name if specs else "n/a"
 
 
-def _cumulative_crossover(setup_min: float, enc_per_msg: list[int], baseline_per_msg: list[int]) -> int | None:
-    enc_total = setup_min
-    base_total = 0.0
-    for i, (e, b) in enumerate(zip(enc_per_msg, baseline_per_msg), start=1):
-        enc_total += e
-        base_total += b
+def _cumulative_crossover(
+    setup_min: float,
+    enc_lines: list[str],
+    baseline_lines: list[str],
+    spec,
+) -> int | None:
+    for i in range(1, len(enc_lines) + 1):
+        enc_total = setup_min + token_count("\n".join(enc_lines[:i]), spec)
+        base_total = token_count("\n".join(baseline_lines[:i]), spec)
         if enc_total < base_total:
             return i
     return None
@@ -208,25 +211,25 @@ def run_bench_for_transcript(name: str, messages: list[tuple[str, dict]]) -> dic
             specs,
             primary,
             setup_min=post_setup,
-            setup_full=sizes["full"],
+            setup_full=sizes["post_full"],
         )
         if enc_name == "refs":
             row["note"] = f"closest prior art: Agora (arXiv:{AGORA_ARXIV})"
         rows.append(row)
         sym3_rows.append(row)
 
-    compact_per_msg = [token_count(line, specs[0]) for line in compact_json_lines]
-    english_lossless_lines_local = english_lossless_lines
-    english_per_msg = [token_count(line, specs[0]) for line in english_lossless_lines_local]
     break_even: dict[str, dict] = {}
     for row in sym3_rows:
         enc = row["label"].replace("ABIOS ", "")
         enc_lines = encode_transcript(encoders[enc], messages)
-        enc_per_msg = [token_count(line, specs[0]) for line in enc_lines]
         setup_used = row["setup_min_n"]
         break_even[enc] = {
-            "vs_compact_json": _cumulative_crossover(setup_used, enc_per_msg, compact_per_msg),
-            "vs_english_lossless": _cumulative_crossover(setup_used, enc_per_msg, english_per_msg),
+            "vs_compact_json": _cumulative_crossover(
+                setup_used, enc_lines, compact_json_lines, specs[0]
+            ),
+            "vs_english_lossless": _cumulative_crossover(
+                setup_used, enc_lines, english_lossless_lines, specs[0]
+            ),
         }
 
     return {

@@ -218,11 +218,11 @@ footer a{color:var(--muted)}
       <div class="card">
         <h3 class="use">Reach for it</h3>
         <ul>
-          <li>Two agents must exchange messages as dense symbolic packets instead of English prose inside JSON.</li>
+          <li>Two agents exchange structured forge commands and you want tokenizer-aware wire compression (ABIOS/3) alongside SYM-2P/1.0 JSON packets.</li>
           <li>Agents must reason in symbols: bind values, branch on conditions, iterate, fan work across a swarm, dispatch subagents.</li>
-          <li>Packets cross untrusted relays and need corruption detection: the v2-rcp edition adds a checksum field.</li>
-          <li>You want to measure the win: the bench runs a paired v1/v2 corpus and scores model evals.</li>
-          <li>An operator must read what the agents said. The translator renders wire packets into English, and the validator gives typed diagnostics.</li>
+          <li>Packets cross untrusted relays and need corruption detection (SYM-2P v2-rcp checksum experiments remain in the repo as tooling).</li>
+          <li>You want reproducible token benchmarks with honest decoder setup accounting (<code>make bench</code>).</li>
+          <li>An operator must read what the agents said. SYM-2P translators render wire packets into English; ABIOS decodes to canonical JSON-shaped commands.</li>
         </ul>
       </div>
       <div class="card">
@@ -242,7 +242,7 @@ footer a{color:var(--muted)}
     <p><span class="lead">The bet.</span> Skip language-based processing where it is not needed. Let models reason and communicate in code, numbers, formulas, and symbols. Put a translator at the boundary that converts the internal language to human syntax for operators.</p>
     <p><span class="lead">Where the work stands.</span></p>
     <ul class="tight">
-      <li><span class="lead">Delivered.</span> The v2 wire format, the translator, the migration scaffold, the v2.1 reasoning dialect, the v2-rcp relay-protection edition, and the measurement harness.</li>
+      <li><span class="lead">Delivered.</span> SYM-2P/1.0 validator and templates; ABIOS/3 reference codec; reproducible benchmarks; GitHub Pages spec and paper sources.</li>
       <li><span class="lead">Not delivered.</span> Transport signing (proof of identity) is tracked separately; SYM-2P v2 is not a kit migration target.</li>
       <li><span class="lead">What stays.</span> English remains the render target for operators. Everything stays stdlib-only and offline-friendly. SYM-2P/1.0 stays the inter-agent packet profile.</li>
     </ul>
@@ -427,7 +427,7 @@ bash install.sh --target &lt;dir&gt; --dry-run</code></pre>
   <section id="open">
     <div class="secnum">12</div>
     <h2>Open items</h2>
-    <p>v2 is merged. v1 stays the spec of record until v2 is accepted. Stated plainly:</p>
+    <p>SYM-2P v2 dense wire is superseded for token efficiency; SYM-2P/1.0 stays the inter-agent profile. Stated plainly:</p>
     <ul class="tight">
       <li><span class="lead">Transport signing (identity).</span> The rcp checksum detects corruption in transit. Proof of who sent a packet stays a separate future protocol.</li>
       <li><span class="lead">Kit adoption.</span> ABIOS/3 is repo-only until the ingredient manifest lists it; SYM-2P v2 dense is not a migration target.</li>
