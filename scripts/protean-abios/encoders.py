@@ -402,10 +402,12 @@ class OmitEncoder(Encoder):
 class RefsEncoder(Encoder):
     tag_name = "refs"
 
-    def _refs_prefix(self, action: str) -> str:
-        return self.lex.refs_cmd_lexeme(action)
+    def _refs_prefix(self, action: str, session: Sym3Session) -> str:
+        if session.fused_refs_cmd:
+            return self.lex.refs_cmd_lexeme(action)
+        return f"{self.tag}{_lex_cmd(self.lex, action)}"
 
-    def _split_refs_line(self, line: str) -> tuple[str, str]:
+    def _split_refs_line(self, line: str, session: Sym3Session) -> tuple[str, str]:
         matches = [
             (action, fused)
             for action, fused in self.lex.refs_cmd.items()
@@ -424,7 +426,7 @@ class RefsEncoder(Encoder):
         full = canonical_payload(action, payload)
         order = self.schema[action]
         vals = [_escape_token(full[k], session, session.content, use_refs=True) for k in order]
-        return f"{self._refs_prefix(action)} {' '.join(vals)}"
+        return f"{self._refs_prefix(action, session)} {' '.join(vals)}"
 
     def _decode_positional(self, parts: list[WireToken], session: Sym3Session, action: str) -> ForgeMessage:
         if not parts:
@@ -446,7 +448,14 @@ class RefsEncoder(Encoder):
         return normalize_message(action, payload)
 
     def decode(self, line: str, session: Sym3Session) -> ForgeMessage:
-        action, rest = self._split_refs_line(line)
+        if not session.fused_refs_cmd:
+            body = _require_tag(line, self.tag)
+            parts = _split_line(body)
+            if not parts:
+                raise ValueError("empty refs line")
+            action = _cmd_from_lex(self.lex, parts[0].text)
+            return self._decode_positional(parts[1:], session, action)
+        action, rest = self._split_refs_line(line, session)
         parts = _split_line(rest) if rest else []
         return self._decode_positional(parts, session, action)
 
@@ -652,9 +661,14 @@ def all_encoders(
     }
 
 
-def fresh_session(session_ids: dict[str, str] | None = None, hex_aliases: dict[str, str] | None = None) -> Sym3Session:
+def fresh_session(
+    session_ids: dict[str, str] | None = None,
+    hex_aliases: dict[str, str] | None = None,
+    *,
+    fused_refs_cmd: bool = True,
+) -> Sym3Session:
     """Session ids aligned with synbios/sym2p bench lifecycle fixtures."""
-    from decoder_context import fixture_hex_aliases, fixture_session_ids
+    from decoder_context import fixture_session_ids
 
     session = Sym3Session()
     ids = session_ids if session_ids is not None else fixture_session_ids()
@@ -663,12 +677,27 @@ def fresh_session(session_ids: dict[str, str] | None = None, hex_aliases: dict[s
     session.agent_id = ids.get("agent_id", "")
     session.human_id = ids.get("human_id", "")
     session.artifact_id = ids.get("artifact_id", "")
-    session.hex_aliases = dict(hex_aliases if hex_aliases is not None else fixture_hex_aliases())
+    session.hex_aliases = dict(hex_aliases if hex_aliases is not None else {})
+    session.fused_refs_cmd = fused_refs_cmd
     return session
 
 
-def encode_transcript(encoder: Encoder, messages: list[ForgeMessage], session: Sym3Session | None = None) -> list[str]:
-    session = session or fresh_session()
+def encode_transcript(
+    encoder: Encoder,
+    messages: list[ForgeMessage],
+    session: Sym3Session | None = None,
+    *,
+    session_ids: dict[str, str] | None = None,
+    hex_candidates: dict[str, str] | None = None,
+    wire_plan: "RefsWirePlan | None" = None,
+) -> list[str]:
+    if session is None:
+        from decoder_context import fixture_session_ids, infer_hex_candidates, plan_refs_wire
+
+        ids = session_ids if session_ids is not None else fixture_session_ids()
+        candidates = hex_candidates if hex_candidates is not None else infer_hex_candidates(messages)
+        plan = wire_plan or plan_refs_wire(messages, ids, candidates, encoder.lex)
+        session = fresh_session(ids, plan.hex_aliases, fused_refs_cmd=plan.fused_refs_cmd)
     lines: list[str] = []
     for action, payload in messages:
         lines.append(encoder.encode(action, payload, session))
@@ -680,11 +709,20 @@ def decode_transcript(
     encoder: Encoder,
     lines: list[str],
     setup: "DecoderSetup | None" = None,
+    *,
+    messages: list[ForgeMessage] | None = None,
+    session_ids: dict[str, str] | None = None,
 ) -> list[ForgeMessage]:
     from decoder_context import session_from_setup
 
     if setup is not None:
         session = session_from_setup(setup)
+    elif messages is not None:
+        from decoder_context import fixture_session_ids, infer_hex_candidates, plan_refs_wire
+
+        ids = session_ids if session_ids is not None else fixture_session_ids()
+        plan = plan_refs_wire(messages, ids, infer_hex_candidates(messages), encoder.lex)
+        session = fresh_session(ids, plan.hex_aliases, fused_refs_cmd=plan.fused_refs_cmd)
     else:
         session = fresh_session()
     out: list[ForgeMessage] = []

@@ -8,7 +8,7 @@ import sys
 from schemas.synbios.sym2p.codec import EncodeContext, encode_command
 
 from decoder_context import cached_setup_cost, setup_sizes
-from decode_rules import REFS_DECODE_RULES
+from decode_rules import REFS_DECODE_RULES, REFS_DECODE_RULES_ABBREV
 from encoders import all_encoders, encode_transcript, fresh_session
 from english import render_english_lossless, render_english_lossy
 from schemas.synbios.fixtures import (
@@ -18,7 +18,6 @@ from schemas.synbios.fixtures import (
     lifecycle_40_random,
     lifecycle_200,
     lifecycle_200_random,
-    lifecycle_hex_aliases,
     lifecycle_session_ids,
 )
 from lexicon import load_lexicon
@@ -131,7 +130,6 @@ def run_bench_for_transcript(
     messages: list[tuple[str, dict]],
     *,
     session_ids: dict[str, str] | None = None,
-    hex_aliases: dict[str, str] | None = None,
 ) -> dict:
     specs = load_tokenizers()
     primary = _primary(specs)
@@ -218,13 +216,12 @@ def run_bench_for_transcript(
 
     sym3_rows: list[dict] = []
     for enc_name, enc in encoders.items():
-        lines = encode_transcript(enc, messages, session=fresh_session(session_ids, hex_aliases))
+        lines = encode_transcript(enc, messages, session_ids=session_ids)
         sizes = setup_sizes(
             messages,
             lines,
             lex,
             session_ids=session_ids,
-            hex_aliases=hex_aliases,
         )
         post_setup = sizes["post_minimal"]
         row = _row_from_lines(
@@ -243,11 +240,7 @@ def run_bench_for_transcript(
     break_even: dict[str, dict] = {}
     for row in sym3_rows:
         enc = row["label"].replace("ABIOS ", "")
-        enc_lines = encode_transcript(
-            encoders[enc],
-            messages,
-            session=fresh_session(session_ids, hex_aliases),
-        )
+        enc_lines = encode_transcript(encoders[enc], messages, session_ids=session_ids)
         setup_used = row["setup_min_n"]
         break_even[enc] = {
             "vs_compact_json": _cumulative_crossover(
@@ -267,7 +260,13 @@ def run_bench_for_transcript(
     }
 
 
-def format_markdown(results: list[dict], primary: str, *, rules_tokens: int = 0) -> str:
+def format_markdown(
+    results: list[dict],
+    primary: str,
+    *,
+    rules_tokens: int = 0,
+    abbrev_tokens: int = 0,
+) -> str:
     lines = [
         "# ABIOS benchmark",
         "",
@@ -279,7 +278,8 @@ def format_markdown(results: list[dict], primary: str, *, rules_tokens: int = 0)
         "for the transcript (plus all format tags when `adaptive` appears). "
         "Primary setup (min) counts POST ack line plus minimal decoder context (section 8.1).",
         "",
-        f"REFS decode rules overhead (informative, `decode_rules.py`): **{rules_tokens}** tokens ({primary}).",
+        f"REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): **{rules_tokens}** tokens ({primary}). "
+        f"PR #36 abbrev was **{abbrev_tokens}** tokens (incomplete alone).",
         "",
     ]
     for block in results:
@@ -352,6 +352,7 @@ def compute_bench_payload() -> tuple[list[dict], str, str, dict]:
     specs = load_tokenizers()
     primary = _primary(specs)
     rules_tokens = token_count(REFS_DECODE_RULES, specs[0]) if specs else 0
+    abbrev_tokens = token_count(REFS_DECODE_RULES_ABBREV, specs[0]) if specs else 0
     assert len(lifecycle_11()) == 11 and len(lifecycle_40()) == 40 and len(lifecycle_200()) == 200
     fixture_results = [
         run_bench_for_transcript("lifecycle_11", lifecycle_11()),
@@ -364,24 +365,25 @@ def compute_bench_payload() -> tuple[list[dict], str, str, dict]:
             "lifecycle_11_random",
             lifecycle_11_random(random_seed),
             session_ids=lifecycle_session_ids(random_seed),
-            hex_aliases=lifecycle_hex_aliases(random_seed),
         ),
         run_bench_for_transcript(
             "lifecycle_40_random",
             lifecycle_40_random(random_seed),
             session_ids=lifecycle_session_ids(random_seed),
-            hex_aliases=lifecycle_hex_aliases(random_seed),
         ),
         run_bench_for_transcript(
             "lifecycle_200_random",
             lifecycle_200_random(random_seed),
             session_ids=lifecycle_session_ids(random_seed),
-            hex_aliases=lifecycle_hex_aliases(random_seed),
         ),
     ]
     results = fixture_results + random_results
-    md = format_markdown(results, primary, rules_tokens=rules_tokens)
-    meta = {"refs_decode_rules_tokens": rules_tokens, "random_id_seed": random_seed}
+    md = format_markdown(results, primary, rules_tokens=rules_tokens, abbrev_tokens=abbrev_tokens)
+    meta = {
+        "refs_decode_rules_tokens": rules_tokens,
+        "refs_decode_rules_abbrev_tokens": abbrev_tokens,
+        "random_id_seed": random_seed,
+    }
     return results, md, primary, meta
 
 
