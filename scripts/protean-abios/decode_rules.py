@@ -13,7 +13,7 @@ Positional field order follows setup schema; restore defaults from setup default
 # A model needs this in addition to the POST decoder-context body (lexicon, schema, ids, optional hex, defaults).
 REFS_DECODE_RULES = """ABIOS/3 refs wire decode (lossless):
 
-Lines: one UTF-8 line per command, no trailing whitespace. Each refs line starts with one fused command lexeme from setup refs_cmd (not a separate format tag). Remaining tokens are positional field values in schema order for that command.
+Lines: one UTF-8 line per command, no trailing whitespace. Each refs line starts with either (a) one fused command lexeme from setup refs_cmd, or (b) format tag E immediately followed by the cmd lexeme from setup concepts when refs_cmd is omitted. Remaining tokens are positional field values in schema order for that command.
 
 Tokenization: ASCII space separates tokens. No empty tokens. Quoted strings use "..." with \\, \", \\n, \\r escapes; quoted tokens are always literal strings. Null is -. Booleans are unquoted 1 or 0. Integers are unquoted digit runs.
 

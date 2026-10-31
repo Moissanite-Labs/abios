@@ -5,7 +5,7 @@ Secondary: setup (full, committed lexicon + full schema). Tertiary: setup (cache
 
 Minimal setup is **decode-sufficient**: all used cmd/status/kind wire mappings and format tags for the transcript (plus all format tags when `adaptive` appears). Primary setup (min) counts POST ack line plus minimal decoder context (section 8.1).
 
-REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): **367** tokens (o200k_base). PR #36 abbrev was **102** tokens (incomplete alone).
+REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): **388** tokens (o200k_base). PR #36 abbrev was **102** tokens (incomplete alone).
 
 ## lifecycle_11 (11 messages)
 
