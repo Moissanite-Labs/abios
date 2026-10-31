@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ABIOS | abios</title>
+<meta name="description" content="ABIOS token-aware shared-state messaging — headline benchmark results and links to spec, paper, and reproduction.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles-abios.css?v=0b8f89a">
+</head>
+<body>
+<header class="site-header">
+  <p class="eyebrow">abios · ABIOS/3</p>
+  <h1>ABIOS</h1>
+  <p class="lede">Token-aware shared-state messaging for multi-turn agent command streams. Primary metric: <strong>o200k_base</strong> POST ack + decode-sufficient minimal setup + messages.</p>
+  <nav aria-label="Primary">
+    <a href="index.html">Home</a>
+    <a href="spec-abios-3.html">SPEC-ABIOS-3</a>
+    <a href="paper.html">Paper</a>
+    <a href="reproduce.html">Reproduce</a>
+    <a href="https://github.com/Moissanite-Labs/abios">GitHub</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h2>Headline results</h2>
+    <p>Synthetic Synbios forge lifecycles; see <a href="https://github.com/Moissanite-Labs/abios/blob/main/docs/abios-bench.md">full tables</a>.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>ABIOS refs vs compact JSON (primary accounting)</caption>
+        <thead><tr><th>Transcript</th><th>Compact JSON</th><th>Lossless English</th><th>ABIOS refs</th><th>ABIOS adaptive</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">11 messages</th><td>738</td><td>686</td><td><strong>761</strong></td><td>761</td></tr>
+          <tr><th scope="row">40 messages</th><td>5570</td><td>5242</td><td><strong>1990</strong></td><td>1990</td></tr>
+          <tr><th scope="row">200 messages</th><td>28498</td><td>26754</td><td><strong>7901</strong></td><td>7901</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caveat">On 11 messages ABIOS totals exceed compact JSON under honest POST + setup accounting; cumulative crossover vs JSON begins around 12 messages on longer transcripts. lifecycle_40/200 repeat identical messages, which favors refs.</p>
+  </section>
+  <section>
+    <h2>v2 dense draft superseded</h2>
+    <p><code>SPEC-V2-DRAFT.md</code> remains for tooling reference. Token bench negative results (11 msgs, o200k): v2 session+handshake total <strong>1415</strong> (external PR #6 constant); raw v2 dense wire <strong>3386</strong> vs JSON <strong>738</strong>.</p>
+  </section>
+  <section>
+    <h2>POST handshake</h2>
+    <p>Every PC runs POST at boot before loading an OS. In ABIOS, <strong>POST</strong> is the one-time session handshake: before references or deltas, peers exchange decode-sufficient minimal lexicon and schema (ack line plus context body). Mismatch → fall back to plain JSON or abort; never decode with a guessed lexicon. Normative detail in <a href="spec-abios-3.html">SPEC-ABIOS-3</a> §8.1. POST tokens are included in benchmark totals.</p>
+  </section>
+  <section>
+    <h2>Why ABIOS?</h2>
+    <p>Agents bill by tokens, not bytes. ABIOS compresses forge command streams when session state and repeated digests amortize decoder setup—see the <a href="paper.html">preprint</a> and <a href="reproduce.html">reproduction steps</a>.</p>
+  </section>
+</main>
+<footer class="site-footer">
+  <p><a href="https://github.com/Moissanite-Labs/abios">Source on GitHub</a> · MIT</p>
+</footer>
+</body>
+</html>
