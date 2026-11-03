@@ -1,0 +1,56 @@
+"""Synbios forge command field sets (example schema for ABIOS/3 bench and tests)."""
+
+# Fields whose canonical type is a JSON list (including required lists with no schema default).
+LIST_FIELDS: dict[str, frozenset[str]] = {
+    "grant.create": frozenset({"capabilities"}),
+    "task.create": frozenset({"criteria", "scope", "dependencies"}),
+    "evidence.add": frozenset({"assumptions"}),
+}
+
+COMMAND_FIELDS = {
+    "project.create": {"name", "description", "repository"},
+    "principal.create": {"name", "kind"},
+    "principal.revoke": {"principal_id"},
+    "grant.create": {"principal_id", "task_id", "capabilities"},
+    "grant.revoke": {"grant_id"},
+    "task.create": {
+        "project_id",
+        "title",
+        "description",
+        "criteria",
+        "scope",
+        "priority",
+        "dependencies",
+    },
+    "task.claim": {"task_id"},
+    "task.transition": {"task_id", "status"},
+    "artifact.add": {
+        "task_id",
+        "title",
+        "kind",
+        "revision",
+        "digest",
+        "uri",
+        "summary",
+    },
+    "evidence.add": {
+        "task_id",
+        "artifact_id",
+        "artifact_digest",
+        "revision",
+        "kind",
+        "status",
+        "command",
+        "summary",
+        "tool",
+        "tool_version",
+        "assumptions",
+    },
+    "review.create": {
+        "task_id",
+        "artifact_id",
+        "revision",
+        "decision",
+        "comment",
+    },
+}
