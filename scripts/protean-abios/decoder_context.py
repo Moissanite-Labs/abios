@@ -23,6 +23,8 @@ class DecoderSetup:
     session_ids: dict[str, str]
     schema_defaults: dict[str, dict[str, Any]]
     hex_aliases: dict[str, str] = field(default_factory=dict)
+    fused_refs_cmd: bool = True
+    list_sep: str = ";"
     profile: str = "abios/3"
 
 
@@ -223,6 +225,8 @@ def parse_decoder_context(text: str) -> DecoderSetup:
     session_ids: dict[str, str] = {k: "" for k in SESSION_ID_KEYS}
     hex_aliases: dict[str, str] = {}
     schema_defaults: dict[str, dict[str, Any]] = {}
+    wire_fused_refs_cmd: bool | None = None
+    wire_list_sep: str = ";"
     i = 1
     while i < len(lines):
         line = lines[i]
@@ -251,10 +255,21 @@ def parse_decoder_context(text: str) -> DecoderSetup:
             schema_defaults = json.loads(lines[i])
             i += 1
             continue
+        if line == "wire:":
+            i += 1
+            wire_payload = json.loads(lines[i])
+            if "fused_refs_cmd" in wire_payload:
+                wire_fused_refs_cmd = bool(wire_payload["fused_refs_cmd"])
+            if "list_sep" in wire_payload:
+                wire_list_sep = str(wire_payload["list_sep"])
+            i += 1
+            continue
         i += 1
     concepts = lex_payload.get("concepts") or {}
     format_tags = lex_payload.get("format_tags") or {}
     refs_cmd = lex_payload.get("refs_cmd") or {}
+    if wire_fused_refs_cmd is None:
+        wire_fused_refs_cmd = bool(refs_cmd)
     if not schema:
         raise ValueError("decoder context missing schema block")
     if not session_ids or not any(session_ids.values()):
@@ -265,6 +280,8 @@ def parse_decoder_context(text: str) -> DecoderSetup:
         session_ids=session_ids,
         schema_defaults=schema_defaults or _minimal_defaults(set(schema.keys())),
         hex_aliases=hex_aliases,
+        fused_refs_cmd=wire_fused_refs_cmd,
+        list_sep=wire_list_sep,
         profile=profile,
     )
 
@@ -276,6 +293,7 @@ def render_decoder_context(
     session_ids: dict[str, str] | None = None,
     hex_aliases: dict[str, str] | None = None,
     schema_defaults: dict[str, dict[str, Any]] | None = None,
+    wire: dict[str, Any] | None = None,
     include_full_lexicon_file: bool = False,
     profile: str = "abios/3",
 ) -> str:
@@ -298,6 +316,9 @@ def render_decoder_context(
     if schema_defaults is not None:
         parts.append("defaults:")
         parts.append(json.dumps(schema_defaults, sort_keys=True, separators=(",", ":")))
+    if wire is not None:
+        parts.append("wire:")
+        parts.append(json.dumps(wire, sort_keys=True, separators=(",", ":")))
     return "\n".join(parts) + "\n"
 
 
@@ -308,7 +329,8 @@ def session_from_setup(setup: DecoderSetup):
     for key in SESSION_ID_KEYS:
         setattr(session, key, setup.session_ids.get(key, ""))
     session.hex_aliases = dict(setup.hex_aliases)
-    session.fused_refs_cmd = bool(setup.lexicon.refs_cmd)
+    session.fused_refs_cmd = setup.fused_refs_cmd
+    session.list_sep = setup.list_sep
     session.schema_defaults = setup.schema_defaults
     return session
 
@@ -349,12 +371,14 @@ def setup_sizes(
     if fused_refs_cmd is None:
         fused_refs_cmd = True
     full_defaults = {k: dict(v) for k, v in SCHEMA_DEFAULTS.items()}
+    wire_payload = {"fused_refs_cmd": fused_refs_cmd, "list_sep": ";"}
     full_text = render_decoder_context(
         lexicon_payload=full_lex,
         schema=full_schema,
         session_ids=ids,
         hex_aliases=hex_aliases,
         schema_defaults=full_defaults,
+        wire=wire_payload,
         include_full_lexicon_file=False,
     )
     cmds, statuses, kinds, tag_names = _collect_used_from_transcript(messages, encoded_lines, lex)
@@ -369,6 +393,7 @@ def setup_sizes(
         session_ids=ids,
         hex_aliases=hex_aliases,
         schema_defaults=minimal_defaults,
+        wire=wire_payload,
     )
     header_only = FORMAT_HEADER
     post_ack = post_ack_line(minimal_text)

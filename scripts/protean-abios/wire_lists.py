@@ -2,17 +2,20 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
-_ITEM_SPLIT = re.compile(r"(?<!\\);")
+_EMPTY_ITEM = "\\e"
 
 
 def _escape_item(item: str) -> str:
+    if item == "":
+        return _EMPTY_ITEM
     return item.replace("\\", "\\\\").replace(";", "\\;")
 
 
 def _unescape_item(item: str) -> str:
+    if item == _EMPTY_ITEM:
+        return ""
     out: list[str] = []
     i = 0
     while i < len(item):
@@ -27,12 +30,36 @@ def _unescape_item(item: str) -> str:
     return "".join(out)
 
 
+def _split_items(inner: str, sep: str) -> list[str]:
+    parts: list[str] = []
+    buf: list[str] = []
+    i = 0
+    while i < len(inner):
+        if inner[i] == "\\" and i + 1 < len(inner):
+            buf.append(inner[i : i + 2])
+            i += 2
+            continue
+        if inner[i : i + len(sep)] == sep:
+            parts.append("".join(buf))
+            buf = []
+            i += len(sep)
+            continue
+        buf.append(inner[i])
+        i += 1
+    parts.append("".join(buf))
+    return parts
+
+
 def _item_needs_json_fallback(item: str) -> bool:
     if not isinstance(item, str):
         return True
     if item == "":
         return False
     if "\n" in item or "\r" in item or '"' in item:
+        return True
+    if "[" in item or "]" in item:
+        return True
+    if item.endswith("\\"):
         return True
     if item.startswith("[") or item.startswith("{") or item.startswith("http"):
         return True
@@ -72,7 +99,7 @@ def decode_string_list(token: str, sep: str = ";") -> list[str] | None:
             return parsed
     except json.JSONDecodeError:
         pass
-    parts = _ITEM_SPLIT.split(inner)
-    if any(_item_needs_json_fallback(_unescape_item(p)) for p in parts):
+    raw_parts = _split_items(inner, sep)
+    if any(_item_needs_json_fallback(_unescape_item(p)) for p in raw_parts):
         return None
-    return [_unescape_item(p) for p in parts]
+    return [_unescape_item(p) for p in raw_parts]

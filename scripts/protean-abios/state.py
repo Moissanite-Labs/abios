@@ -20,6 +20,7 @@ class Sym3Session:
     artifact_id: str = ""
     hex_aliases: dict[str, str] = field(default_factory=dict)
     fused_refs_cmd: bool = True
+    list_sep: str = ";"
     task_status: str = "open"
     content: ContentStore = field(default_factory=ContentStore)
     snapshots: dict[str, dict[str, Any]] = field(default_factory=dict)

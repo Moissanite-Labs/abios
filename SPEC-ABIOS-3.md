@@ -22,7 +22,7 @@ and updated bench golden files when accounting rules change.
 | S-2 | **Logical message = `(action, payload)`.** `action` is a dotted forge command name (example schema: `task.create`). `payload` is a JSON object with a fixed field set per action. Canonical form fills schema defaults and sorts keys; encoders never emit fields outside the schema. |
 | S-3 | **One command per line.** Each wire line is one UTF-8 text line with no trailing insignificant whitespace. Lines are independent; order in a transcript is application-defined. |
 | S-4 | **Format tag prefixes every line.** The first token on the line is a **format tag** from the committed lexicon (`format_tags`). The tag names the encoding family: `delta`, `refs`, `positional`, `omit`, `combined`, or `adaptive`. The tag is concatenated with the command lexeme with no separator (e.g. `E` + `cta` → `Ecta`). |
-| S-5 | **Six encoders, one decode contract.** Every encoder MUST round-trip canonical messages for the same session evolution. `adaptive` MUST decode by trying inner families in order: `delta`, `combined`, `refs`, `omit`, `positional`. |
+| S-5 | **Six encoders, one decode contract.** Every encoder MUST round-trip canonical messages for the same session evolution. **`adaptive` encode** tries inner families in planner order (`delta`, `refs`, `omit`, `positional`, `combined`) and bills the winner. **`adaptive` decode** tries, in order: fused/`E`-prefixed **refs** (when setup `wire.fused_refs_cmd` is true or the line begins with format tag `E`), then `delta`, `combined`, `omit`, `positional`. |
 | S-6 | **Positional field order is schema-defined.** For each action, field order is the sorted set of allowed keys (required-first convention: all keys sorted lexicographically in the example Synbios schema). Decoders bind tokens to keys by position or by explicit key list (omit/combined). |
 | S-7 | **Default omission.** Fields equal to **schema defaults** MAY be omitted on the wire in `omit`, `combined`, and `delta` (fallback) encodings. Decoders MUST restore defaults before canonical validation. Defaults are normative per schema profile. |
 | S-8 | **Session-scoped ref tokens.** When encoder and decoder share mirrored session state, stable ids MAY encode as single-letter tokens: `p` project, `t` task, `a` agent, `h` human, `f` artifact. Setup `hex` aliases (e.g. `v` revision, `g` digest) bind other repeated hex strings. Unknown tokens that match session ref tables resolve to full ids; otherwise tokens are literal strings or content refs. |
@@ -62,12 +62,12 @@ Tokens are space-separated except where noted. Parsing rules:
 | Construct | Rule |
 |---|---|
 | Whitespace | ASCII space separates tokens; no empty tokens. |
-| Quoted string | `"..."` with `\"`, `\\`, `\n`, and `\r` escapes; used when a string would otherwise parse as another token type, is empty, contains space, `;`, `,`, `"`, newline, carriage return, or starts with `http`. **Quoted tokens always decode as strings** (never re-parsed as JSON). |
+| Quoted string | `"..."` with `\"`, `\\`, `\n`, and `\r` escapes; used when a string would otherwise parse as another token type, is empty, contains space, `;`, `,`, `"`, newline, carriage return, or starts with `http`. The wire parser yields a string; **list-typed fields** (see profile schema) then coerce quoted canonical JSON arrays to lists in `coerce_wire_types`. |
 | Null | `-` |
 | Boolean | unquoted `1` / `0` |
 | Integer | unquoted digit sequence |
 | Inline JSON | unquoted token starting with `[` or `{`, canonical JSON (lists/objects in payloads) |
-| Wire string list | unquoted `[` … `]` with items separated by `;` (lexicon `list_sep`); `\;` and `\\` escapes inside items; bracket spans may contain spaces (one token). Falls back to canonical JSON when an item needs quoting or non-string elements appear. |
+| Wire string list | unquoted `[` … `]` with items separated by `;` (declared in setup `wire.list_sep`, currently always `;` in committed profiles); `\;` and `\\` escapes inside items; empty string items encode as `\e`. Bracket characters inside items are literal. Falls back to canonical JSON when an item needs quoting or non-string elements appear. |
 | Content ref | opaque `#n` label present in session `ref_to_digest` (e.g. `#1`) |
 | List in payload | string lists prefer wire form above; otherwise quoted canonical JSON unless refs encoder applies ref_if_published |
 
@@ -95,7 +95,7 @@ Only non-default fields appear. Keys list ends with `|`; values align to keys. D
 
 ### 5.3 `refs` (`E`)
 
-Each line begins with a **single fused command lexeme** from setup `refs_cmd` (one tokenizer token under S-11, e.g. `Eb` for `project.create`), not a separate format tag plus command word. Same positional values as §5.1, but structured/string values ≥48 serialized bytes use **content refs** after first inline publication (S-9). Revision and digest strings MAY compress to setup `hex` aliases (`v`, `g` by default in the Synbios fixtures).
+When setup **`wire.fused_refs_cmd`** is **true** (the default when the wire planner chooses fused refs), each line begins with a **single fused command lexeme** from setup `refs_cmd` (one tokenizer token under S-11, e.g. `Eb` for `project.create`), not a separate format tag plus command word. When **`wire.fused_refs_cmd`** is **false**, lines use format tag **`E`** immediately followed by the command lexeme from setup `concepts.cmd` (legacy `E`+cmd form). The sender sets `fused_refs_cmd` in the POST decoder context; receivers MUST NOT re-run the planner. Same positional values as §5.1, but structured/string values ≥48 serialized bytes use **content refs** after first inline publication (S-9). Revision and digest strings MAY compress to setup `hex` aliases (`v`, `g` by default in the Synbios fixtures).
 
 ### 5.4 `delta` (`A`)
 
@@ -113,7 +113,7 @@ If S-10 applies, same as delta with combined tag. Else omit-shaped key list with
 
 ### 5.6 `adaptive` (`U`)
 
-Encoder runs candidate families (`delta`, `refs`, `omit`, `positional`, `combined`), scores each line by **max tokenizer count** across lexicon tokenizers (tie-break shorter string), picks the winner, re-encodes once, and replaces the inner format tag with `U`. Decoder unwraps by substituting candidate tags (S-5).
+Encoder runs candidate families (`delta`, `refs`, `omit`, `positional`, `combined`), scores each line by **max tokenizer count** across lexicon tokenizers (tie-break shorter string), picks the winner, re-encodes once, and emits the winning line **without** prefixing format tag `U` (inner family tag remains visible). Decoder order is defined in S-5.
 
 Adaptive is normative for interoperability; it is not required for all senders. Fixed-family encoders are conformant if they satisfy S-5 round-trip.
 
@@ -185,7 +185,11 @@ hex:
 {...json...}
 defaults:
 {...json...}
+wire:
+{"fused_refs_cmd": true, "list_sep": ";"}
 ```
+
+`wire.fused_refs_cmd` selects fused `refs_cmd` lexemes versus `E`+cmd refs lines. `wire.list_sep` is the semicolon separator for `[a;b]` lists (committed profiles use `;`).
 
 `schema` maps each command to ordered field name list. **Full schema** = all commands in profile. **Minimal schema** = only commands used in transcript (S-12).
 
@@ -202,7 +206,7 @@ Primary bench accounting (informative): **total cost = minimal setup tokens + me
 **Message form.** POST is UTF-8 text:
 
 1. **Ack line:** `POST ok <profile> <digest>` where `<profile>` is `abios/3` or negotiated legacy `sym3/1`, and `<digest>` is the first 16 hex chars of SHA-256 over the decoder-context body after CRLF→LF normalization and ensuring a trailing newline (no Unicode whitespace trim).
-2. **Body:** the minimal decoder context (profile header, `lexicon:`, `schema:`, `ids:`, and `defaults:` blocks) exactly as defined above.
+2. **Body:** the minimal decoder context (profile header, `lexicon:`, `schema:`, `ids:`, optional `hex`, `defaults:`, and `wire:` blocks) exactly as defined above.
 
 The ack line profile MUST match the body profile header. Legacy `sym3/1` is accepted only when the body begins with `sym3/1` and the ack names `sym3/1`.
 

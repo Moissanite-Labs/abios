@@ -39,7 +39,7 @@ def _replace_hex_values(obj: Any, mapping: dict[str, str]) -> Any:
 
 
 def remap_fixture_hex(messages: list[ForgeMessage], seed: int) -> list[ForgeMessage]:
-    """Deterministic random hex for every fixture hex string (32+ chars), per tokenpage study."""
+    """Deterministic random hex for every fixture hex string (32+ chars), measured in this repo's bench harness."""
     mapping = {
         FIXTURE_PROJECT: _random_hex(seed, "project", 32),
         FIXTURE_TASK: _random_hex(seed, "task", 32),

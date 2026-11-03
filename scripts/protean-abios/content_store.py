@@ -11,7 +11,9 @@ INLINE_REF_MIN_BYTES = 48
 def _canonical_bytes(value: str | list | dict) -> bytes:
     if isinstance(value, str):
         return value.encode("utf-8")
-    return json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
 
 
 def serialized_byte_length(value: str | list | dict) -> int:

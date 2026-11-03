@@ -1,5 +1,12 @@
 """Synbios forge command field sets (example schema for ABIOS/3 bench and tests)."""
 
+# Fields whose canonical type is a JSON list (including required lists with no schema default).
+LIST_FIELDS: dict[str, frozenset[str]] = {
+    "grant.create": frozenset({"capabilities"}),
+    "task.create": frozenset({"criteria", "scope", "dependencies"}),
+    "evidence.add": frozenset({"assumptions"}),
+}
+
 COMMAND_FIELDS = {
     "project.create": {"name", "description", "repository"},
     "principal.create": {"name", "kind"},

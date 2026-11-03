@@ -19,7 +19,7 @@ Tokenization: ASCII space separates tokens. No empty tokens. Quoted strings use 
 
 Session handles: unquoted p/t/a/h/f expand to full ids from setup ids block. Optional setup hex block maps short tokens (e.g. v, g) to full hex strings; only tokens listed in hex expand.
 
-Wire string lists: unquoted [ ... ] with items separated by ; (setup list_sep). Use \\; and \\\\ inside items. Bracket spans including internal spaces are one token. If [ ... ] is valid canonical JSON array of strings, JSON decode is also accepted.
+Wire string lists: unquoted [ ... ] with items separated by ; (setup wire.list_sep, committed profiles use ;). Empty list items encode as \\e. Use \\; and \\\\ inside items.
 
 Inline JSON objects/arrays: unquoted token starting with { or [ when wire-list form does not apply; canonical JSON.
 

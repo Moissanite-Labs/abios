@@ -5,7 +5,7 @@ Secondary: setup (full, committed lexicon + full schema). Tertiary: setup (cache
 
 Minimal setup is **decode-sufficient**: all used cmd/status/kind wire mappings and format tags for the transcript (plus all format tags when `adaptive` appears). Primary setup (min) counts POST ack line plus minimal decoder context (section 8.1).
 
-REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): **388** tokens (o200k_base). PR #36 abbrev was **102** tokens (incomplete alone).
+REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): **374** tokens (o200k_base). PR #36 abbrev was **102** tokens (incomplete alone).
 
 ## lifecycle_11 (11 messages)
 
@@ -22,12 +22,12 @@ REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): *
 | SYM-2P v2 session + handshake (PR #6) — External constants from synbios PR #6 dense pilot (not live-measured in this repo) | 213 | 1202 | 1415 | 213 | 1415 | 21.3 | 1223.3 |
 | SYM-2P v2 dense raw (PR #6) — vs compact JSON 683 messages-only (pilot) | 0 | 3386 | 3386 | 0 | 3386 | 0.0 | 3386.0 |
 | SYM-2P v1 (PR #6 pilot reference) — pilot transcript; live bench row below uses this repo codec | 0 | 2720 | 2720 | 0 | 2720 | 0.0 | 2720.0 |
-| ABIOS delta | 555 | 290 | 845 | 891 | 1181 | 55.5 | 345.5 |
-| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 554 | 196 | 750 | 890 | 1086 | 55.4 | 251.4 |
-| ABIOS positional | 555 | 196 | 751 | 890 | 1086 | 55.5 | 251.5 |
-| ABIOS omit | 556 | 298 | 854 | 892 | 1190 | 55.6 | 353.6 |
-| ABIOS combined | 554 | 290 | 844 | 890 | 1180 | 55.4 | 345.4 |
-| ABIOS adaptive | 554 | 196 | 750 | 890 | 1086 | 55.4 | 251.4 |
+| ABIOS delta | 571 | 290 | 861 | 907 | 1197 | 57.1 | 347.1 |
+| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 569 | 196 | 765 | 905 | 1101 | 56.9 | 252.9 |
+| ABIOS positional | 569 | 196 | 765 | 904 | 1100 | 56.9 | 252.9 |
+| ABIOS omit | 571 | 298 | 869 | 907 | 1205 | 57.1 | 355.1 |
+| ABIOS combined | 570 | 290 | 860 | 906 | 1196 | 57.0 | 347.0 |
+| ABIOS adaptive | 569 | 196 | 765 | 905 | 1101 | 56.9 | 252.9 |
 
 ### Cumulative crossover (primary accounting: POST + setup min + messages)
 
@@ -52,12 +52,12 @@ REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): *
 | TOON (approx in-repo fallback) | 0 | 6051 | 6051 | 0 | 6051 | 0.0 | 6051.0 |
 | Agora envelope (arXiv:2410.11905) | 48 | 6449 | 6497 | 48 | 6497 | 4.8 | 6453.8 |
 | SYM-2P v1 | 0 | 12925 | 12925 | 0 | 12925 | 0.0 | 12925.0 |
-| ABIOS delta | 558 | 2623 | 3181 | 890 | 3513 | 55.8 | 2678.8 |
-| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 557 | 1149 | 1706 | 889 | 2038 | 55.7 | 1204.7 |
-| ABIOS positional | 563 | 1773 | 2336 | 894 | 2667 | 56.3 | 1829.3 |
-| ABIOS omit | 558 | 2631 | 3189 | 890 | 3521 | 55.8 | 2686.8 |
-| ABIOS combined | 559 | 1999 | 2558 | 891 | 2890 | 55.9 | 2054.9 |
-| ABIOS adaptive | 557 | 1149 | 1706 | 889 | 2038 | 55.7 | 1204.7 |
+| ABIOS delta | 574 | 2623 | 3197 | 906 | 3529 | 57.4 | 2680.4 |
+| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 572 | 1149 | 1721 | 904 | 2053 | 57.2 | 1206.2 |
+| ABIOS positional | 577 | 1773 | 2350 | 908 | 2681 | 57.7 | 1830.7 |
+| ABIOS omit | 575 | 2631 | 3206 | 907 | 3538 | 57.5 | 2688.5 |
+| ABIOS combined | 575 | 1999 | 2574 | 907 | 2906 | 57.5 | 2056.5 |
+| ABIOS adaptive | 572 | 1149 | 1721 | 904 | 2053 | 57.2 | 1206.2 |
 
 ### Cumulative crossover (primary accounting: POST + setup min + messages)
 
@@ -82,23 +82,23 @@ REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): *
 | TOON (approx in-repo fallback) | 0 | 30799 | 30799 | 0 | 30799 | 0.0 | 30799.0 |
 | Agora envelope (arXiv:2410.11905) | 48 | 32897 | 32945 | 48 | 32945 | 4.8 | 32901.8 |
 | SYM-2P v1 | 0 | 65273 | 65273 | 0 | 65273 | 0.0 | 65273.0 |
-| ABIOS delta | 608 | 13659 | 14267 | 890 | 14549 | 60.8 | 13719.8 |
-| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 609 | 5589 | 6198 | 891 | 6480 | 60.9 | 5649.9 |
-| ABIOS positional | 610 | 9409 | 10019 | 891 | 10300 | 61.0 | 9470.0 |
-| ABIOS omit | 611 | 13699 | 14310 | 893 | 14592 | 61.1 | 13760.1 |
-| ABIOS combined | 611 | 10039 | 10650 | 893 | 10932 | 61.1 | 10100.1 |
-| ABIOS adaptive | 609 | 5589 | 6198 | 891 | 6480 | 60.9 | 5649.9 |
+| ABIOS delta | 624 | 13659 | 14283 | 906 | 14565 | 62.4 | 13721.4 |
+| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 623 | 5589 | 6212 | 905 | 6494 | 62.3 | 5651.3 |
+| ABIOS positional | 625 | 9409 | 10034 | 906 | 10315 | 62.5 | 9471.5 |
+| ABIOS omit | 623 | 13699 | 14322 | 905 | 14604 | 62.3 | 13761.3 |
+| ABIOS combined | 623 | 10039 | 10662 | 905 | 10944 | 62.3 | 10101.3 |
+| ABIOS adaptive | 623 | 5589 | 6212 | 905 | 6494 | 62.3 | 5651.3 |
 
 ### Cumulative crossover (primary accounting: POST + setup min + messages)
 
 | Encoder | msgs before total beats compact JSON | msgs before total beats English (lossless) |
 | --- | ---: | ---: |
-| adaptive | 12 | 12 |
+| adaptive | 12 | 13 |
 | combined | 13 | 14 |
 | delta | 13 | 14 |
-| omit | 13 | 14 |
+| omit | 14 | 14 |
 | positional | 12 | 13 |
-| refs | 12 | 12 |
+| refs | 12 | 13 |
 
 ## lifecycle_11_random (11 messages)
 
@@ -112,12 +112,12 @@ REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): *
 | TOON (approx in-repo fallback) | 0 | 772 | 772 | 0 | 772 | 0.0 | 772.0 |
 | Agora envelope (arXiv:2410.11905) | 48 | 935 | 983 | 48 | 983 | 4.8 | 939.8 |
 | SYM-2P v1 | 0 | 2647 | 2647 | 0 | 2647 | 0.0 | 2647.0 |
-| ABIOS delta | 533 | 290 | 823 | 869 | 1159 | 53.3 | 343.3 |
-| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 530 | 196 | 726 | 866 | 1062 | 53.0 | 249.0 |
-| ABIOS positional | 536 | 196 | 732 | 871 | 1067 | 53.6 | 249.6 |
-| ABIOS omit | 529 | 298 | 827 | 865 | 1163 | 52.9 | 350.9 |
-| ABIOS combined | 529 | 290 | 819 | 865 | 1155 | 52.9 | 342.9 |
-| ABIOS adaptive | 530 | 196 | 726 | 866 | 1062 | 53.0 | 249.0 |
+| ABIOS delta | 546 | 290 | 836 | 882 | 1172 | 54.6 | 344.6 |
+| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 547 | 196 | 743 | 883 | 1079 | 54.7 | 250.7 |
+| ABIOS positional | 547 | 196 | 743 | 882 | 1078 | 54.7 | 250.7 |
+| ABIOS omit | 546 | 298 | 844 | 882 | 1180 | 54.6 | 352.6 |
+| ABIOS combined | 546 | 290 | 836 | 882 | 1172 | 54.6 | 344.6 |
+| ABIOS adaptive | 547 | 196 | 743 | 883 | 1079 | 54.7 | 250.7 |
 
 ### Cumulative crossover (primary accounting: POST + setup min + messages)
 
@@ -142,12 +142,12 @@ REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): *
 | TOON (approx in-repo fallback) | 0 | 6395 | 6395 | 0 | 6395 | 0.0 | 6395.0 |
 | Agora envelope (arXiv:2410.11905) | 48 | 6758 | 6806 | 48 | 6806 | 4.8 | 6762.8 |
 | SYM-2P v1 | 0 | 13087 | 13087 | 0 | 13087 | 0.0 | 13087.0 |
-| ABIOS delta | 537 | 2623 | 3160 | 869 | 3492 | 53.7 | 2676.7 |
-| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 536 | 1149 | 1685 | 868 | 2017 | 53.6 | 1202.6 |
-| ABIOS positional | 538 | 1773 | 2311 | 869 | 2642 | 53.8 | 1826.8 |
-| ABIOS omit | 534 | 2631 | 3165 | 866 | 3497 | 53.4 | 2684.4 |
-| ABIOS combined | 538 | 1999 | 2537 | 870 | 2869 | 53.8 | 2052.8 |
-| ABIOS adaptive | 536 | 1149 | 1685 | 868 | 2017 | 53.6 | 1202.6 |
+| ABIOS delta | 550 | 2623 | 3173 | 882 | 3505 | 55.0 | 2678.0 |
+| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 550 | 1149 | 1699 | 882 | 2031 | 55.0 | 1204.0 |
+| ABIOS positional | 554 | 1773 | 2327 | 885 | 2658 | 55.4 | 1828.4 |
+| ABIOS omit | 555 | 2631 | 3186 | 887 | 3518 | 55.5 | 2686.5 |
+| ABIOS combined | 550 | 1999 | 2549 | 882 | 2881 | 55.0 | 2054.0 |
+| ABIOS adaptive | 550 | 1149 | 1699 | 882 | 2031 | 55.0 | 1204.0 |
 
 ### Cumulative crossover (primary accounting: POST + setup min + messages)
 
@@ -156,7 +156,7 @@ REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): *
 | adaptive | 12 | 12 |
 | combined | 13 | 13 |
 | delta | 13 | 13 |
-| omit | 13 | 13 |
+| omit | 13 | 14 |
 | positional | 12 | 12 |
 | refs | 12 | 12 |
 
@@ -172,24 +172,24 @@ REFS decode rules overhead (informative, `decode_rules.py` REFS_DECODE_RULES): *
 | TOON (approx in-repo fallback) | 0 | 32519 | 32519 | 0 | 32519 | 0.0 | 32519.0 |
 | Agora envelope (arXiv:2410.11905) | 48 | 34442 | 34490 | 48 | 34490 | 4.8 | 34446.8 |
 | SYM-2P v1 | 0 | 66083 | 66083 | 0 | 66083 | 0.0 | 66083.0 |
-| ABIOS delta | 587 | 13659 | 14246 | 869 | 14528 | 58.7 | 13717.7 |
-| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 587 | 5589 | 6176 | 869 | 6458 | 58.7 | 5647.7 |
-| ABIOS positional | 588 | 9409 | 9997 | 869 | 10278 | 58.8 | 9467.8 |
-| ABIOS omit | 585 | 13699 | 14284 | 867 | 14566 | 58.5 | 13757.5 |
-| ABIOS combined | 585 | 10039 | 10624 | 867 | 10906 | 58.5 | 10097.5 |
-| ABIOS adaptive | 587 | 5589 | 6176 | 869 | 6458 | 58.7 | 5647.7 |
+| ABIOS delta | 602 | 13659 | 14261 | 884 | 14543 | 60.2 | 13719.2 |
+| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 600 | 5589 | 6189 | 882 | 6471 | 60.0 | 5649.0 |
+| ABIOS positional | 603 | 9409 | 10012 | 884 | 10293 | 60.3 | 9469.3 |
+| ABIOS omit | 599 | 13699 | 14298 | 881 | 14580 | 59.9 | 13758.9 |
+| ABIOS combined | 602 | 10039 | 10641 | 884 | 10923 | 60.2 | 10099.2 |
+| ABIOS adaptive | 600 | 5589 | 6189 | 882 | 6471 | 60.0 | 5649.0 |
 
 ### Cumulative crossover (primary accounting: POST + setup min + messages)
 
 | Encoder | msgs before total beats compact JSON | msgs before total beats English (lossless) |
 | --- | ---: | ---: |
-| adaptive | 12 | 12 |
+| adaptive | 12 | 13 |
 | combined | 13 | 14 |
 | delta | 13 | 14 |
 | omit | 13 | 14 |
 | positional | 12 | 13 |
-| refs | 12 | 12 |
+| refs | 12 | 13 |
 
 ## Verdict (primary accounting, o200k_base)
 
-On lifecycle_11 (fixture hex), ABIOS **refs** total **750** vs compact JSON **738** and lossless English **686** (primary = POST + minimal setup + messages). Same task with **seeded random hex ids** (see `lifecycle_*_random`): refs **726** vs JSON **694**. **Adaptive** total **750**. TOON fallback row **809** (approximation). lifecycle_40/200 repeat many messages verbatim, which inflates refs savings; see transcript notes. SYM-2P v2 rows are external PR #6 constants, not live bench output.
+On lifecycle_11 (fixture hex), ABIOS **refs** total **765** vs compact JSON **738** and lossless English **686** (primary = POST + minimal setup + messages). Same task with **seeded random hex ids** (see `lifecycle_*_random`): refs **743** vs JSON **694**. **Adaptive** total **765**. TOON fallback row **809** (approximation). lifecycle_40/200 repeat many messages verbatim, which inflates refs savings; see transcript notes. SYM-2P v2 rows are external PR #6 constants, not live bench output.
