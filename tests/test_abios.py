@@ -274,8 +274,6 @@ class AbiosRoundTripTests(unittest.TestCase):
             }),
         ]
         for enc_name in all_encoders():
-            if enc_name == "adaptive":
-                continue
             with self.subTest(encoder=enc_name):
                 self._assert_round_trip(messages, enc_name)
 
