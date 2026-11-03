@@ -50,6 +50,19 @@ def _register_inline(content: ContentStore, value: str | list | dict) -> None:
     content.observe_inline(value)
 
 
+def _observe_quoted_wire_value(content: ContentStore, text: str) -> None:
+    """Register inline content using the same canonical measure as encode."""
+    if text.startswith("[") or text.startswith("{"):
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, (list, dict)):
+                _register_inline(content, parsed)
+                return
+        except json.JSONDecodeError:
+            pass
+    _register_inline(content, text)
+
+
 def _is_delta_short_form(parts: list[WireToken], lex: Lexicon) -> bool:
     if len(parts) != 3 or not parts[2].text.startswith("st="):
         return False
@@ -65,6 +78,17 @@ def _lex_status(lex: Lexicon, status: str) -> str:
         return lex.word("status", status).strip()
     except KeyError as exc:
         raise ValueError(f"unknown status {status!r}") from exc
+
+
+def validate_wire_status(lex: Lexicon, action: str, payload: dict[str, Any]) -> None:
+    """Reject status values outside the session lexicon (all encoders)."""
+    if action not in ("task.transition", "evidence.add"):
+        return
+    status = payload.get("status")
+    if status is None or not isinstance(status, str):
+        return
+    if status not in lex.raw["status"]:
+        raise ValueError(f"unknown status {status!r}")
 
 
 def _quote(s: str) -> str:
@@ -204,7 +228,7 @@ def _token_texts(tokens: list[WireToken]) -> list[str]:
 
 def _unescape_token(token: WireToken, session: Sym3Session, content: ContentStore) -> Any:
     if token.quoted:
-        _register_inline(content, token.text)
+        _observe_quoted_wire_value(content, token.text)
         return token.text
     raw = token.text
     if raw == "":
@@ -269,6 +293,14 @@ class Encoder(ABC):
         self.lex = lexicon or load_lexicon()
         self.schema = schema or POSITIONAL_ORDER
 
+    def _validate_encode(self, action: str, payload: dict[str, Any]) -> None:
+        validate_wire_status(self.lex, action, canonical_payload(action, payload))
+
+    def _finish_decode(self, action: str, payload: dict[str, Any]) -> ForgeMessage:
+        msg = normalize_message(action, payload)
+        validate_wire_status(self.lex, action, msg[1])
+        return msg
+
     @property
     def tag(self) -> str:
         return self.lex.tag(self.tag_name)
@@ -284,6 +316,7 @@ class PositionalEncoder(Encoder):
     tag_name = "positional"
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
+        self._validate_encode(action, payload)
         full = canonical_payload(action, payload)
         order = self.schema[action]
         vals = [_escape_token(full[k], session, session.content, use_refs=False) for k in order]
@@ -302,13 +335,14 @@ class PositionalEncoder(Encoder):
         payload: dict[str, Any] = {}
         for key, tok in zip(order, vals):
             payload[key] = _unescape_token(tok, session, session.content)
-        return normalize_message(action, payload)
+        return self._finish_decode(action, payload)
 
 
 class OmitEncoder(Encoder):
     tag_name = "omit"
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
+        self._validate_encode(action, payload)
         sparse = session.omit_defaults(action, payload)
         order = [k for k in self.schema[action] if k in sparse]
         vals = [_escape_token(sparse[k], session, session.content, use_refs=False) for k in order]
@@ -336,7 +370,7 @@ class OmitEncoder(Encoder):
         payload: dict[str, Any] = {}
         for key, tok in zip(keys, vals):
             payload[key] = _unescape_token(tok, session, session.content)
-        return normalize_message(action, session.restore_defaults(action, payload))
+        return self._finish_decode(action, session.restore_defaults(action, payload))
 
     def decode(self, line: str, session: Sym3Session) -> ForgeMessage:
         body = _require_tag(line, self.tag)
@@ -347,6 +381,7 @@ class RefsEncoder(Encoder):
     tag_name = "refs"
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
+        self._validate_encode(action, payload)
         full = canonical_payload(action, payload)
         order = self.schema[action]
         vals = [_escape_token(full[k], session, session.content, use_refs=True) for k in order]
@@ -370,7 +405,7 @@ class RefsEncoder(Encoder):
             ):
                 val = session.content.resolve(val)
             payload[key] = val
-        return normalize_message(action, payload)
+        return self._finish_decode(action, payload)
 
     def decode(self, line: str, session: Sym3Session) -> ForgeMessage:
         body = _require_tag(line, self.tag)
@@ -381,6 +416,7 @@ class DeltaEncoder(Encoder):
     tag_name = "delta"
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
+        self._validate_encode(action, payload)
         delta = session.delta_payload(action, payload)
         if delta and action == "task.transition" and session.task_id == canonical_payload(action, payload)["task_id"]:
             st_word = _lex_status(self.lex, delta["status"])
@@ -399,7 +435,7 @@ class DeltaEncoder(Encoder):
             task_id = _unescape_token(parts[1], session, session.content)
             st_word = parts[2].text[3:]
             status = _status_from_lex(self.lex, st_word)
-            return normalize_message(action, {"task_id": task_id, "status": status})
+            return self._finish_decode(action, {"task_id": task_id, "status": status})
         omit = OmitEncoder(self.lex, self.schema)
         return omit._decode_sparse(parts, session)
 
@@ -413,6 +449,7 @@ class CombinedEncoder(Encoder):
         self._refs = RefsEncoder(self.lex, self.schema)
 
     def encode(self, action: str, payload: dict[str, Any], session: Sym3Session) -> str:
+        self._validate_encode(action, payload)
         delta = session.delta_payload(action, payload)
         if (
             delta
@@ -439,7 +476,7 @@ class CombinedEncoder(Encoder):
             task_id = _unescape_token(parts[1], session, session.content)
             st_word = parts[2].text[3:]
             status = _status_from_lex(self.lex, st_word)
-            return normalize_message(action, {"task_id": task_id, "status": status})
+            return self._finish_decode(action, {"task_id": task_id, "status": status})
         action = _cmd_from_lex(self.lex, parts[0].text)
         if len(parts) > 2 and parts[1].text.endswith("|"):
             keys = parts[1].text[:-1].split("|") if parts[1].text[:-1] else []
@@ -462,7 +499,7 @@ class CombinedEncoder(Encoder):
                 ):
                     val = session.content.resolve(val)
                 payload[key] = val
-            return normalize_message(action, session.restore_defaults(action, payload))
+            return self._finish_decode(action, session.restore_defaults(action, payload))
         return RefsEncoder(self.lex, self.schema)._decode_positional(parts, session)
 
 

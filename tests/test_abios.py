@@ -114,10 +114,10 @@ class AbiosRoundTripTests(unittest.TestCase):
         session = fresh_session()
         for action, payload in messages:
             session.apply_message(action, payload)
-        line = enc.encode("task.transition", {"task_id": other_task, "status": "running"}, session)
+        line = enc.encode("task.transition", {"task_id": other_task, "status": "in_progress"}, session)
         self.assertNotIn(" t st=", line)
         self.assertIn(other_task, line)
-        back = decode_transcript(enc, encode_transcript(enc, messages + [("task.transition", {"task_id": other_task, "status": "running"})]))
+        back = decode_transcript(enc, encode_transcript(enc, messages + [("task.transition", {"task_id": other_task, "status": "in_progress"})]))
         self.assertEqual(back[-1][1]["task_id"], other_task)
 
     def test_adaptive_mixed_family_ref_numbering(self):
@@ -196,6 +196,141 @@ class AbiosRoundTripTests(unittest.TestCase):
         session.apply_message("task.claim", {"task_id": session.task_id})
         with self.assertRaises(ValueError):
             enc.encode("task.transition", {"task_id": session.task_id, "status": "blocked"}, session)
+
+    def test_unknown_status_decode_raises_all_encoders(self):
+        from encoders import fresh_session
+
+        session = fresh_session()
+        session.apply_message("task.create", {
+            "project_id": "a1" * 16,
+            "title": "t",
+            "description": "",
+            "criteria": [],
+            "scope": [],
+            "priority": "normal",
+            "dependencies": [],
+        })
+        session.apply_message("task.claim", {"task_id": session.task_id})
+        tid = session.task_id
+        for enc_name, enc in all_encoders().items():
+            if enc_name == "adaptive":
+                continue
+            with self.subTest(encoder=enc_name):
+                valid = enc.encode(
+                    "task.transition",
+                    {"task_id": tid, "status": "in_progress"},
+                    session,
+                )
+                if "st=" in valid:
+                    bad = valid.rsplit("st=", 1)[0] + "st=blocked"
+                else:
+                    parts = valid.split()
+                    if len(parts) > 2 and parts[1].endswith("|"):
+                        keys = parts[1][:-1].split("|") if parts[1][:-1] else []
+                        for i, key in enumerate(keys):
+                            if key == "status":
+                                parts[2 + i] = "blocked"
+                    else:
+                        order = enc.schema["task.transition"]
+                        parts[1 + order.index("status")] = "blocked"
+                    bad = " ".join(parts)
+                with self.assertRaises(ValueError):
+                    enc.decode(bad, fresh_session())
+
+    def test_required_list_field_with_space_all_encoders(self):
+        payload = {
+            "principal_id": "p1" * 8,
+            "task_id": "t1" * 8,
+            "capabilities": ["read repo"],
+        }
+        msg = ("grant.create", canonical_payload("grant.create", payload))
+        for enc_name in all_encoders():
+            if enc_name == "adaptive":
+                continue
+            with self.subTest(encoder=enc_name):
+                self._assert_round_trip_payload("grant.create", payload, enc_name)
+        self.assertIsInstance(msg[1]["capabilities"], list)
+
+    def test_nonascii_quoted_list_content_ref_round_trip(self):
+        long_line = "L" * 54
+        base_task = {
+            "project_id": "a1" * 16,
+            "description": "",
+            "criteria": [],
+            "priority": "normal",
+            "dependencies": [],
+        }
+        messages = [
+            ("task.create", {
+                **base_task,
+                "title": "scope holder",
+                "scope": ["é é é é é é é é"],
+            }),
+            ("task.create", {
+                **base_task,
+                "title": long_line,
+                "description": long_line,
+                "scope": [],
+            }),
+        ]
+        for enc_name in all_encoders():
+            if enc_name == "adaptive":
+                continue
+            with self.subTest(encoder=enc_name):
+                self._assert_round_trip(messages, enc_name)
+
+    def test_seeded_adversarial_round_trip_post_context(self):
+        import random
+        from schemas.synbios.command_fields import COMMAND_FIELDS
+
+        random.seed(0xAB1053)
+        alphabet = '\\ "\' # | = ; [ ] { } - _ . : / , \u00a0é\u2028\r\nst=#1[1]-""'
+        messages = lifecycle_11() + [
+            ("grant.revoke", {"grant_id": "d4" * 16}),
+            ("principal.revoke", {"principal_id": "c3" * 16}),
+        ]
+        assert {m[0] for m in messages} >= set(COMMAND_FIELDS)
+
+        def fuzz_payload(action, payload):
+            out = json.loads(json.dumps(payload))
+            keys = sorted(out)
+            if action in ("task.transition", "evidence.add"):
+                keys = [k for k in keys if k != "status"]
+            if not keys:
+                raise ValueError("nothing to fuzz")
+            key = random.choice(keys)
+            val = out[key]
+            ch = random.choice(alphabet)
+            if isinstance(val, list):
+                if not val:
+                    val.append(ch)
+                else:
+                    val[random.randrange(len(val))] = str(val[random.randrange(len(val))]) + ch
+                out[key] = val
+            elif isinstance(val, str):
+                out[key] = val + ch
+            return action, canonical_payload(action, out)
+
+        encoders = [n for n in all_encoders() if n != "adaptive"]
+        for trial in range(40):
+            action, payload = random.choice(messages)
+            try:
+                msg = fuzz_payload(action, payload)
+            except ValueError:
+                continue
+            for enc_name in encoders:
+                enc = all_encoders()[enc_name]
+                try:
+                    lines = encode_transcript(enc, [msg])
+                except ValueError:
+                    continue
+                sizes = setup_sizes([msg], lines)
+                blob = render_post_handshake(sizes["minimal_text"])
+                _, ctx = parse_post_handshake(blob)
+                setup = parse_decoder_context(ctx)
+                enc_min = all_encoders(setup.lexicon, setup.schema)[enc_name]
+                back = decode_transcript(enc_min, lines, setup=setup)
+                self.assertTrue(messages_equal(msg, back[0]), f"trial={trial} {enc_name}")
 
     def test_omit_malformed_lines_fail(self):
         from encoders import OmitEncoder, fresh_session

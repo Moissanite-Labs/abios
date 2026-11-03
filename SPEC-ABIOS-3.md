@@ -62,13 +62,13 @@ Tokens are space-separated except where noted. Parsing rules:
 | Construct | Rule |
 |---|---|
 | Whitespace | ASCII space separates tokens; no empty tokens. |
-| Quoted string | `"..."` with `\"`, `\\`, `\n`, and `\r` escapes; used when a string would otherwise parse as another token type, is empty, contains space, `;`, `,`, `"`, newline, carriage return, or starts with `http`. **Quoted tokens always decode as strings** (never re-parsed as JSON). |
+| Quoted string | `"..."` with `\"`, `\\`, `\n`, and `\r` escapes; used when a string would otherwise parse as another token type, is empty, contains space, `;`, `,`, `"`, newline, carriage return, or starts with `http`. The wire parser yields a string; **list-typed fields** (see profile schema) then coerce quoted canonical JSON arrays to lists in `coerce_wire_types`. |
 | Null | `-` |
 | Boolean | unquoted `1` / `0` |
 | Integer | unquoted digit sequence |
 | Inline JSON | unquoted token starting with `[` or `{`, canonical JSON (lists/objects in payloads) |
 | Content ref | opaque `#n` label present in session `ref_to_digest` (e.g. `#1`) |
-| List in payload | encoded as quoted canonical JSON unless refs encoder applies ref_if_published |
+| List in payload | canonical JSON array; quoted when the JSON contains space or other quoting triggers, or when the refs encoder inlines before ref substitution |
 
 Command lexeme follows the format tag immediately. Remaining tokens are positional values or omit metadata.
 

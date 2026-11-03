@@ -5,7 +5,7 @@ import copy
 import json
 from typing import Any
 
-from schemas.synbios.command_fields import COMMAND_FIELDS
+from schemas.synbios.command_fields import COMMAND_FIELDS, LIST_FIELDS
 
 ForgeMessage = tuple[str, dict[str, Any]]
 
@@ -52,24 +52,25 @@ def canonical_payload(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _field_is_list(action: str, key: str) -> bool:
+    return key in LIST_FIELDS.get(action, frozenset())
+
+
 def coerce_wire_types(action: str, payload: dict[str, Any]) -> dict[str, Any]:
-    """Promote quoted JSON strings to list values where schema defaults are lists."""
-    defaults = SCHEMA_DEFAULTS.get(action, {})
+    """Promote quoted JSON strings to list values for list-typed schema fields."""
     out = {**payload}
     for key, val in list(out.items()):
-        if not isinstance(val, str) or key not in defaults:
+        if not isinstance(val, str) or not _field_is_list(action, key):
             continue
-        default = defaults[key]
-        if isinstance(default, list):
-            if val.startswith("["):
-                try:
-                    parsed = json.loads(val)
-                    if isinstance(parsed, list):
-                        out[key] = parsed
-                except json.JSONDecodeError:
-                    pass
-            elif val == "[]":
-                out[key] = []
+        if val.startswith("["):
+            try:
+                parsed = json.loads(val)
+                if isinstance(parsed, list):
+                    out[key] = parsed
+            except json.JSONDecodeError:
+                pass
+        elif val == "[]":
+            out[key] = []
     return out
 
 

@@ -207,7 +207,7 @@ footer a{color:var(--muted)}
       <li>Packets cross untrusted relays. The v2-rcp edition appends a checksum field, so corruption is detected instead of passed on silently. The checksum costs 17 bytes, and senders skip it where the medium is trusted.</li>
       <li>Efficiency claims need measurement. The harness ships a paired v1/v2 corpus, a bench script, and a model eval protocol, so the density win is measured rather than asserted.</li>
     </ol>
-    <p><span class="lead">What implementing buys you.</span> Packets come out 4.8x denser than the v1 JSON they replace, and 3.1x smaller than compact v1 JSON across the bench corpus. Malformed packets are rejected with named errors instead of misread. Reasoning stays in symbols: bind, branch, iterate, delegate, spawn, broadcast. Corruption is detected on untrusted paths. Operators still read English.</p>
+    <p><span class="lead">What implementing buys you.</span> On the bundled SYM-2P corpus, the historical v2 dense wire experiment reached about 4.8× smaller packets than v1 JSON (and about 3.1× vs compact v1 JSON). That v2 wire path is <strong>superseded</strong> and not a migration target; ABIOS/3 and SYM-2P/1.0 JSON are what we measure and ship today. Malformed packets are rejected with named errors instead of misread. Reasoning stays in symbols: bind, branch, iterate, delegate, spawn, broadcast. Corruption is detected on untrusted paths. Operators still read English.</p>
     <p><span class="lead">What it does not buy you.</span> It carries no measured claim that agents produce better answers in symbols: the model A/B eval has not been run. The checksum detects corruption, not identity, so proof of who sent a packet stays a future protocol.</p>
   </section>
 
@@ -252,9 +252,9 @@ footer a{color:var(--muted)}
   <section id="packet">
     <div class="secnum">04</div>
     <h2>The packet</h2>
-    <p>One brief packet assigning work, on the wire (101 bytes):</p>
+    <p><span class="lead">Historical v2 example (superseded wire).</span> One brief packet assigning work, on the wire (101 bytes in the bundled corpus experiment):</p>
     <pre><code>2|b441|mr1|1|2|1|1|88|70|(10 sym-2p/1.0 (20 sec (3 5)))(11 (21 *))(12 (22 validator 0 1))|1|mr1:v1|40</code></pre>
-    <p>The same brief as v1 JSON took 481 bytes. The v2 line takes 101: 4.8x denser.</p>
+    <p>The same brief as v1 JSON took 481 bytes in that experiment; the v2 line took 101 bytes there. v2 dense wire is not a migration target (see ABIOS section below).</p>
     <p>Thirteen positional fields, no key names on the wire:</p>
     <table>
       <tr><th>#</th><th>Field</th><th>Contents</th></tr>
