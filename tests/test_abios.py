@@ -38,7 +38,7 @@ class AbiosRoundTripTests(unittest.TestCase):
     def _assert_round_trip(self, messages, encoder_name):
         enc = all_encoders()[encoder_name]
         lines = encode_transcript(enc, messages)
-        back = decode_transcript(enc, lines)
+        back = decode_transcript(enc, lines, messages=messages)
         self.assertEqual(len(back), len(messages))
         for exp, got in zip(messages, back):
             self.assertTrue(messages_equal(exp, got), f"{encoder_name}: {exp} vs {got}")
@@ -47,7 +47,7 @@ class AbiosRoundTripTests(unittest.TestCase):
         enc = all_encoders()[encoder_name]
         msg = (action, canonical_payload(action, payload))
         lines = encode_transcript(enc, [msg])
-        back = decode_transcript(enc, lines)
+        back = decode_transcript(enc, lines, messages=[msg])
         self.assertTrue(messages_equal(msg, back[0]), f"{encoder_name}: {msg} vs {back[0]}")
 
     def test_adversarial_round_trip_all_encoders(self):
@@ -100,8 +100,8 @@ class AbiosRoundTripTests(unittest.TestCase):
 
         enc = all_encoders()["refs"]
         session = fresh_session()
-        cmd = enc.lex.word("cmd", "project.create").strip()
-        line = f"{enc.tag}{cmd} demo \"\" \"\" #9"
+        fused = enc._refs_prefix("project.create", session)
+        line = f'{fused} demo "" "" #9'
         with self.assertRaises(ValueError):
             enc.decode(line, session)
 
@@ -117,7 +117,11 @@ class AbiosRoundTripTests(unittest.TestCase):
         line = enc.encode("task.transition", {"task_id": other_task, "status": "in_progress"}, session)
         self.assertNotIn(" t st=", line)
         self.assertIn(other_task, line)
-        back = decode_transcript(enc, encode_transcript(enc, messages + [("task.transition", {"task_id": other_task, "status": "in_progress"})]))
+        back = decode_transcript(
+            enc,
+            encode_transcript(enc, messages + [("task.transition", {"task_id": other_task, "status": "in_progress"})]),
+            messages=messages + [("task.transition", {"task_id": other_task, "status": "in_progress"})],
+        )
         self.assertEqual(back[-1][1]["task_id"], other_task)
 
     def test_adaptive_mixed_family_ref_numbering(self):
@@ -140,8 +144,85 @@ class AbiosRoundTripTests(unittest.TestCase):
         ]
         enc = AdaptiveEncoder()
         lines = encode_transcript(enc, messages)
-        back = decode_transcript(enc, lines)
+        back = decode_transcript(enc, lines, messages=messages)
         self.assertTrue(messages_equal(messages[-1], back[-1]))
+
+    def test_wire_string_list_with_semicolon_in_item(self):
+        payload = {
+            "task_id": "a1" * 16,
+            "artifact_id": "e5" * 16,
+            "artifact_digest": "b" * 64,
+            "revision": "a" * 40,
+            "kind": "test",
+            "status": "passed",
+            "command": "pytest",
+            "summary": "ok",
+            "tool": "python",
+            "tool_version": "3.11",
+            "assumptions": ["Reported by agent; not executed by forge."],
+        }
+        enc = all_encoders()["refs"]
+        msg = ("evidence.add", canonical_payload("evidence.add", payload))
+        lines = encode_transcript(enc, [msg])
+        back = decode_transcript(enc, lines, messages=[msg])
+        self.assertTrue(messages_equal(msg, back[0]))
+
+    def test_fused_refs_preserves_leading_whitespace_in_field(self):
+        msg = ("task.claim", canonical_payload("task.claim", {"task_id": "\tx"}))
+        enc = all_encoders()["refs"]
+        lines = encode_transcript(enc, [msg])
+        sizes = setup_sizes([msg], lines)
+        setup = parse_decoder_context(sizes["minimal_text"])
+        back = decode_transcript(
+            all_encoders(setup.lexicon, setup.schema)["refs"],
+            lines,
+            setup=setup,
+        )
+        self.assertTrue(messages_equal(msg, back[0]))
+
+    def test_wire_list_empty_item_and_brackets_and_backslash(self):
+        cases = [
+            ("task.create", {
+                "project_id": "a1" * 16,
+                "title": "t",
+                "description": "d",
+                "criteria": [""],
+                "scope": [],
+                "priority": "normal",
+                "dependencies": [],
+            }),
+            ("task.create", {
+                "project_id": "a1" * 16,
+                "title": "t",
+                "description": "d",
+                "criteria": ["a\\", "b"],
+                "scope": [],
+                "priority": "normal",
+                "dependencies": [],
+            }),
+            ("task.create", {
+                "project_id": "a1" * 16,
+                "title": "t",
+                "description": "d",
+                "criteria": ["a]b"],
+                "scope": ["a[b"],
+                "priority": "normal",
+                "dependencies": [],
+            }),
+        ]
+        for action, payload in cases:
+            for enc_name in ("refs", "adaptive"):
+                with self.subTest(action=action, encoder=enc_name):
+                    self._assert_round_trip_payload(action, payload, enc_name)
+
+    def test_adaptive_single_message_post_context(self):
+        messages = [("project.create", {"name": "n", "description": "", "repository": ""})]
+        enc = all_encoders()["adaptive"]
+        lines = encode_transcript(enc, messages)
+        sizes = setup_sizes(messages, lines)
+        setup = parse_decoder_context(sizes["minimal_text"])
+        back = decode_transcript(all_encoders(setup.lexicon, setup.schema)["adaptive"], lines, setup=setup)
+        self.assertTrue(messages_equal(messages[0], back[0]))
 
     def test_long_list_ref_round_trip_refs(self):
         blob = ["x"] * 20
@@ -157,7 +238,7 @@ class AbiosRoundTripTests(unittest.TestCase):
         enc = all_encoders()["refs"]
         msg = ("task.create", canonical_payload("task.create", payload))
         lines = encode_transcript(enc, [msg, msg])
-        back = decode_transcript(enc, lines)
+        back = decode_transcript(enc, lines, messages=[msg, msg])
         self.assertTrue(messages_equal(msg, back[1]))
 
     def test_multibyte_inline_threshold_bytes(self):
@@ -169,14 +250,14 @@ class AbiosRoundTripTests(unittest.TestCase):
         enc = all_encoders()["refs"]
         msg = ("project.create", {"name": value, "description": "", "repository": ""})
         lines = encode_transcript(enc, [msg, msg])
-        back = decode_transcript(enc, lines)
+        back = decode_transcript(enc, lines, messages=[msg, msg])
         self.assertTrue(messages_equal(msg, back[1]))
 
     def test_st_x_not_delta_short_form(self):
         enc = all_encoders()["combined"]
         msg = ("project.create", {"name": "st=x", "description": "ok", "repository": ""})
         lines = encode_transcript(enc, [msg])
-        back = decode_transcript(enc, lines)
+        back = decode_transcript(enc, lines, messages=[msg])
         self.assertEqual(back[0][1]["name"], "st=x")
 
     def test_unknown_status_encode_raises(self):
@@ -282,8 +363,8 @@ class AbiosRoundTripTests(unittest.TestCase):
         from schemas.synbios.command_fields import COMMAND_FIELDS
 
         random.seed(0xAB1053)
-        alphabet = '\\ "\' # | = ; [ ] { } - _ . : / , \u00a0é\u2028\r\nst=#1[1]-""'
-        messages = lifecycle_11() + [
+        alphabet = '\\ "\' # | = ; [ ] { } - _ . : / , \u00a0é\u2028\r\nst=#1[1]-""\\'
+        messages = lifecycle_200() + [
             ("grant.revoke", {"grant_id": "d4" * 16}),
             ("principal.revoke", {"principal_id": "c3" * 16}),
         ]
@@ -303,13 +384,14 @@ class AbiosRoundTripTests(unittest.TestCase):
                 if not val:
                     val.append(ch)
                 else:
-                    val[random.randrange(len(val))] = str(val[random.randrange(len(val))]) + ch
+                    idx = random.randrange(len(val))
+                    val[idx] = str(val[idx]) + ch
                 out[key] = val
             elif isinstance(val, str):
                 out[key] = val + ch
             return action, canonical_payload(action, out)
 
-        encoders = [n for n in all_encoders() if n != "adaptive"]
+        encoders = ["refs", "adaptive"] + [n for n in all_encoders() if n not in ("adaptive", "refs")]
         for trial in range(40):
             action, payload = random.choice(messages)
             try:

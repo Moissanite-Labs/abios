@@ -144,11 +144,12 @@ The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mo
 
 | Transcript | Compact JSON | Lossless English | ABIOS refs | ABIOS adaptive |
 | --- | ---: | ---: | ---: | ---: |
-| 11 messages | 738 | 686 | **761** | **761** |
-| 40 messages | 5570 | 5242 | **1983** | **1983** |
-| 200 messages | 28498 | 26754 | **7791** | **7791** |
+| 11 messages (fixture hex) | 738 | 686 | **765** (+374 REFS decode rules → **1139** billed with rules) | **765** |
+| 11 messages (random hex, seed 1) | 694 | **652** | **743** (+374 rules → **1117**) | **743** |
+| 40 messages | 5570 | 5242 | **1721** | **1721** |
+| 200 messages | 28498 | 26754 | **6212** | **6212** |
 
-Also on 11 messages: TOON approx fallback **809**, Agora envelope **1027** (see `docs/abios-bench.md`). Compact JSON rows include an `action` field like ABIOS command names. **DOI: pending** (Zenodo deposit planned).
+Also on 11 messages: TOON approx fallback **809**, Agora envelope **1027** (see `docs/abios-bench.md`). Compact JSON rows include an `action` field like ABIOS command names. Headline ABIOS totals exclude the informative **374**-token `REFS_DECODE_RULES` text (refs with rules: **1139** on the 11-message fixture, **1117** on random-id seed 1). Random 32-hex ids tokenize cheaper than fixture `"a1"*16`, so random JSON (**694**) and English (**652**) beat the fixture rows. **DOI: pending** (Zenodo deposit planned).
 
 **Caveats:** On 11 messages, ABIOS totals exceed compact JSON under this accounting; savings appear from longer transcripts (40/200 repeat many identical messages). Full lexicon setup exceeds JSON on very short sessions. `SPEC-V2-DRAFT.md` is superseded for token efficiency (v2 dense pilot total **1415** vs JSON **738** on 11 msgs with current baselines; raw v2 **3386**). SYM-2P v2 bench rows are external PR #6 constants.
 

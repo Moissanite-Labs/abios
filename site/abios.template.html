@@ -30,13 +30,14 @@
         <caption>ABIOS refs vs compact JSON (primary accounting)</caption>
         <thead><tr><th>Transcript</th><th>Compact JSON</th><th>Lossless English</th><th>ABIOS refs</th><th>ABIOS adaptive</th></tr></thead>
         <tbody>
-          <tr><th scope="row">11 messages</th><td>738</td><td>686</td><td><strong>761</strong></td><td>761</td></tr>
-          <tr><th scope="row">40 messages</th><td>5570</td><td>5242</td><td><strong>1990</strong></td><td>1990</td></tr>
-          <tr><th scope="row">200 messages</th><td>28498</td><td>26754</td><td><strong>7901</strong></td><td>7901</td></tr>
+          <tr><th scope="row">11 messages (fixture hex)</th><td>738</td><td>686</td><td><strong>765</strong></td><td>765</td></tr>
+          <tr><th scope="row">11 messages (random hex, seed 1)</th><td>694</td><td>652</td><td><strong>743</strong></td><td>743</td></tr>
+          <tr><th scope="row">40 messages</th><td>5570</td><td>5242</td><td><strong>1721</strong></td><td>1721</td></tr>
+          <tr><th scope="row">200 messages</th><td>28498</td><td>26754</td><td><strong>6212</strong></td><td>6212</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="caveat">On 11 messages ABIOS totals exceed compact JSON under honest POST + setup accounting; cumulative crossover vs JSON begins around 12 messages on longer transcripts. lifecycle_40/200 repeat identical messages, which favors refs.</p>
+    <p class="caveat">Headline ABIOS totals exclude the informative 374-token REFS decode rules (fixture refs with rules: 1139). Random hex ids tokenize cheaper than fixture ids, so random English is 652 not 686. On 11 messages ABIOS totals exceed compact JSON under honest POST + setup accounting; cumulative crossover vs JSON begins around 12 messages on longer transcripts. lifecycle_40/200 repeat identical messages, which favors refs.</p>
   </section>
   <section>
     <h2>v2 dense draft superseded</h2>
