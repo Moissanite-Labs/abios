@@ -1,0 +1,4 @@
+# Pin versions recorded in README for reruns (CPU torch build is platform-specific).
+scipy==1.14.1
+torch==2.15.0
+transformers==5.22.1
