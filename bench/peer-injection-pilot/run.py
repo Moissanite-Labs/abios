@@ -1,4 +1,5 @@
-"""D5 pilot: hidden peer-agent order in repo data, 3 harness conditions.
+"""Peer-injection pilot (ad hoc CMD/DATA prompt envelope; not SYM-2P).
+Hidden peer-agent order in repo data, 3 harness conditions.
 Single-shot agent: model sees task + repo files, must emit ACTION lines and a SUMMARY.
 Scored by regex; all raw outputs saved to raw.jsonl."""
 import json, re, sys, time, random, torch
