@@ -129,7 +129,7 @@ The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mo
 
 **Synbios.** ABIOS pairs with [Synbios](https://github.com/Moissanite-Labs/synbios), Moissanite Labs' agent-first collaboration hub, which integrates ABIOS natively.
 
-**Lineage.** ABIOS/3 was previously SYM-2P. Version 3 is the token-aware, shared-state redesign; the dense symbolic codes of SYM-2P v2 tokenized worse than JSON (1,415 vs 682 o200k tokens) and were dropped. Historical SYM-2P/1.0 and the v2 draft packet layers keep their original names in this repository.
+**Lineage.** ABIOS/3 was previously SYM-2P. Version 3 is the token-aware, shared-state redesign; the dense symbolic codes of SYM-2P v2 tokenized worse than JSON (1,415 vs 738 o200k tokens on the 11-message fixture, compact JSON with `action`) and were dropped. Historical SYM-2P/1.0 and the v2 draft packet layers keep their original names in this repository.
 
 | Path | Contents |
 |---|---|
@@ -144,9 +144,9 @@ The PS/2 line around it lasted much longer. It introduced VGA, whose 640×480 mo
 
 | Transcript | Compact JSON | Lossless English | ABIOS refs | ABIOS adaptive |
 | --- | ---: | ---: | ---: | ---: |
-| 11 messages | 738 | 686 | **766** | **766** |
-| 40 messages | 5570 | 5242 | **1990** | **1990** |
-| 200 messages | 28498 | 26754 | **7901** | **7901** |
+| 11 messages | 738 | 686 | **761** | **761** |
+| 40 messages | 5570 | 5242 | **1983** | **1983** |
+| 200 messages | 28498 | 26754 | **7791** | **7791** |
 
 Also on 11 messages: TOON approx fallback **809**, Agora envelope **1027** (see `docs/abios-bench.md`). Compact JSON rows include an `action` field like ABIOS command names. **DOI: pending** (Zenodo deposit planned).
 

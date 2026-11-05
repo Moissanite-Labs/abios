@@ -20,12 +20,12 @@ Minimal setup is **decode-sufficient**: all used cmd/status/kind wire mappings a
 | SYM-2P v2 session + handshake (PR #6) — External constants from synbios PR #6 dense pilot (not live-measured in this repo) | 213 | 1202 | 1415 | 213 | 1415 | 21.3 | 1223.3 |
 | SYM-2P v2 dense raw (PR #6) — vs compact JSON 683 messages-only (pilot) | 0 | 3386 | 3386 | 0 | 3386 | 0.0 | 3386.0 |
 | SYM-2P v1 (PR #6 pilot reference) — pilot transcript; live bench row below uses this repo codec | 0 | 2720 | 2720 | 0 | 2720 | 0.0 | 2720.0 |
-| ABIOS delta | 525 | 349 | 874 | 782 | 1131 | 52.5 | 401.5 |
-| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 525 | 241 | 766 | 782 | 1023 | 52.5 | 293.5 |
-| ABIOS positional | 525 | 256 | 781 | 782 | 1038 | 52.5 | 308.5 |
-| ABIOS omit | 523 | 357 | 880 | 782 | 1139 | 52.3 | 409.3 |
-| ABIOS combined | 524 | 334 | 858 | 782 | 1116 | 52.4 | 386.4 |
-| ABIOS adaptive | 525 | 241 | 766 | 782 | 1023 | 52.5 | 293.5 |
+| ABIOS delta | 525 | 345 | 870 | 799 | 1144 | 52.5 | 397.5 |
+| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 525 | 236 | 761 | 799 | 1035 | 52.5 | 288.5 |
+| ABIOS positional | 525 | 251 | 776 | 798 | 1049 | 52.5 | 303.5 |
+| ABIOS omit | 523 | 353 | 876 | 797 | 1150 | 52.3 | 405.3 |
+| ABIOS combined | 524 | 330 | 854 | 798 | 1128 | 52.4 | 382.4 |
+| ABIOS adaptive | 525 | 236 | 761 | 799 | 1035 | 52.5 | 288.5 |
 
 ### Cumulative crossover (primary accounting: POST + setup min + messages)
 
@@ -50,12 +50,12 @@ Minimal setup is **decode-sufficient**: all used cmd/status/kind wire mappings a
 | TOON (approx in-repo fallback) | 0 | 6051 | 6051 | 0 | 6051 | 0.0 | 6051.0 |
 | Agora envelope (arXiv:2410.11905) | 48 | 6449 | 6497 | 48 | 6497 | 4.8 | 6453.8 |
 | SYM-2P v1 | 0 | 12925 | 12925 | 0 | 12925 | 0.0 | 12925.0 |
-| ABIOS delta | 531 | 3356 | 3887 | 782 | 4138 | 53.1 | 3409.1 |
-| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 527 | 1463 | 1990 | 782 | 2245 | 52.7 | 1515.7 |
-| ABIOS positional | 527 | 2507 | 3034 | 782 | 3289 | 52.7 | 2559.7 |
-| ABIOS omit | 530 | 3364 | 3894 | 782 | 4146 | 53.0 | 3417.0 |
-| ABIOS combined | 529 | 2312 | 2841 | 782 | 3094 | 52.9 | 2364.9 |
-| ABIOS adaptive | 527 | 1463 | 1990 | 782 | 2245 | 52.7 | 1515.7 |
+| ABIOS delta | 531 | 3350 | 3881 | 801 | 4151 | 53.1 | 3403.1 |
+| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 527 | 1456 | 1983 | 797 | 2253 | 52.7 | 1508.7 |
+| ABIOS positional | 527 | 2500 | 3027 | 796 | 3296 | 52.7 | 2552.7 |
+| ABIOS omit | 530 | 3358 | 3888 | 800 | 4158 | 53.0 | 3411.0 |
+| ABIOS combined | 529 | 2306 | 2835 | 799 | 3105 | 52.9 | 2358.9 |
+| ABIOS adaptive | 527 | 1456 | 1983 | 797 | 2253 | 52.7 | 1508.7 |
 
 ### Cumulative crossover (primary accounting: POST + setup min + messages)
 
@@ -80,12 +80,12 @@ Minimal setup is **decode-sufficient**: all used cmd/status/kind wire mappings a
 | TOON (approx in-repo fallback) | 0 | 30799 | 30799 | 0 | 30799 | 0.0 | 30799.0 |
 | Agora envelope (arXiv:2410.11905) | 48 | 32897 | 32945 | 48 | 32945 | 4.8 | 32901.8 |
 | SYM-2P v1 | 0 | 65273 | 65273 | 0 | 65273 | 0.0 | 65273.0 |
-| ABIOS delta | 531 | 17324 | 17855 | 782 | 18106 | 53.1 | 17377.1 |
-| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 527 | 7374 | 7901 | 782 | 8156 | 52.7 | 7426.7 |
-| ABIOS positional | 527 | 13079 | 13606 | 782 | 13861 | 52.7 | 13131.7 |
-| ABIOS omit | 530 | 17364 | 17894 | 782 | 18146 | 53.0 | 17417.0 |
-| ABIOS combined | 529 | 11619 | 12148 | 782 | 12401 | 52.9 | 11671.9 |
-| ABIOS adaptive | 527 | 7374 | 7901 | 782 | 8156 | 52.7 | 7426.7 |
+| ABIOS delta | 531 | 17294 | 17825 | 801 | 18095 | 53.1 | 17347.1 |
+| ABIOS refs — closest prior art: Agora (arXiv:2410.11905) | 527 | 7264 | 7791 | 797 | 8061 | 52.7 | 7316.7 |
+| ABIOS positional | 527 | 13044 | 13571 | 796 | 13840 | 52.7 | 13096.7 |
+| ABIOS omit | 530 | 17334 | 17864 | 800 | 18134 | 53.0 | 17387.0 |
+| ABIOS combined | 529 | 11514 | 12043 | 799 | 12313 | 52.9 | 11566.9 |
+| ABIOS adaptive | 527 | 7264 | 7791 | 797 | 8061 | 52.7 | 7316.7 |
 
 ### Cumulative crossover (primary accounting: POST + setup min + messages)
 
@@ -100,4 +100,4 @@ Minimal setup is **decode-sufficient**: all used cmd/status/kind wire mappings a
 
 ## Verdict (primary accounting, o200k_base)
 
-On lifecycle_11, ABIOS **refs** total **766** vs compact JSON **738** and lossless English **686** (primary = POST + minimal setup + messages). **Adaptive** total **766**. TOON fallback row **809** (approximation). lifecycle_40/200 repeat many messages verbatim, which inflates refs savings; see transcript notes. SYM-2P v2 rows are external PR #6 constants, not live bench output.
+On lifecycle_11, ABIOS **refs** total **761** vs compact JSON **738** and lossless English **686** (primary = POST + minimal setup + messages). **Adaptive** total **761**. TOON fallback row **809** (approximation). lifecycle_40/200 repeat many messages verbatim, which inflates refs savings; see transcript notes. SYM-2P v2 rows are external PR #6 constants, not live bench output.

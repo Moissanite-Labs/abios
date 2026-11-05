@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import hashlib
+import re
 
 from decoder_context import FORMAT_HEADER, LEGACY_FORMAT_HEADERS, parse_decoder_context
 
 PROFILE_LINE = FORMAT_HEADER.rstrip()
 POST_ACK_PREFIX = "POST ok "
+_DIGEST_RE = re.compile(r"^[0-9a-f]{16}$")
 
 
 def context_digest(context_text: str) -> str:
@@ -40,6 +42,11 @@ def render_post_handshake(minimal_context_text: str) -> str:
     return f"{POST_ACK_PREFIX}{profile} {digest}\n{text}"
 
 
+def _require_post_blocks(context: str) -> None:
+    if not all(marker in context for marker in ("lexicon:", "schema:", "ids:")):
+        raise ValueError("POST body missing required decoder blocks")
+
+
 def parse_post_handshake(blob: str) -> tuple[str, str]:
     """Return (ack_line, decoder_context_text)."""
     normalized = blob.replace("\r\n", "\n")
@@ -61,7 +68,10 @@ def parse_post_handshake(blob: str) -> tuple[str, str]:
     expected_prefix = f"{POST_ACK_PREFIX}{profile} "
     if not ack.startswith(expected_prefix):
         raise ValueError("POST profile mismatch between ack and body")
-    digest = ack[len(expected_prefix) :].strip()
+    digest = ack[len(expected_prefix) :]
+    if not _DIGEST_RE.match(digest):
+        raise ValueError("POST digest malformed")
+    _require_post_blocks(context)
     if digest != context_digest(context):
         raise ValueError("POST context digest mismatch")
     return ack, context
