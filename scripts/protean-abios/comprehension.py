@@ -70,11 +70,27 @@ def _normalized(pred: Any) -> tuple[Any, dict[str, Any]]:
         return cmd, payload
 
 
+def _json_equal(expected: Any, actual: Any) -> bool:
+    """Exact decoded JSON values, including bool/int and int/float distinctions."""
+    if type(expected) is not type(actual):
+        return False
+    if isinstance(expected, dict):
+        return expected.keys() == actual.keys() and all(
+            _json_equal(value, actual[key]) for key, value in expected.items())
+    if isinstance(expected, list):
+        return len(expected) == len(actual) and all(
+            _json_equal(left, right) for left, right in zip(expected, actual))
+    return expected == actual
+
+
 def score_predictions(expected: list[dict[str, Any]], predicted: list[Any]) -> dict[str, Any]:
     """Score by position. Missing predictions count as wrong; extra ones are reported.
 
     message_exact: share of messages whose cmd and full canonical payload match.
     field_accuracy: share of expected slots (cmd plus each payload field) that match.
+    Both metrics compare decoded JSON types recursively. Numbers parsed as int
+    and float are distinct; object key order and numeric spelling within the
+    same parsed type are immaterial. A boolean never matches a number.
     """
     exact = 0
     fields_ok = 0
@@ -82,9 +98,10 @@ def score_predictions(expected: list[dict[str, Any]], predicted: list[Any]) -> d
     for index, exp in enumerate(expected):
         cmd, payload = _normalized(predicted[index]) if index < len(predicted) else (None, {})
         fields_total += 1 + len(exp["payload"])
-        fields_ok += cmd == exp["cmd"]
-        fields_ok += sum(1 for k, v in exp["payload"].items() if k in payload and payload[k] == v)
-        exact += cmd == exp["cmd"] and payload == exp["payload"]
+        fields_ok += _json_equal(exp["cmd"], cmd)
+        fields_ok += sum(1 for k, v in exp["payload"].items()
+                         if k in payload and _json_equal(v, payload[k]))
+        exact += _json_equal(exp["cmd"], cmd) and _json_equal(exp["payload"], payload)
     return {
         "messages": len(expected),
         "predicted": len(predicted),
