@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 import unittest
 
@@ -7,6 +8,7 @@ ABIOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"
 sys.path.insert(0, os.path.normpath(ABIOS))
 
 from canonical import canonical_payload, messages_equal, normalize_message  # noqa: E402
+from comprehension import build_prompt, parse_predictions, score_predictions  # noqa: E402
 from decoder_context import FORMAT_HEADER, parse_decoder_context, render_decoder_context, setup_sizes  # noqa: E402
 from encoders import all_encoders, decode_transcript, encode_transcript  # noqa: E402
 from generate_lexicon import main as regen_lexicon  # noqa: E402
@@ -441,6 +443,129 @@ class AbiosRegenLexiconTests(unittest.TestCase):
             generated = out.read_text(encoding="utf-8")
         json.loads(generated)
         self.assertEqual(before, generated)
+
+
+class AbiosComprehensionHarnessTests(unittest.TestCase):
+    def test_prompt_is_decode_sufficient(self):
+        # The model sees exactly what the reference decoder needs, and no more.
+        for name in all_encoders():
+            with self.subTest(encoder=name):
+                user, expected = build_prompt(name, lifecycle_11())
+                post, wire = user.split("\nWIRE LINES:\n")
+                _, ctx = parse_post_handshake(post)
+                setup = parse_decoder_context(ctx)
+                lines = wire.rstrip("\n").split("\n")
+                back = decode_transcript(all_encoders(setup.lexicon, setup.schema)[name], lines, setup=setup)
+                self.assertEqual([{"cmd": a, "payload": canonical_payload(a, p)} for a, p in back], expected)
+
+    def test_oracle_scores_full_marks(self):
+        _, expected = build_prompt("refs", lifecycle_11())
+        score = score_predictions(expected, json.loads(json.dumps(expected)))
+        self.assertEqual((score["message_exact"], score["field_accuracy"]), (1.0, 1.0))
+
+    def test_partial_and_missing_predictions(self):
+        _, expected = build_prompt("refs", lifecycle_11())
+        predicted = json.loads(json.dumps(expected))
+        key = sorted(predicted[0]["payload"])[0]
+        predicted[0]["payload"][key] = "wrong"
+        score = score_predictions(expected, predicted)
+        self.assertAlmostEqual(score["message_exact"], 10 / 11)
+        self.assertLess(score["field_accuracy"], 1.0)
+        self.assertGreater(score["field_accuracy"], 0.9)
+        short = score_predictions(expected, predicted[:5] + [None, "x"])
+        self.assertAlmostEqual(short["message_exact"], 4 / 11)
+
+    def test_omitted_defaults_are_not_errors(self):
+        from canonical import SCHEMA_DEFAULTS
+
+        _, expected = build_prompt("refs", lifecycle_11())
+        predicted = json.loads(json.dumps(expected))
+        dropped = 0
+        for item in predicted:
+            for key, value in SCHEMA_DEFAULTS.get(item["cmd"], {}).items():
+                if item["payload"].get(key) == value:
+                    del item["payload"][key]
+                    dropped += 1
+        self.assertGreater(dropped, 0)
+        self.assertEqual(score_predictions(expected, predicted)["message_exact"], 1.0)
+
+    def test_scoring_is_type_aware_at_every_depth(self):
+        # Python's == says True == 1 and 1.0 == 1, so == would score these as correct.
+        def case(value):
+            return canonical_payload("task.create", {"project_id": "p", "title": "t", "criteria": value})
+
+        wrong = [
+            ([1], [True]),
+            ([0], [False]),
+            ([True], [1]),
+            ([1], [1.0]),
+            (["1"], [1]),
+            ([None], ["null"]),
+            ([[1]], [[True]]),
+            ([{"a": [1, {"b": True}]}], [{"a": [1, {"b": 1}]}]),
+            ([{"a": 1}], [{"a": 1, "b": 2}]),  # extra key
+            ([{"a": 1, "b": 2}], [{"a": 1}]),  # missing key
+            ([[1, 2]], [[1]]),  # shorter list
+        ]
+        for want, got in wrong:
+            with self.subTest(want=want, got=got):
+                score = score_predictions(
+                    [{"cmd": "task.create", "payload": case(want)}],
+                    [{"cmd": "task.create", "payload": case(got)}],
+                )
+                self.assertEqual(score["message_exact"], 0.0)
+                self.assertLess(score["field_accuracy"], 1.0)
+                self.assertGreater(score["field_accuracy"], 0.8)  # only the one field is wrong
+        right = [
+            ([1], [1]),
+            ([True], [True]),
+            ([{"a": 1, "b": [2, None]}], [{"b": [2, None], "a": 1}]),  # key order is not a difference
+        ]
+        for want, got in right:
+            with self.subTest(want=want, got=got):
+                score = score_predictions(
+                    [{"cmd": "task.create", "payload": case(want)}],
+                    [{"cmd": "task.create", "payload": case(got)}],
+                )
+                self.assertEqual((score["message_exact"], score["field_accuracy"]), (1.0, 1.0))
+
+    def test_missing_required_field_is_not_credited(self):
+        # A field with no schema default must be present. A missing one is a wrong slot, not a pass.
+        expected = [{"cmd": "task.create", "payload": canonical_payload(
+            "task.create", {"project_id": "p", "title": "t", "criteria": ["c"]})}]
+        predicted = [{"cmd": "task.create", "payload": {"project_id": "p", "criteria": ["c"]}}]  # no title
+        score = score_predictions(expected, predicted)
+        self.assertEqual(score["message_exact"], 0.0)
+        self.assertAlmostEqual(score["field_accuracy"], 7 / 8)  # cmd + 6 of 7 payload fields
+        # A missing field that has a schema default is restored first, so it is still full marks.
+        predicted = [{"cmd": "task.create", "payload": {"project_id": "p", "title": "t", "criteria": ["c"]}}]
+        score = score_predictions(expected, predicted)
+        self.assertEqual((score["message_exact"], score["field_accuracy"]), (1.0, 1.0))
+
+    def test_parse_predictions_accepts_fenced_reply(self):
+        self.assertEqual(parse_predictions('```json\n[{"cmd": "x"}]\n```'), [{"cmd": "x"}])
+        with self.assertRaises(ValueError):
+            parse_predictions('{"cmd": "x"}')
+
+
+class AbiosImportRootTests(unittest.TestCase):
+    def test_every_schemas_module_imports_from_one_root(self):
+        # -I drops PYTHONPATH and the cwd, so scripts/protean-abios is the only root.
+        code = (
+            "import importlib, pathlib, sys\n"
+            "root = pathlib.Path(sys.argv[1])\n"
+            "sys.path.insert(0, str(root))\n"
+            "for path in sorted((root / 'schemas').rglob('*.py')):\n"
+            "    parts = path.relative_to(root).with_suffix('').parts\n"
+            "    if parts[-1] == '__init__':\n"
+            "        parts = parts[:-1]\n"
+            "    importlib.import_module('.'.join(parts))\n"
+            "    print('.'.join(parts))\n"
+        )
+        result = subprocess.run([sys.executable, "-I", "-c", code, os.path.normpath(ABIOS)],
+                                capture_output=True, text=True, timeout=120)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("schemas.synbios.sym2p.adapter", result.stdout.split())
 
 
 class AbiosPostTests(unittest.TestCase):
