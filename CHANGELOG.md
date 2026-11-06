@@ -34,6 +34,10 @@ entry per release: what changed, why, and how it was verified.
   recovers every `lifecycle_11` message from the harness prompt alone for all
   six encoders, that an oracle reply scores 1.0, and that wrong, missing, and
   default-omitted predictions score as documented.
+- **Fix:** `score_predictions` compared with Python `==`, which treats `True` as `1`
+  and `1.0` as `1`, so a prediction of `[true]` for a canonical `[1]` scored 1.0.
+  It now uses a recursive type-aware comparison (key order is still ignored), and
+  `tests/test_abios.py` covers nested values and the cases that must still match.
 
 - **What:** `scripts/protean-sym2p/sym-publish.py`, the write-once object
   publisher (stdlib only): it assigns `v`, `sup`, `hash`, `by`, and `at`,

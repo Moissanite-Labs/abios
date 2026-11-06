@@ -70,11 +70,28 @@ def _normalized(pred: Any) -> tuple[Any, dict[str, Any]]:
         return cmd, payload
 
 
+def _json_equal(a: Any, b: Any) -> bool:
+    """Type-aware JSON equality, recursive.
+
+    Python's == treats True as 1 and 1.0 as 1, so a model that answers [true] for
+    a canonical [1] would score as correct. Here the types must match at every
+    depth: bool, int, float, str, None, list, dict. Dict key order is ignored.
+    """
+    if type(a) is not type(b):
+        return False
+    if isinstance(a, dict):
+        return a.keys() == b.keys() and all(_json_equal(a[k], b[k]) for k in a)
+    if isinstance(a, list):
+        return len(a) == len(b) and all(_json_equal(x, y) for x, y in zip(a, b))
+    return a == b
+
+
 def score_predictions(expected: list[dict[str, Any]], predicted: list[Any]) -> dict[str, Any]:
     """Score by position. Missing predictions count as wrong; extra ones are reported.
 
     message_exact: share of messages whose cmd and full canonical payload match.
     field_accuracy: share of expected slots (cmd plus each payload field) that match.
+    Values are compared with _json_equal, so [1] and [true] are different answers.
     """
     exact = 0
     fields_ok = 0
@@ -82,9 +99,9 @@ def score_predictions(expected: list[dict[str, Any]], predicted: list[Any]) -> d
     for index, exp in enumerate(expected):
         cmd, payload = _normalized(predicted[index]) if index < len(predicted) else (None, {})
         fields_total += 1 + len(exp["payload"])
-        fields_ok += cmd == exp["cmd"]
-        fields_ok += sum(1 for k, v in exp["payload"].items() if k in payload and payload[k] == v)
-        exact += cmd == exp["cmd"] and payload == exp["payload"]
+        fields_ok += _json_equal(cmd, exp["cmd"])
+        fields_ok += sum(1 for k, v in exp["payload"].items() if k in payload and _json_equal(payload[k], v))
+        exact += _json_equal(cmd, exp["cmd"]) and _json_equal(payload, exp["payload"])
     return {
         "messages": len(expected),
         "predicted": len(predicted),

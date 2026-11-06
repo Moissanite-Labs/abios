@@ -489,6 +489,43 @@ class AbiosComprehensionHarnessTests(unittest.TestCase):
         self.assertGreater(dropped, 0)
         self.assertEqual(score_predictions(expected, predicted)["message_exact"], 1.0)
 
+    def test_scoring_is_type_aware_at_every_depth(self):
+        # Python's == says True == 1 and 1.0 == 1, so == would score these as correct.
+        def case(value):
+            return canonical_payload("task.create", {"project_id": "p", "title": "t", "criteria": value})
+
+        wrong = [
+            ([1], [True]),
+            ([0], [False]),
+            ([True], [1]),
+            ([1], [1.0]),
+            (["1"], [1]),
+            ([None], ["null"]),
+            ([[1]], [[True]]),
+            ([{"a": [1, {"b": True}]}], [{"a": [1, {"b": 1}]}]),
+        ]
+        for want, got in wrong:
+            with self.subTest(want=want, got=got):
+                score = score_predictions(
+                    [{"cmd": "task.create", "payload": case(want)}],
+                    [{"cmd": "task.create", "payload": case(got)}],
+                )
+                self.assertEqual(score["message_exact"], 0.0)
+                self.assertLess(score["field_accuracy"], 1.0)
+                self.assertGreater(score["field_accuracy"], 0.8)  # only the one field is wrong
+        right = [
+            ([1], [1]),
+            ([True], [True]),
+            ([{"a": 1, "b": [2, None]}], [{"b": [2, None], "a": 1}]),  # key order is not a difference
+        ]
+        for want, got in right:
+            with self.subTest(want=want, got=got):
+                score = score_predictions(
+                    [{"cmd": "task.create", "payload": case(want)}],
+                    [{"cmd": "task.create", "payload": case(got)}],
+                )
+                self.assertEqual((score["message_exact"], score["field_accuracy"]), (1.0, 1.0))
+
     def test_parse_predictions_accepts_fenced_reply(self):
         self.assertEqual(parse_predictions('```json\n[{"cmd": "x"}]\n```'), [{"cmd": "x"}])
         with self.assertRaises(ValueError):
