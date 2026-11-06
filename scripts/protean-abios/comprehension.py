@@ -13,6 +13,7 @@ Scores a live model call (OpenAI-compatible), or a saved model reply with
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import sys
@@ -20,7 +21,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from canonical import ForgeMessage, canonical_payload
+from canonical import SCHEMA_DEFAULTS, ForgeMessage, canonical_payload
 from decoder_context import setup_sizes
 from encoders import all_encoders, encode_transcript
 from post import render_post_handshake
@@ -67,7 +68,10 @@ def _normalized(pred: Any) -> tuple[Any, dict[str, Any]]:
     try:
         return cmd, canonical_payload(cmd, payload)
     except (ValueError, TypeError):
-        return cmd, payload
+        # A missing required field or an unknown one fails canonicalisation. Restore the
+        # schema defaults anyway, so fields the model did answer keep their credit.
+        defaults = SCHEMA_DEFAULTS.get(cmd, {}) if isinstance(cmd, str) else {}
+        return cmd, {**copy.deepcopy(defaults), **payload}
 
 
 def _json_equal(a: Any, b: Any) -> bool:

@@ -38,6 +38,9 @@ entry per release: what changed, why, and how it was verified.
   and `1.0` as `1`, so a prediction of `[true]` for a canonical `[1]` scored 1.0.
   It now uses a recursive type-aware comparison (key order is still ignored), and
   `tests/test_abios.py` covers nested values and the cases that must still match.
+  A prediction that misses a required field now still gets schema defaults restored
+  for its other fields; before, one missing field forfeited credit on every
+  default-valued field.
 
 - **What:** `scripts/protean-sym2p/sym-publish.py`, the write-once object
   publisher (stdlib only): it assigns `v`, `sup`, `hash`, `by`, and `at`,

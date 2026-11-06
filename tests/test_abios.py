@@ -503,6 +503,9 @@ class AbiosComprehensionHarnessTests(unittest.TestCase):
             ([None], ["null"]),
             ([[1]], [[True]]),
             ([{"a": [1, {"b": True}]}], [{"a": [1, {"b": 1}]}]),
+            ([{"a": 1}], [{"a": 1, "b": 2}]),  # extra key
+            ([{"a": 1, "b": 2}], [{"a": 1}]),  # missing key
+            ([[1, 2]], [[1]]),  # shorter list
         ]
         for want, got in wrong:
             with self.subTest(want=want, got=got):
@@ -525,6 +528,19 @@ class AbiosComprehensionHarnessTests(unittest.TestCase):
                     [{"cmd": "task.create", "payload": case(got)}],
                 )
                 self.assertEqual((score["message_exact"], score["field_accuracy"]), (1.0, 1.0))
+
+    def test_missing_required_field_is_not_credited(self):
+        # A field with no schema default must be present. A missing one is a wrong slot, not a pass.
+        expected = [{"cmd": "task.create", "payload": canonical_payload(
+            "task.create", {"project_id": "p", "title": "t", "criteria": ["c"]})}]
+        predicted = [{"cmd": "task.create", "payload": {"project_id": "p", "criteria": ["c"]}}]  # no title
+        score = score_predictions(expected, predicted)
+        self.assertEqual(score["message_exact"], 0.0)
+        self.assertAlmostEqual(score["field_accuracy"], 7 / 8)  # cmd + 6 of 7 payload fields
+        # A missing field that has a schema default is restored first, so it is still full marks.
+        predicted = [{"cmd": "task.create", "payload": {"project_id": "p", "title": "t", "criteria": ["c"]}}]
+        score = score_predictions(expected, predicted)
+        self.assertEqual((score["message_exact"], score["field_accuracy"]), (1.0, 1.0))
 
     def test_parse_predictions_accepts_fenced_reply(self):
         self.assertEqual(parse_predictions('```json\n[{"cmd": "x"}]\n```'), [{"cmd": "x"}])
