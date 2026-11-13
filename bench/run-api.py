@@ -188,8 +188,9 @@ def main(argv):
         return spec_text + "\n\n" + base_instructions if spec_text else base_instructions
 
     tasks = [json.loads(l) for l in open(args.tasks) if l.strip()]
+    safe_model = args.model.replace("/", "-")
     outdir = os.path.join(args.out,
-                          f"{date.today().isoformat()}-{args.model}-{args.effort}")
+                          f"{date.today().isoformat()}-{safe_model}-{args.effort}")
     if args.dry_run:
         calls = sum(2 if t["kind"] == "comprehension" else 1 for t in tasks)
         print(f"would make {calls} calls: model={args.model} effort={args.effort} "
