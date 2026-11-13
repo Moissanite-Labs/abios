@@ -40,11 +40,18 @@ import argparse
 import json
 import os
 import re
+import ssl
 import sys
 import time
 import urllib.request
 import urllib.error
 from datetime import date
+
+try:
+    import certifi
+    _SSL_CTX = ssl.create_default_context(cafile=certifi.where())
+except Exception:
+    _SSL_CTX = ssl.create_default_context()
 
 API_URL = "https://api.openai.com/v1/responses"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -99,7 +106,7 @@ def call_model(model, effort, service_tier, instructions, user_input, timeout=90
         API_URL, data=data, method="POST",
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX) as resp:
             return json.loads(resp.read()), service_tier, None
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="replace")[:500]
@@ -110,7 +117,7 @@ def call_model(model, effort, service_tier, instructions, user_input, timeout=90
     except Exception as e:  # network-level failure; retry once at same tier
         time.sleep(5)
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX) as resp:
                 return json.loads(resp.read()), service_tier, None
         except Exception as e2:
             return None, service_tier, f"{e}; retry failed: {e2}"
@@ -178,11 +185,13 @@ def main(argv):
 
     os.makedirs(outdir, exist_ok=True)
     usage_log_path = os.path.join(outdir, "usage.jsonl")
+    raw_log_path = os.path.join(outdir, "raw-responses.jsonl")
     answers = {"model": args.model, "date": date.today().isoformat(),
                "effort": args.effort, "service_tier": args.service_tier,
                "runs": {}}
     total_cost = 0.0
     usage_fh = open(usage_log_path, "a")
+    raw_fh = open(raw_log_path, "a")
 
     def emit(task_id, form, tier, usage, cost, ok, error=None):
         usage_fh.write(json.dumps({
@@ -190,6 +199,12 @@ def main(argv):
             "usage": usage, "est_cost_usd": round(cost, 6),
             "ok": ok, "error": error}) + "\n")
         usage_fh.flush()
+
+    def emit_raw(task_id, form, text, ok, error=None):
+        raw_fh.write(json.dumps({
+            "task": task_id, "form": form, "text": text,
+            "ok": ok, "error": error}) + "\n")
+        raw_fh.flush()
 
     for t in tasks:
         tid = t["id"]
@@ -213,11 +228,14 @@ def main(argv):
                 total_cost += cost
                 if payload is None:
                     emit(tid, form, tier, {}, cost, False, err)
+                    emit_raw(tid, form, "", False, err)
                     answers["runs"][tid][form] = []
                     print(f"FAIL {tid}/{form}: {err}", file=sys.stderr)
                     continue
                 emit(tid, form, tier, usage, cost, True)
-                answers["runs"][tid][form] = extract_answers(response_text(payload), nq)
+                text = response_text(payload)
+                emit_raw(tid, form, text, True)
+                answers["runs"][tid][form] = extract_answers(text, nq)
         elif kind == "render":
             if total_cost >= args.max_cost:
                 sys.exit(f"circuit breaker: est cost ${total_cost:.2f} >= ${args.max_cost}; stop.")
@@ -231,11 +249,14 @@ def main(argv):
             total_cost += cost
             if payload is None:
                 emit(tid, "v2", tier, {}, cost, False, err)
+                emit_raw(tid, "v2", "", False, err)
                 answers["runs"][tid] = {"v2": ""}
                 print(f"FAIL {tid}/v2: {err}", file=sys.stderr)
                 continue
             emit(tid, "v2", tier, usage, cost, True)
-            answers["runs"][tid] = {"v2": response_text(payload)}
+            text = response_text(payload)
+            emit_raw(tid, "v2", text, True)
+            answers["runs"][tid] = {"v2": text}
         elif kind == "compile":
             if total_cost >= args.max_cost:
                 sys.exit(f"circuit breaker: est cost ${total_cost:.2f} >= ${args.max_cost}; stop.")
@@ -249,13 +270,17 @@ def main(argv):
             total_cost += cost
             if payload is None:
                 emit(tid, "v1", tier, {}, cost, False, err)
+                emit_raw(tid, "v1", "", False, err)
                 answers["runs"][tid] = {"v1": ""}
                 print(f"FAIL {tid}/v1: {err}", file=sys.stderr)
                 continue
             emit(tid, "v1", tier, usage, cost, True)
-            answers["runs"][tid] = {"v1": extract_compile_line(response_text(payload))}
+            text = response_text(payload)
+            emit_raw(tid, "v1", text, True)
+            answers["runs"][tid] = {"v1": extract_compile_line(text)}
 
     usage_fh.close()
+    raw_fh.close()
     answers["total_estimated_cost_usd"] = round(total_cost, 4)
     with open(os.path.join(outdir, "answers.json"), "w") as fh:
         json.dump(answers, fh, indent=2)
