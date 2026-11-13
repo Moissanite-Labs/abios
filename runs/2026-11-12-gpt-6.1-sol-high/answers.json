@@ -1,0 +1,103 @@
+{
+  "model": "gpt-6.1-sol",
+  "date": "2026-11-12",
+  "effort": "high",
+  "service_tier": "flex",
+  "runs": {
+    "t01": {
+      "v1": [
+        "cos",
+        "builder",
+        "assign",
+        "SYM-2P/1.0 sections 3\u20135",
+        "Any existing path"
+      ],
+      "v2": [
+        "Cannot determine without the v2 schema.",
+        "Cannot determine without the v2 schema.",
+        "Cannot determine without the act-code mapping.",
+        "Sections 3 and 5.",
+        "Cannot determine without the constraint-code mapping."
+      ]
+    },
+    "t02": {
+      "v1": [
+        "verifier",
+        "builder",
+        "dispute",
+        "open"
+      ],
+      "v2": [
+        "3",
+        "2",
+        "7",
+        "5"
+      ]
+    },
+    "t03": {
+      "v1": [
+        "75",
+        "70",
+        "6"
+      ],
+      "v2": [
+        "62",
+        "70",
+        "6"
+      ]
+    },
+    "t04": {
+      "v1": [
+        "swarm",
+        "sections 3, 4, and 5",
+        "implement that section"
+      ],
+      "v2": [
+        "Cannot determine without the v2 field schema.",
+        "Cannot determine without definitions for opcodes 32 and 33.",
+        "Cannot determine without a definition for opcode 20."
+      ]
+    },
+    "t05": {
+      "v1": [
+        "delegate",
+        "builder",
+        "b442",
+        "7-9"
+      ],
+      "v2": [
+        "40",
+        "2",
+        "b442",
+        "7, 9"
+      ]
+    },
+    "t06": {
+      "v1": [
+        "scout",
+        "cos",
+        "report",
+        "validator"
+      ],
+      "v2": [
+        "r205",
+        "mr1",
+        "4",
+        "validator"
+      ]
+    },
+    "t07": {
+      "v2": "Expression 10 contains \u201csym-2p/1.0\u201d and a nested expression tagged 20 containing \u201csec\u201d and the list of values 3 and 5.\nExpression 11 contains a nested expression tagged 21 containing an asterisk.\nExpression 12 contains a nested expression tagged 22 containing \u201cvalidator\u201d followed by the values 0 and 1."
+    },
+    "t08": {
+      "v2": "The first body expression applies operation 30 to \u201ccov\u201d and 62.\n\nThe second applies operation 31 to three arguments\u2014operation 34 on \u201c$cov\u201d and 70, operation 20 on \u201csec\u201d and the list [6, 6], and an empty list\u2014but the operations\u2019 meanings cannot be decoded reliably without an opcode key."
+    },
+    "t09": {
+      "v1": "2|c901|mr1|1|2|1|1|80|60|(10 sym2p/1.0 (20 sec (1 2)))(11 (21 *))(12 (22 tester 0 1))|1|0|0"
+    },
+    "t10": {
+      "v1": "2|c902|mr1|1|2|1|1|85|70|(30 retries 3)(31 (34 $retries 5) (20 sec (4 4)) ())|1|0|0"
+    }
+  },
+  "total_estimated_cost_usd": 0.0487
+}

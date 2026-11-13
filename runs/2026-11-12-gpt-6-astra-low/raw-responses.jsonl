@@ -1,0 +1,16 @@
+{"task": "t01", "form": "v1", "text": "cos\nbuilder\nassign\nSYM-2P/1.0 sections 3-5\nAny existing path", "ok": true, "error": null}
+{"task": "t01", "form": "v2", "text": "1\n2\n1\nSections 3 and 5\nEverything (*)", "ok": true, "error": null}
+{"task": "t02", "form": "v1", "text": "verifier\nbuilder\ndispute\nopen", "ok": true, "error": null}
+{"task": "t02", "form": "v2", "text": "3\n2\n7\n5", "ok": true, "error": null}
+{"task": "t03", "form": "v1", "text": "75\n70\n6", "ok": true, "error": null}
+{"task": "t03", "form": "v2", "text": "62\n70\n6.6", "ok": true, "error": null}
+{"task": "t04", "form": "v1", "text": "swarm\nsections 3, 4, 5\nimplement that section", "ok": true, "error": null}
+{"task": "t04", "form": "v2", "text": "Not determinable without the v2 field schema.\n3, 4, 5\nExecutes (20 sec s), with s bound to each item.", "ok": true, "error": null}
+{"task": "t05", "form": "v1", "text": "delegate\nbuilder\nb442\n7-9", "ok": true, "error": null}
+{"task": "t05", "form": "v2", "text": "40\n2\nb442\n7, 9", "ok": true, "error": null}
+{"task": "t06", "form": "v1", "text": "scout\ncos\nreport\nvalidator", "ok": true, "error": null}
+{"task": "t06", "form": "v2", "text": "r205\nmr1\n4\nvalidator", "ok": true, "error": null}
+{"task": "t07", "form": "v2", "text": "Expression 10 specifies \u201csym-2p/1.0\u201d and contains expression 20, labeled \u201csec,\u201d with the pair 3 and 5.\nExpression 11 contains expression 21 with the wildcard \u201c*.\u201d\nExpression 12 contains expression 22, labeled \u201cvalidator,\u201d with the values 0 and 1.", "ok": true, "error": null}
+{"task": "t08", "form": "v2", "text": "The first body expression applies operation 30 to `cov` and 62.\n\nThe second body expression applies operation 31 to three arguments: operation 34 applied to `$cov` and 70, operation 20 applied to `sec` and operation 6 applied to 6, and an empty expression.", "ok": true, "error": null}
+{"task": "t09", "form": "v1", "text": "2|c901|mr1|1|2|1|1|80|60|(10 sym2p/1.0 (20 sec (1 2)))(11 (21 *))(12 (22 tester 0 1))|1|0|0", "ok": true, "error": null}
+{"task": "t10", "form": "v1", "text": "2|c902|mr1|1|2|1|1|85|70|(30 retries 3)(31 (34 $retries 5) (20 sec (4 4)) ())|1|0|0", "ok": true, "error": null}
