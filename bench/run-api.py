@@ -53,7 +53,11 @@ try:
 except Exception:
     _SSL_CTX = ssl.create_default_context()
 
-API_URL = os.environ.get("OPENAI_API_ENDPOINT", "https://api.openai.com/v1/responses")
+WIRE = os.environ.get("OPENAI_API_WIRE", "responses")
+API_URL = os.environ.get(
+    "OPENAI_API_ENDPOINT",
+    "https://api.openai.com/v1/chat/completions" if WIRE == "chat"
+    else "https://api.openai.com/v1/responses")
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ESTIMATED (input, output, cached-input) USD per million tokens.
@@ -77,6 +81,11 @@ COMPILE_ASK = (
 
 
 def est_cost(model, tier, usage):
+    if isinstance(usage, dict) and usage.get("cost") is not None:
+        try:
+            return float(usage["cost"])
+        except (TypeError, ValueError):
+            pass
     prices = ESTIMATED_PRICES.get(model, {}).get(tier) or \
              ESTIMATED_PRICES.get(model, {}).get("standard")
     if prices is None:
@@ -93,14 +102,25 @@ def call_model(model, effort, service_tier, instructions, user_input, timeout=90
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         sys.exit("OPENAI_API_KEY is not set; refusing to make calls.")
-    body = {
-        "model": model,
-        "instructions": instructions,
-        "input": user_input,
-        "service_tier": service_tier,
-    }
-    if effort != "none":
-        body["reasoning"] = {"effort": effort}
+    if WIRE == "chat":
+        body = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": instructions},
+                {"role": "user", "content": user_input},
+            ],
+        }
+        if effort != "none":
+            body["reasoning_effort"] = effort
+    else:
+        body = {
+            "model": model,
+            "instructions": instructions,
+            "input": user_input,
+            "service_tier": service_tier,
+        }
+        if effort != "none":
+            body["reasoning"] = {"effort": effort}
     data = json.dumps(body).encode()
     req = urllib.request.Request(
         API_URL, data=data, method="POST",
@@ -110,7 +130,7 @@ def call_model(model, effort, service_tier, instructions, user_input, timeout=90
             return json.loads(resp.read()), service_tier, None
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="replace")[:500]
-        if service_tier == "flex" and e.code in (400, 408, 429, 503):
+        if service_tier == "flex" and e.code in (400, 408, 429, 503) and WIRE == "responses":
             # Flex is best-effort; fall back to standard for this call only.
             return call_model(model, effort, "auto", instructions, user_input, timeout)
         return None, service_tier, f"HTTP {e.code}: {detail}"
@@ -124,6 +144,11 @@ def call_model(model, effort, service_tier, instructions, user_input, timeout=90
 
 
 def response_text(payload):
+    if WIRE == "chat":
+        choices = payload.get("choices") or []
+        if choices and isinstance(choices[0], dict):
+            return (choices[0].get("message") or {}).get("content", "")
+        return ""
     for item in payload.get("output", []):
         if item.get("type") == "message":
             for part in item.get("content", []):
