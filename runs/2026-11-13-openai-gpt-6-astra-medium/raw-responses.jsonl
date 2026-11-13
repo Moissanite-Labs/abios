@@ -1,0 +1,16 @@
+{"task": "t01", "form": "v1", "text": "cos\nbuilder\nassign\nSYM-2P/1.0 sections 3-5\nAny existing path", "ok": true, "error": null}
+{"task": "t01", "form": "v2", "text": "coordinator\nbuilder\nassign\nsections 3\u20135\nall existing paths", "ok": true, "error": null}
+{"task": "t02", "form": "v1", "text": "verifier\nbuilder\ndispute\nopen", "ok": true, "error": null}
+{"task": "t02", "form": "v2", "text": "verifier\nbuilder\ndispute\nopen", "ok": true, "error": null}
+{"task": "t03", "form": "v1", "text": "75\n70\n6", "ok": true, "error": null}
+{"task": "t03", "form": "v2", "text": "62\n70\n6", "ok": true, "error": null}
+{"task": "t04", "form": "v1", "text": "swarm\nsections 3, 4, 5\nimplement that section", "ok": true, "error": null}
+{"task": "t04", "form": "v2", "text": "Swarm (all members of thread mr1)\n3, 4, 5\nImplement the corresponding section", "ok": true, "error": null}
+{"task": "t05", "form": "v1", "text": "delegate\nbuilder\nb442\n7-9", "ok": true, "error": null}
+{"task": "t05", "form": "v2", "text": "delegate\nbuilder\nb442\n7\u20139", "ok": true, "error": null}
+{"task": "t06", "form": "v1", "text": "scout\ncos\nreport\nvalidator", "ok": true, "error": null}
+{"task": "t06", "form": "v2", "text": "scout\ncoordinator\nreport\nvalidator", "ok": true, "error": null}
+{"task": "t07", "form": "v2", "text": "Implement sections 3 through 5 of SYM-2P/1.0.\nDo not modify any existing paths.\nThe validator must exit with code 0 for valid input and code 1 for invalid input.", "ok": true, "error": null}
+{"task": "t08", "form": "v2", "text": "Let cov be 62.\nIf cov is less than 70, implement section 6; otherwise, do nothing.", "ok": true, "error": null}
+{"task": "t09", "form": "v1", "text": "2|c901|mr1|1|2|1|1|80|60|(10 sym2p/1.0 (20 sec (1 2)))(11 (21 *))(12 (22 tester 0 1))|1||0", "ok": true, "error": null}
+{"task": "t10", "form": "v1", "text": "2|c902|mr1|1|2|1|1|85|70|(30 retries 3)(31 (34 $retries 5) (20 sec (4 4)) ())|1||0", "ok": true, "error": null}

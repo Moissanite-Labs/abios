@@ -1,0 +1,103 @@
+{
+  "model": "gpt-6.1-sol",
+  "date": "2026-11-12",
+  "effort": "medium",
+  "service_tier": "flex",
+  "runs": {
+    "t01": {
+      "v1": [
+        "cos",
+        "builder",
+        "assign",
+        "SYM-2P/1.0 sections 3-5 only",
+        "existing paths"
+      ],
+      "v2": [
+        "Cannot determine without the packet schema.",
+        "Cannot determine without the packet schema.",
+        "Cannot determine without the packet schema.",
+        "Cannot determine without the packet schema.",
+        "Cannot determine without the packet schema."
+      ]
+    },
+    "t02": {
+      "v1": [
+        "verifier",
+        "builder",
+        "dispute",
+        "open"
+      ],
+      "v2": [
+        "3",
+        "2",
+        "7",
+        "5"
+      ]
+    },
+    "t03": {
+      "v1": [
+        "75",
+        "70",
+        "6"
+      ],
+      "v2": [
+        "62",
+        "70",
+        "sec"
+      ]
+    },
+    "t04": {
+      "v1": [
+        "swarm",
+        "sections 3, 4, 5",
+        "implement that section"
+      ],
+      "v2": [
+        "Cannot determine without the v2 header schema.",
+        "3, 4, 5",
+        "Execute (20 sec s), with s bound to each item."
+      ]
+    },
+    "t05": {
+      "v1": [
+        "delegate",
+        "builder",
+        "b442",
+        "7-9"
+      ],
+      "v2": [
+        "spawn",
+        "sec",
+        "b442",
+        "7, 9"
+      ]
+    },
+    "t06": {
+      "v1": [
+        "scout",
+        "cos",
+        "report",
+        "validator"
+      ],
+      "v2": [
+        "r205",
+        "mr1",
+        "4",
+        "validator (22)"
+      ]
+    },
+    "t07": {
+      "v2": "Body expression 10 names \u201csym-2p/1.0\u201d and includes field 20, labeled \u201csec,\u201d containing the values 3 and 5.\nBody expression 11 contains field 21 with an asterisk value.\nBody expression 12 contains field 22 with \u201cvalidator\u201d followed by the values 0 and 1."
+    },
+    "t08": {
+      "v2": "Operation 30 takes \u201ccov\u201d and 62 as arguments.\nOperation 31 takes three arguments: operation 34 applied to \u201c$cov\u201d and 70, operation 20 applied to \u201csec\u201d and the result of operation 6 applied to 6, and an empty expression."
+    },
+    "t09": {
+      "v1": "2|c901|mr1|1|2|1|1|80|60|(10 sym2p/1.0 (20 sec (1 2)))(11 (21 *))(12 (22 tester 0 1))|1|-|-"
+    },
+    "t10": {
+      "v1": "2|c902|mr1|1|2|1|1|85|70|(30 retries 3)(31 (34 $retries 5) (20 sec (4 4)) ())|1|0|0"
+    }
+  },
+  "total_estimated_cost_usd": 0.0184
+}
