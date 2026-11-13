@@ -1,0 +1,104 @@
+{
+  "model": "openai/gpt-6.1-sol",
+  "date": "2026-11-13",
+  "effort": "high",
+  "service_tier": "flex",
+  "spec_in_context": true,
+  "runs": {
+    "t01": {
+      "v1": [
+        "cos",
+        "builder",
+        "assign",
+        "SYM-2P/1.0 sections 3\u20135",
+        "Existing paths"
+      ],
+      "v2": [
+        "coordinator",
+        "builder",
+        "assign",
+        "sections 3\u20135",
+        "all existing paths"
+      ]
+    },
+    "t02": {
+      "v1": [
+        "verifier",
+        "builder",
+        "dispute",
+        "open"
+      ],
+      "v2": [
+        "verifier",
+        "builder",
+        "dispute",
+        "open"
+      ]
+    },
+    "t03": {
+      "v1": [
+        "75",
+        "70",
+        "6"
+      ],
+      "v2": [
+        "62",
+        "70",
+        "6"
+      ]
+    },
+    "t04": {
+      "v1": [
+        "swarm",
+        "Sections 3, 4, and 5",
+        "Implement that section"
+      ],
+      "v2": [
+        "All members of thread mr1",
+        "3, 4, 5",
+        "Implement the corresponding section"
+      ]
+    },
+    "t05": {
+      "v1": [
+        "delegate",
+        "builder",
+        "b442",
+        "7-9"
+      ],
+      "v2": [
+        "delegate",
+        "builder",
+        "b442",
+        "7\u20139"
+      ]
+    },
+    "t06": {
+      "v1": [
+        "scout",
+        "cos",
+        "report",
+        "validator"
+      ],
+      "v2": [
+        "scout",
+        "coordinator",
+        "report",
+        "validator"
+      ]
+    },
+    "t07": {
+      "v2": "Packet b441 in thread mr1 is a proposed assignment from the coordinator to the builder, with 88% confidence, 70% coverage, acknowledgement required, base reference mr1:v1, and an expiry of 40 seconds.\n\nImplement sections 3\u20135 of SYM-2P/1.0.\nDo not modify any existing paths.\nThe validator must exit with code 0 for valid input and code 1 for invalid input."
+    },
+    "t08": {
+      "v2": "Packet r202 on thread mr1 is a proposed assignment from the coordinator to the builder, with 90% confidence and 75% coverage; acknowledgement is required, no base reference is set, and there is no expiry.\n\nBind the name cov to 62.\nIf cov is less than 70, implement section 6; otherwise, do nothing."
+    },
+    "t09": {
+      "v1": "2|c901|mr1|1|2|1|1|80|60|(10 sym2p/1.0 (20 sec (1 2)))(11 (21 *))(12 (22 tester 0 1))|1||0"
+    },
+    "t10": {
+      "v1": "2|c902|mr1|1|2|1|1|85|70|(30 retries 3)(31 (34 $retries 5) (20 sec (4 4)) ())|1||0"
+    }
+  },
+  "total_estimated_cost_usd": 0.1154
+}
