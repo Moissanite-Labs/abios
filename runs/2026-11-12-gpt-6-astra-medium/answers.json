@@ -1,0 +1,102 @@
+{
+  "model": "gpt-6-astra",
+  "date": "2026-11-12",
+  "effort": "medium",
+  "service_tier": "flex",
+  "runs": {
+    "t01": {
+      "v1": [
+        "cos",
+        "builder",
+        "assign",
+        "SYM-2P/1.0 sections 3-5",
+        "Any existing path"
+      ],
+      "v2": [
+        "1",
+        "2",
+        "1",
+        "Sections 3 and 5"
+      ]
+    },
+    "t02": {
+      "v1": [
+        "verifier",
+        "builder",
+        "dispute",
+        "open"
+      ],
+      "v2": [
+        "3",
+        "2",
+        "7",
+        "5"
+      ]
+    },
+    "t03": {
+      "v1": [
+        "75",
+        "70",
+        "6"
+      ],
+      "v2": [
+        "62",
+        "70",
+        "6"
+      ]
+    },
+    "t04": {
+      "v1": [
+        "swarm",
+        "sections 3, 4, 5",
+        "implement that section"
+      ],
+      "v2": [
+        "r203",
+        "3, 4, 5",
+        "Waits that many seconds."
+      ]
+    },
+    "t05": {
+      "v1": [
+        "delegate",
+        "builder",
+        "b442",
+        "7-9"
+      ],
+      "v2": [
+        "SPAWN",
+        "2",
+        "b442",
+        "7, 9"
+      ]
+    },
+    "t06": {
+      "v1": [
+        "scout",
+        "cos",
+        "report",
+        "validator"
+      ],
+      "v2": [
+        "r205",
+        "mr1",
+        "4",
+        "validator"
+      ]
+    },
+    "t07": {
+      "v2": "Expression 10 specifies \u201csym-2p/1.0,\u201d with entry 20 labeled \u201csec\u201d and containing the pair (3, 5).\nExpression 11 contains entry 21 with the value \u201c*.\u201d\nExpression 12 contains entry 22 labeled \u201cvalidator,\u201d followed by the values 0 and 1."
+    },
+    "t08": {
+      "v2": "Without opcode definitions, I can render only the structure:\n\n- Apply operation 30 to `cov` and `62`.\n- Apply operation 31 to three arguments: operation 34 applied to `$cov` and `70`; operation 20 applied to `sec` and operation 6 applied to `6`; and an empty expression."
+    },
+    "t09": {
+      "v1": "2|c901|mr1|1|2|1|1|80|60|(10 sym2p/1.0 (20 sec (1 2)))(11 (21 *))(12 (22 tester 0 1))|1|0|0"
+    },
+    "t10": {
+      "v1": "2|c902|mr1|1|2|1|1|85|70|(30 retries 3)(31 (34 $retries 5) (20 sec (4 4)))|1|0|0"
+    }
+  },
+  "total_estimated_cost_usd": 0.0888
+}
