@@ -172,7 +172,20 @@ def main(argv):
     p.add_argument("--max-cost", type=float, default=5.0)
     p.add_argument("--out", default=os.path.join(HERE, "..", "runs"))
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--spec-in-context", action="store_true",
+                   help="Carry the full SPEC-V2-DRAFT.md verbatim in the instructions for v2-form calls "
+                        "(comprehension v2, render, compile). v1 calls run cold. Used for the "
+                        "spec-in-context arm preregistered in Moissanite-Labs/abios#50.")
     args = p.parse_args(argv)
+
+    spec_text = ""
+    if args.spec_in_context:
+        spec_path = os.path.join(HERE, "..", "SPEC-V2-DRAFT.md")
+        with open(spec_path) as fh:
+            spec_text = fh.read()
+
+    def with_spec(base_instructions):
+        return spec_text + "\n\n" + base_instructions if spec_text else base_instructions
 
     tasks = [json.loads(l) for l in open(args.tasks) if l.strip()]
     outdir = os.path.join(args.out,
@@ -188,6 +201,7 @@ def main(argv):
     raw_log_path = os.path.join(outdir, "raw-responses.jsonl")
     answers = {"model": args.model, "date": date.today().isoformat(),
                "effort": args.effort, "service_tier": args.service_tier,
+               "spec_in_context": bool(args.spec_in_context),
                "runs": {}}
     total_cost = 0.0
     usage_fh = open(usage_log_path, "a")
@@ -219,9 +233,12 @@ def main(argv):
                 if total_cost >= args.max_cost:
                     sys.exit(f"circuit breaker: est cost ${total_cost:.2f} >= ${args.max_cost}; stop.")
                 user_in = f"{COMPREHENSION_ASK}Packet ({form} form):\n{packet}\n\n{qtext}"
+                instructions = "You answer precise questions about agent message packets."
+                if form == "v2":
+                    instructions = with_spec(instructions)
                 payload, tier, err = call_model(args.model, args.effort,
                                                 args.service_tier,
-                                                "You answer precise questions about agent message packets.",
+                                                instructions,
                                                 user_in)
                 usage = (payload or {}).get("usage", {})
                 cost = est_cost(args.model, tier, usage)
@@ -240,9 +257,10 @@ def main(argv):
             if total_cost >= args.max_cost:
                 sys.exit(f"circuit breaker: est cost ${total_cost:.2f} >= ${args.max_cost}; stop.")
             user_in = f"{RENDER_ASK}Packet:\n{t['v2']}"
+            instructions = with_spec("You render dense agent packets as plain English.")
             payload, tier, err = call_model(args.model, args.effort,
                                             args.service_tier,
-                                            "You render dense agent packets as plain English.",
+                                            instructions,
                                             user_in)
             usage = (payload or {}).get("usage", {})
             cost = est_cost(args.model, tier, usage)
@@ -261,9 +279,10 @@ def main(argv):
             if total_cost >= args.max_cost:
                 sys.exit(f"circuit breaker: est cost ${total_cost:.2f} >= ${args.max_cost}; stop.")
             user_in = f"{COMPILE_ASK}{spec_excerpt()}\n\nDescription:\n{t['english']}"
+            instructions = with_spec("You write canonical SYM-2P v2 packet lines.")
             payload, tier, err = call_model(args.model, args.effort,
                                             args.service_tier,
-                                            "You write canonical SYM-2P v2 packet lines.",
+                                            instructions,
                                             user_in)
             usage = (payload or {}).get("usage", {})
             cost = est_cost(args.model, tier, usage)
