@@ -53,7 +53,7 @@ try:
 except Exception:
     _SSL_CTX = ssl.create_default_context()
 
-API_URL = "https://api.openai.com/v1/responses"
+API_URL = os.environ.get("OPENAI_API_ENDPOINT", "https://api.openai.com/v1/responses")
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ESTIMATED (input, output, cached-input) USD per million tokens.
