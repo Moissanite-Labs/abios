@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from ..command_fields import COMMAND_FIELDS
 
-from .canonical import packet_line, parse_packet_line
+from .canonical import packet_line
 from .fields import compute_tails, decode_native, encode_native
 from .ids import forge_role, sym_id
 
@@ -150,11 +150,3 @@ def packet_hash(packet: dict) -> str:
 
     return hashlib.sha256(packet_line(packet).encode("utf-8")).hexdigest()
 
-
-def v1_size_breakdown(line: str) -> tuple[int, int, int]:
-    """Return total bytes, envelope bytes (header + ext), content bytes (cond + ops)."""
-    packet = parse_packet_line(line)
-    envelope = {k: v for k, v in packet.items() if k not in ("cond", "ops")}
-    total = len(line.encode("utf-8"))
-    env_b = len(packet_line(envelope).encode("utf-8"))
-    return total, env_b, total - env_b
