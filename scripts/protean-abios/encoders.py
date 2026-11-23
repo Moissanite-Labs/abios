@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-from canonical import ForgeMessage, canonical_payload, normalize_message
+from canonical import ForgeMessage, canonical_payload, coerce_wire_types, normalize_message
 from content_store import ContentStore
 from lexicon import Lexicon, load_lexicon
 from schema import POSITIONAL_ORDER
@@ -48,19 +48,6 @@ def _is_ref_label(token: str) -> bool:
 
 def _register_inline(content: ContentStore, value: str | list | dict) -> None:
     content.observe_inline(value)
-
-
-def _observe_quoted_wire_value(content: ContentStore, text: str) -> None:
-    """Register inline content using the same canonical measure as encode."""
-    if text.startswith("[") or text.startswith("{"):
-        try:
-            parsed = json.loads(text)
-            if isinstance(parsed, (list, dict)):
-                _register_inline(content, parsed)
-                return
-        except json.JSONDecodeError:
-            pass
-    _register_inline(content, text)
 
 
 def _is_delta_short_form(parts: list[WireToken], lex: Lexicon) -> bool:
@@ -226,10 +213,16 @@ def _token_texts(tokens: list[WireToken]) -> list[str]:
     return [t.text for t in tokens]
 
 
-def _unescape_token(token: WireToken, session: Sym3Session, content: ContentStore) -> Any:
+def _unescape_token(
+    token: WireToken, session: Sym3Session, content: ContentStore,
+    *, action: str | None = None, key: str | None = None,
+) -> Any:
     if token.quoted:
-        _observe_quoted_wire_value(content, token.text)
-        return token.text
+        value = token.text
+        if action is not None and key is not None:
+            value = coerce_wire_types(action, {key: value})[key]
+        _register_inline(content, value)
+        return value
     raw = token.text
     if raw == "":
         raise ValueError("empty wire token")
@@ -334,7 +327,7 @@ class PositionalEncoder(Encoder):
             raise ValueError(f"positional arity mismatch for {action}: expected {len(order)}, got {len(vals)}")
         payload: dict[str, Any] = {}
         for key, tok in zip(order, vals):
-            payload[key] = _unescape_token(tok, session, session.content)
+            payload[key] = _unescape_token(tok, session, session.content, action=action, key=key)
         return self._finish_decode(action, payload)
 
 
@@ -369,7 +362,7 @@ class OmitEncoder(Encoder):
             raise ValueError(f"omit arity mismatch for {action}")
         payload: dict[str, Any] = {}
         for key, tok in zip(keys, vals):
-            payload[key] = _unescape_token(tok, session, session.content)
+            payload[key] = _unescape_token(tok, session, session.content, action=action, key=key)
         return self._finish_decode(action, session.restore_defaults(action, payload))
 
     def decode(self, line: str, session: Sym3Session) -> ForgeMessage:
@@ -397,7 +390,7 @@ class RefsEncoder(Encoder):
             raise ValueError(f"refs arity mismatch for {action}")
         payload: dict[str, Any] = {}
         for key, tok in zip(order, vals):
-            val = _unescape_token(tok, session, session.content)
+            val = _unescape_token(tok, session, session.content, action=action, key=key)
             if (
                 not tok.quoted
                 and isinstance(val, str)
@@ -491,7 +484,7 @@ class CombinedEncoder(Encoder):
                 raise ValueError(f"combined omit arity mismatch for {action}")
             payload: dict[str, Any] = {}
             for key, tok in zip(keys, vals):
-                val = _unescape_token(tok, session, session.content)
+                val = _unescape_token(tok, session, session.content, action=action, key=key)
                 if (
                     not tok.quoted
                     and isinstance(val, str)

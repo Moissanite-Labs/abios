@@ -134,13 +134,13 @@ Delta rule (locked): for `task.transition`, if prior snapshot matches `task_id` 
 
 Normative behavior:
 
-1. **Digest:** SHA-256 over UTF-8 bytes (string) or canonical JSON (object/array), first 16 hex chars.
+1. **Digest:** SHA-256 over a type-domain prefix followed by the serialized bytes, first 16 hex chars. The prefix is `string` plus a NUL byte for strings and `json` plus a NUL byte for objects/arrays. Serialization remains raw UTF-8 for strings and canonical JSON for objects/arrays. This distinguishes JSON text from the structured value it describes; the prefix is not counted toward the inline threshold.
 2. **Inline threshold:** serialized UTF-8 byte length &lt; 48 → always inline, no ref.
 3. **First publish:** value sent literally; digest marked published on wire.
 4. **Later mentions:** emit ref label if digest already published.
 5. **Ref allocation:** assign `#1`, `#2`, … in order for each new digest; skip labels already bound. Fallback `#h{seq}` only if the numeric pool is exhausted.
 
-Decoders observing inline large values register them for future ref resolution (`observe_inline`, `mark_from_wire`).
+Decoders observing inline large values register them for future ref resolution (`observe_inline`, `mark_from_wire`). Quoted values are registered after schema-based list coercion: a JSON-looking string in a string field remains a string. Both peers must use this typed identity rule; older experimental implementations require a fresh session with the updated codec.
 
 ## 8. Lexicon and decoder setup
 

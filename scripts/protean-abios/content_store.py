@@ -21,7 +21,8 @@ def serialized_byte_length(value: str | list | dict) -> int:
 
 
 def content_digest(value: str | list | dict) -> str:
-    return hashlib.sha256(_canonical_bytes(value)).hexdigest()[:16]
+    domain = b"string\0" if isinstance(value, str) else b"json\0"
+    return hashlib.sha256(domain + _canonical_bytes(value)).hexdigest()[:16]
 
 
 @dataclass
