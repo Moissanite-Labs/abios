@@ -14,7 +14,13 @@ from content_store import ContentStore
 from lexicon import Lexicon, load_lexicon
 from schema import POSITIONAL_ORDER
 from state import Sym3Session
-from wire_lists import can_encode_string_list, decode_string_list, encode_string_list
+from wire_lists import (
+    can_encode_string_list,
+    decode_string_list,
+    decode_wire_list,
+    encode_string_list,
+    encode_wire_list,
+)
 
 _QUOTED = re.compile(r'"((?:\\.|[^"\\])*)"')
 _REF_LABEL = re.compile(r"^#\d+$|^#h[0-9a-f]+$")
@@ -111,7 +117,7 @@ def _string_must_quote(value: str, session: Sym3Session) -> bool:
         return True
     if value in {"p", "t", "a", "h", "f", "v", "g"}:
         return True
-    if value.startswith("[") or value.startswith("{"):
+    if value.startswith("[") or value.startswith("{") or value.startswith("S[") or value.startswith("J:"):
         return True
     if _is_ref_label(value):
         return True
@@ -137,21 +143,13 @@ def _escape_token(value: Any, session: Sym3Session, content: ContentStore, use_r
         return str(int(value)) if isinstance(value, int) or value == int(value) else str(value)
     if isinstance(value, list):
         list_sep = session.list_sep
-        if can_encode_string_list(value):
-            blob = encode_string_list(value, list_sep)
-        else:
-            blob = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         if use_refs:
             published = session.content.ref_if_published(value)
             if isinstance(published, str) and published in session.content.ref_to_digest:
                 return published
             return _escape_token(published, session, content, False)
         _register_inline(content, value)
-        if "\n" in blob or "\r" in blob:
-            return _quote(blob)
-        if " " in blob and decode_string_list(blob, session.list_sep) is None:
-            return _quote(blob)
-        return blob
+        return encode_wire_list(value, list_sep)
     if isinstance(value, dict):
         blob = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         if use_refs:
@@ -160,9 +158,7 @@ def _escape_token(value: Any, session: Sym3Session, content: ContentStore, use_r
                 return published
             return _escape_token(published, session, content, False)
         _register_inline(content, value)
-        if "\n" in blob or "\r" in blob:
-            return _quote(blob)
-        if " " in blob and decode_string_list(blob, session.list_sep) is None:
+        if "\n" in blob or "\r" in blob or " " in blob:
             return _quote(blob)
         return blob
     if isinstance(value, str):
@@ -316,6 +312,10 @@ def _unescape_token(token: WireToken, session: Sym3Session, content: ContentStor
     if raw in {"p", "t", "a", "h", "f"}:
         _, rid = session.resolve_ref(raw)
         return rid
+    if raw == "[]" or (raw.startswith("S[") and raw.endswith("]")) or raw.startswith("J:"):
+        decoded_list = decode_wire_list(raw, session.list_sep)
+        _register_inline(content, decoded_list)
+        return decoded_list
     if raw.startswith("[") or raw.startswith("{"):
         wire_list = decode_string_list(raw, session.list_sep)
         if wire_list is not None:
