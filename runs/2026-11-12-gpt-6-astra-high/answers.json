@@ -1,0 +1,103 @@
+{
+  "model": "gpt-6-astra",
+  "date": "2026-11-12",
+  "effort": "high",
+  "service_tier": "flex",
+  "runs": {
+    "t01": {
+      "v1": [
+        "cos",
+        "builder",
+        "assign",
+        "SYM-2P/1.0 sections 3-5 only",
+        "Any existing path"
+      ],
+      "v2": [
+        "1",
+        "2",
+        "1",
+        "Sections 3 and 5",
+        "Cannot determine without the schema defining `(21 *)`."
+      ]
+    },
+    "t02": {
+      "v1": [
+        "verifier",
+        "builder",
+        "dispute",
+        "open"
+      ],
+      "v2": [
+        "Cannot determine without the v2 schema.",
+        "Cannot determine without the v2 schema.",
+        "Cannot determine without the v2 schema.",
+        "Cannot determine without the v2 schema."
+      ]
+    },
+    "t03": {
+      "v1": [
+        "75",
+        "70",
+        "6"
+      ],
+      "v2": [
+        "62",
+        "70",
+        "6"
+      ]
+    },
+    "t04": {
+      "v1": [
+        "swarm",
+        "Sections 3, 4, and 5",
+        "Implement that section"
+      ],
+      "v2": [
+        "Cannot determine without the v2 field definitions.",
+        "3, 4, 5",
+        "Execute (20 sec s), with s bound to each item."
+      ]
+    },
+    "t05": {
+      "v1": [
+        "delegate",
+        "builder",
+        "b442",
+        "7-9"
+      ],
+      "v2": [
+        "40",
+        "2",
+        "b442",
+        "7, 9"
+      ]
+    },
+    "t06": {
+      "v1": [
+        "scout",
+        "cos",
+        "report",
+        "validator"
+      ],
+      "v2": [
+        "r205",
+        "mr1",
+        "4",
+        "12"
+      ]
+    },
+    "t07": {
+      "v2": "The first body expression, tagged 10, contains \u201csym-2p/1.0\u201d and a group tagged 20 containing \u201csec\u201d and the nested values three and five.\nThe second body expression, tagged 11, contains a group tagged 21 holding an asterisk.\nThe third body expression, tagged 12, contains a group tagged 22 holding \u201cvalidator,\u201d zero, and one."
+    },
+    "t08": {
+      "v2": "Please provide the opcode definitions for `6`, `20`, `30`, `31`, and `34`; without them, I can\u2019t reliably translate the two body expressions into plain English."
+    },
+    "t09": {
+      "v1": "2|c901|mr1|1|2|1|1|80|60|(10 sym2p/1.0 (20 sec (1 2)))(11 (21 *))(12 (22 tester 0 1))|1|0|0"
+    },
+    "t10": {
+      "v1": "2|c902|mr1|1|2|1|1|85|70|(30 retries 3)(31 (34 $retries 5) (20 sec (4 4)) ())|1|0|0"
+    }
+  },
+  "total_estimated_cost_usd": 0.2661
+}
