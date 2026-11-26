@@ -98,7 +98,7 @@ Only non-default fields appear. Keys list ends with `|`; values align to keys. D
 
 ### 5.3 `refs` (`E`)
 
-When setup **`wire.fused_refs_cmd`** is **true** (the default when the wire planner chooses fused refs), each line begins with a **single fused command lexeme** from setup `refs_cmd` (one tokenizer token under S-11, e.g. `Eb` for `project.create`), not a separate format tag plus command word. When **`wire.fused_refs_cmd`** is **false**, lines use format tag **`E`** immediately followed by the command lexeme from setup `concepts.cmd` (legacy `E`+cmd form). The sender sets `fused_refs_cmd` in the POST decoder context; receivers MUST NOT re-run the planner. Same positional values as §5.1, but structured/string values ≥48 serialized bytes use **content refs** after first inline publication (S-9). Revision and digest strings MAY compress to setup `hex` aliases (`v`, `g` by default in the Synbios fixtures).
+When setup **`wire.fused_refs_cmd`** is **true** (the sender declares it when the wire planner chooses fused refs), each line begins with a **single fused command lexeme** from setup `refs_cmd` (one tokenizer token under S-11, e.g. `Eb` for `project.create`), not a separate format tag plus command word. When **`wire.fused_refs_cmd`** is **false**, lines use format tag **`E`** immediately followed by the command lexeme from setup `concepts.cmd` (legacy `E`+cmd form). The sender sets `fused_refs_cmd` in the POST decoder context; receivers MUST NOT re-run the planner. Fused mode is never implicit: when the `wire:` block (§8) or its `fused_refs_cmd` key is absent, receivers MUST decode refs lines as unfused (`E`+cmd), even if setup carries `refs_cmd`. Same positional values as §5.1, but structured/string values ≥48 serialized bytes use **content refs** after first inline publication (S-9). Revision and digest strings MAY compress to setup `hex` aliases (`v`, `g` by default in the Synbios fixtures).
 
 ### 5.4 `delta` (`A`)
 
@@ -138,13 +138,13 @@ Delta rule (locked): for `task.transition`, if prior snapshot matches `task_id` 
 
 Normative behavior:
 
-1. **Digest:** SHA-256 over UTF-8 bytes (string) or canonical JSON (object/array), first 16 hex chars.
+1. **Digest:** SHA-256 over a type-domain prefix followed by the serialized bytes, first 16 hex chars. The prefix is `string` plus a NUL byte for strings and `json` plus a NUL byte for objects/arrays. Serialization remains raw UTF-8 for strings and canonical JSON for objects/arrays. This distinguishes JSON text from the structured value it describes; the prefix is not counted toward the inline threshold.
 2. **Inline threshold:** serialized UTF-8 byte length &lt; 48 → always inline, no ref.
 3. **First publish:** value sent literally; digest marked published on wire.
 4. **Later mentions:** emit ref label if digest already published.
 5. **Ref allocation:** assign `#1`, `#2`, … in order for each new digest; skip labels already bound. Fallback `#h{seq}` only if the numeric pool is exhausted.
 
-Decoders observing inline large values register them for future ref resolution (`observe_inline`, `mark_from_wire`).
+Decoders observing inline large values register them for future ref resolution (`observe_inline`, `mark_from_wire`). Quoted values are registered after schema-based list coercion: a JSON-looking string in a string field remains a string. Both peers must use this typed identity rule; older experimental implementations require a fresh session with the updated codec.
 
 ## 8. Lexicon and decoder setup
 

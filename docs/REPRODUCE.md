@@ -6,6 +6,7 @@ The token counts in [abios-bench.md](abios-bench.md) and [paper/abios.md](../pap
 
 - Python **3.10+** recommended (`toon-format` baseline needs 3.10+; CI runs ABIOS bench on **3.11** only).
 - Install [requirements-bench.txt](../requirements-bench.txt) before ABIOS unit tests that depend on tiktoken.
+- Encoding needs tiktoken too: `encode_transcript` runs the refs wire planner (fused commands, hex aliases), which counts tokens, so every encoder, including `positional`, raises `RuntimeError` without it. Decoding and POST parsing do not need tiktoken.
 
 ## One command (verify only — CI)
 
