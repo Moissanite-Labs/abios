@@ -5,6 +5,14 @@ entry per release: what changed, why, and how it was verified.
 
 ## Unreleased
 
+- **What:** ABIOS/3 string lists: bare `[a;b]` when #39's decoder reads them back exactly, otherwise a strict canonical `J:` JSON fallback; `S[` dropped (supersedes #53, design by qalam). The informative REFS decode rules text grows from **374** to **425** o200k tokens (bare and `J:` list rules, and unfused `E`+cmd refs lines unless setup `wire.fused_refs_cmd` is true), so refs-with-rules on 11 messages moves from **1139** to **1190** (fixture) and **1117** to **1168** (random ids, seed 1). Refs and adaptive totals are unchanged: **765** / **1721** / **6212** (random ids **743** / **1699** / **6189**).
+- **Why:** #39's list encoding lost data on some lists (#53). Unquoted `J:`-prefixed string fields from #39-era lines now fail closed.
+- **Verified:** `python3 -m unittest discover -s tests` (incl. `tests/test_rules_receipt.py`, which ties the 425 / 1190 / 1168 figures to the bench receipt), `python3 tests/run-tests.py`, `bench/run-abios-bench.py`, `scripts/protean-abios/fuzz_wire_lists.py --n 200000` (seeds 1 and 2).
+
+- **What:** ABIOS/3 integration — `SPEC-ABIOS-3.md`, `scripts/protean-abios/` reference codec, `tests/test_abios.py`, golden bench (`make bench` / `bench/results/abios-bench.json`), paper source (`paper/abios.md`), GitHub Pages templates under `site/`. Leak gate scans `site/` again; ABIOS/3 is repo-only until the ingredient manifest lists it.
+- **Why:** Token-aware shared-state command encoding with honest POST + minimal-setup accounting; record SYM-2P v2 dense supersession and external PR #6 negative constants.
+- **Verified:** `python3 tests/run-tests.py`, `python3 -m unittest discover -s tests -v`, `make bench` (Python 3.11+ in CI via `bench/run-abios-bench.py`).
+
 - **What:** `scripts/protean-sym2p/sym-publish.py`, the write-once object
   publisher (stdlib only): it assigns `v`, `sup`, `hash`, `by`, and `at`,
   resolves the next version from `<root>/objects/` (never from the input), writes
