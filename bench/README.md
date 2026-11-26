@@ -36,8 +36,10 @@ See `EVAL.md` for the answers file format.
 
 ## What this does not claim
 
-The harness measures encoding and comprehension. It does not run
-models itself, and the corpus is 10 hand-written tasks, not a
+The harness measures encoding and comprehension. `run-api.py` can
+run the EVAL.md protocol against an OpenAI-compatible API (key from
+`OPENAI_API_KEY`, never written to disk); the scorer does not call
+models, and the corpus is 10 hand-written tasks, not a
 benchmark suite. A real capability claim needs the eval run against
 models, reported with the model name, date, and scores. The harness
 makes that run cheap to do and honest to report.

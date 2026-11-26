@@ -22,6 +22,8 @@ exact match against the reference line.
 
 ## Procedure
 
+`bench/run-api.py` automates steps 2-5 against an OpenAI-compatible API (fresh call per form, verbatim answers, raw responses and per-call usage logged). The steps below are the protocol it follows; a hand run is still valid.
+
 1. Pick a model. Record its name, version, and the date.
 2. For each comprehension task, open two fresh sessions. In one,
    paste the v1 packet (as JSON) and ask the questions. In the
