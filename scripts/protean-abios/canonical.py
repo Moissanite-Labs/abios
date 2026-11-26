@@ -62,15 +62,11 @@ def coerce_wire_types(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     for key, val in list(out.items()):
         if not isinstance(val, str) or not _field_is_list(action, key):
             continue
-        if val == "[]":
-            out[key] = []
-        elif (val.startswith("S[") and val.endswith("]")) or val.startswith("J:"):
-            from wire_lists import decode_wire_list
+        if val.startswith("J:"):
+            from wire_lists import decode_j_list
 
-            try:
-                out[key] = decode_wire_list(val)
-            except ValueError:
-                pass
+            # Strict: a malformed J: value in a list-typed field is an error, never a string.
+            out[key] = decode_j_list(val)
         elif val.startswith("["):
             from wire_lists import decode_string_list
 
@@ -84,6 +80,8 @@ def coerce_wire_types(action: str, payload: dict[str, Any]) -> dict[str, Any]:
                     out[key] = parsed
             except json.JSONDecodeError:
                 pass
+        elif val == "[]":
+            out[key] = []
     return out
 
 

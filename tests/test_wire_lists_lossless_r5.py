@@ -1,4 +1,8 @@
-"""Assertion-free R5 unit & 22-vector adversarial round-trip suite for lossless wire_lists."""
+"""Wire-list codec tests: 22 adversarial vectors, #39 bugs end to end, strict J: rejections.
+
+Design (qalam, 2026-11-26): bare [a;b] string lists decoded by #39's decode_string_list
+(unchanged); J: is a fallback forced by an encode-time round-trip check; no S[ form.
+"""
 from __future__ import annotations
 
 import json
@@ -20,6 +24,7 @@ from encoders import (  # noqa: E402
     OmitEncoder,
     PositionalEncoder,
     RefsEncoder,
+    _split_line,
     fresh_session,
 )
 import wire_lists as wl  # noqa: E402
@@ -39,27 +44,27 @@ def _exact_typed_equal(a: Any, b: Any) -> bool:
 
 ADVERSARIAL_22_VECTORS: tuple[tuple[str, list[Any], str], ...] = (
     ("V01_empty", [], "[]"),
-    ("V02_safe_paths", ["src/auth.py", "tests/test_auth.py"], "S["),
-    ("V03_single_safe", ["alpha"], "S["),
+    ("V02_safe_paths", ["src/auth.py", "tests/test_auth.py"], "["),
+    ("V03_single_safe", ["alpha"], "["),
     ("V04_pr39_bug1_single_space", [" "], "J:"),
-    ("V05_pr39_bug1_spaces_and_tab", ["   ", "\t"], "J:"),
-    ("V06_single_empty_str", [""], "J:"),
-    ("V07_double_empty_str", ["", ""], "J:"),
+    ("V05_pr39_bug1_spaces_and_tab", ["   ", "\t"], "["),
+    ("V06_single_empty_str", [""], "["),
+    ("V07_double_empty_str", ["", ""], "["),
     ("V08_pr39_bug2_int_list", [1, 2], "J:"),
     ("V09_pr39_bug2_bool_null_list", [True, False, None], "J:"),
     ("V10_mixed_scalar_types", [0, 1, False, True, "0", "1", -7], "J:"),
     ("V11_pr39_bug3_bracket_space", ["see [1] now"], "J:"),
     ("V12_pr39_bug3_multi_brackets", ["a] b", "c [d] e"], "J:"),
-    ("V13_percent_escape_roundtrip", ["%20", "%25", "%2520", "%%20", "%25 0"], "J:"),
+    ("V13_percent_escape_roundtrip", ["%20", "%25", "%2520", "%%20", "%25 0"], "["),
     ("V14_semicolon_and_backslash", ["a;b", "c\\d", "trail\\"], "J:"),
     ("V15_quotes_and_newlines", ['quote"here', "line1\nline2", "cr\rhere"], "J:"),
     ("V16_reserved_session_handles", ["-", "p", "t", "a", "h", "f", "v", "g"], "J:"),
     ("V17_reserved_prefixes_digits", ["http://example.com", "https://x.y/z", "42", "{k:v}"], "J:"),
     ("V18_wire_marker_self_quote", ["S[a;b]", "J:[1,2]", "[]", "\\e"], "J:"),
     ("V19_nested_lists_and_dicts", [["nested", [1, 2]], {"k": "v with space", "n": None}], "J:"),
-    ("V20_unicode_arabic_cjk_spaces", ["العربية", "日本語 テスト", "é é é"], "J:"),
-    ("V21_comma_braces_unicode_ws", ["a,b", "x{y}", "u\u00a0v", "line\u2028sep"], "J:"),
-    ("V22_long_list_content_ref_size", ["item_alpha"] * 25, "S["),
+    ("V20_unicode_arabic_cjk_spaces", ["العربية", "日本語 テスト", "é é é"], "["),
+    ("V21_comma_braces_unicode_ws", ["a,b", "x{y}", "u\u00a0v", "line\u2028sep"], "["),
+    ("V22_long_list_content_ref_size", ["item_alpha"] * 25, "["),
 )
 
 
@@ -71,8 +76,11 @@ class WireListsLosslessR5Tests(unittest.TestCase):
                 tok = wl.encode_wire_list(payload)
                 self.assertIs(type(tok), str)
                 self.assertTrue(tok.startswith(expected_prefix), f"{label}: got {tok!r}")
-                self.assertFalse(any(ch.isspace() for ch in tok), f"{label}: whitespace in {tok!r}")
-                self.assertEqual(len(tok.split()), 1, f"{label}: split into multiple tokens: {tok!r}")
+                if tok.startswith("J:"):
+                    self.assertFalse(any(ch.isspace() for ch in tok), f"{label}: whitespace in {tok!r}")
+                    self.assertFalse(tok.startswith("[") and tok != "[]")
+                parts = _split_line(f"X {tok} Y")
+                self.assertEqual([p.text for p in parts], ["X", tok, "Y"], f"{label}: {tok!r} did not tokenize as one")
                 decoded = wl.decode_wire_list(tok)
                 self.assertTrue(
                     _exact_typed_equal(decoded, payload),
@@ -81,7 +89,7 @@ class WireListsLosslessR5Tests(unittest.TestCase):
 
     def test_custom_separator_roundtrip(self) -> None:
         tok = wl.encode_wire_list(["alpha", "beta"], sep="|")
-        self.assertEqual(tok, "S[alpha|beta]")
+        self.assertEqual(tok, "[alpha|beta]")
         self.assertEqual(wl.decode_wire_list(tok, sep="|"), ["alpha", "beta"])
         # Item containing the custom sep falls back to J:
         tok_fb = wl.encode_wire_list(["alpha|beta", "gamma"], sep="|")
@@ -129,7 +137,7 @@ class WireListsLosslessR5Tests(unittest.TestCase):
                         f"{enc_name}/{bug_name}: expected {criteria!r}, got {decoded['criteria']!r}",
                     )
 
-    def test_literal_string_fields_do_not_collide_with_s_or_j_wire_lists(self) -> None:
+    def test_literal_string_fields_do_not_collide_with_bare_or_j_wire_lists(self) -> None:
         encoders = (
             ("refs", RefsEncoder()),
             ("positional", PositionalEncoder()),
@@ -194,17 +202,23 @@ class WireListsLosslessR5Tests(unittest.TestCase):
         action, decoded = enc.decode(legacy_line, s_dec)
         self.assertEqual(action, "task.create")
         self.assertEqual(decoded["criteria"], ["alpha", "beta"])
-        self.assertTrue(_exact_typed_equal(decoded["scope"], [1, 2]))
+        # #39's decoder (unchanged) reads bare [1,2] as the one string "1,2"; int lists travel as J:[1,2].
+        self.assertEqual(decoded["scope"], ["1,2"])
 
-        # coerce_wire_types supports [], S[...], J:..., legacy [...], and ignores malformed J:
-        c1 = coerce_wire_types("task.create", {"criteria": "[]", "scope": "S[x;y]", "dependencies": 'J:["%20"]'})
+        # coerce_wire_types: [], J:..., legacy [...] (#39 path unchanged); S[ is no longer a form
+        c1 = coerce_wire_types("task.create", {"criteria": "[]", "scope": "[x;y]", "dependencies": 'J:["%20"]'})
         self.assertEqual(c1["criteria"], [])
         self.assertEqual(c1["scope"], ["x", "y"])
         self.assertEqual(c1["dependencies"], [" "])
-        c2 = coerce_wire_types("task.create", {"criteria": "J:[1,2]", "scope": "[1,2]", "dependencies": "J:bad"})
+        c2 = coerce_wire_types("task.create", {"criteria": "J:[1,2]", "scope": "[1,2]", "dependencies": "S[x;y]"})
         self.assertTrue(_exact_typed_equal(c2["criteria"], [1, 2]))
-        self.assertTrue(_exact_typed_equal(c2["scope"], [1, 2]))
-        self.assertEqual(c2["dependencies"], "J:bad")
+        self.assertEqual(c2["scope"], ["1,2"])
+        self.assertEqual(c2["dependencies"], "S[x;y]")
+        # A malformed J: value in a list-typed field raises; it is never passed through as a string.
+        for bad in ("J:bad", "J:[NaN]", 'J:["alpha"]', "J:", "J:[1,%202]"):
+            with self.subTest(coerce_bad=bad):
+                with self.assertRaises(ValueError):
+                    coerce_wire_types("task.create", {"criteria": bad})
 
     def test_fail_closed_encode_and_decode_wire_list_guards(self) -> None:
         # Non-list inputs to encode_wire_list
@@ -213,11 +227,9 @@ class WireListsLosslessR5Tests(unittest.TestCase):
                 wl.encode_wire_list(bad_items)  # type: ignore[arg-type]
 
         # Invalid separators
-        for bad_sep in ("", ";;", " ", "\t", "[", "]", '"', "\\", "%", ",", "{", "}", 7, None):
+        for bad_sep in ("", 7, None):
             with self.assertRaises(ValueError):
                 wl.encode_wire_list(["a"], sep=bad_sep)  # type: ignore[arg-type]
-            with self.assertRaises(ValueError):
-                wl.decode_wire_list("[]", sep=bad_sep)  # type: ignore[arg-type]
 
         # Invalid decode_wire_list tokens
         bad_tokens: tuple[Any, ...] = (
@@ -242,6 +254,8 @@ class WireListsLosslessR5Tests(unittest.TestCase):
             "S[a{b]",
             "S[a}b]",
             "J:",
+            "S[a;b]",
+            "S[alpha]",
             "J:%",
             "J:%2",
             "J:%2G",
@@ -254,8 +268,8 @@ class WireListsLosslessR5Tests(unittest.TestCase):
             'J:{"a":1}',
             "J:42",
             'J:"hello"',
-            "[a;b]",
             "X[a;b]",
+            "[unclosed",
             "S[a;b",
         )
         for bad_tok in bad_tokens:
@@ -263,82 +277,156 @@ class WireListsLosslessR5Tests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     wl.decode_wire_list(bad_tok)
 
-    def test_hardened_legacy_string_list_api_and_boundaries(self) -> None:
-        self.assertTrue(wl.can_encode_string_list([]))
-        self.assertTrue(wl.can_encode_string_list(["alpha", "beta", ""]))
-        self.assertTrue(wl.can_encode_string_list(["a;b", "c\\d"]))
-        self.assertEqual(wl.encode_string_list([]), "[]")
-        self.assertEqual(wl.encode_string_list([""]), "[\\e]")
-        self.assertEqual(wl.encode_string_list(["a;b", "c\\d"]), "[a\\;b;c\\\\d]")
+    def test_legacy_decode_string_list_is_pr39_unchanged(self) -> None:
+        """(d) Bare [a;b] decoding is #39's decode_string_list at 3e251f0b, byte for byte."""
+        import inspect
+        import subprocess
+
+        root = os.path.dirname(_ABIOS_DIR.rstrip(os.sep))
+        root = os.path.dirname(root)
+        try:
+            src39 = subprocess.run(
+                ["git", "show", "3e251f0b:scripts/protean-abios/wire_lists.py"],
+                cwd=root, capture_output=True, text=True, check=True,
+            ).stdout
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("3e251f0b not available in this checkout")
+        for name in ("_escape_item", "_unescape_item", "_split_items", "_item_needs_json_fallback",
+                     "can_encode_string_list", "encode_string_list", "decode_string_list"):
+            with self.subTest(function=name):
+                self.assertIn(inspect.getsource(getattr(wl, name)), src39)
+
+    def test_legacy_behaviour_pins(self) -> None:
+        # #39 behaviour kept as is; the encoder routes the lossy cases to J: instead.
+        self.assertEqual(wl.decode_string_list("[ ]"), [])
+        self.assertEqual(wl.decode_string_list("[1,2]"), ["1,2"])
+        self.assertEqual(wl.decode_string_list("[null]"), ["null"])
         self.assertEqual(wl.decode_string_list("[a\\;b;c\\\\d]"), ["a;b", "c\\d"])
         self.assertEqual(wl.decode_string_list("[\\e]"), [""])
-        self.assertEqual(wl.decode_string_list("[]"), [])
-        self.assertEqual(wl.decode_string_list('["see [1] now"]'), ["see [1] now"])
-        self.assertEqual(wl.decode_string_list("S[alpha;beta]"), ["alpha", "beta"])
-        self.assertEqual(wl.decode_string_list('J:["%20"]'), [" "])
-        # Unrecognized escape in legacy _unescape_item preserves literal backslash
-        self.assertEqual(wl._unescape_item("a\\xb"), "a\\xb")
+        self.assertIsNone(wl.decode_string_list("S[a;b]"))
+        self.assertIsNone(wl.decode_string_list('J:["%20"]'))
+        self.assertEqual(wl.encode_wire_list([" "]), 'J:["%20"]')
+        self.assertEqual(wl.encode_wire_list([1, 2]), "J:[1,2]")
+        self.assertEqual(wl.encode_wire_list(["1,2"]), "[1,2]")
+        self.assertEqual(wl.encode_wire_list(["null"]), "[null]")
 
-        # Ineligible lists rejected by can_encode_string_list & encode_string_list
-        ineligible: tuple[Any, ...] = (
-            "notalist",
-            ("alpha", "beta"),
-            [" "],
-            ["\t"],
-            ["a b"],
-            ["a\nb"],
-            ["a\rb"],
-            ['a"b'],
-            ["a[b"],
-            ["a]b"],
-            ["trail\\"],
-            ["{obj}"],
-            ["http://x"],
-            ["-"],
-            ["p"],
-            ["42"],
-            [1, 2],
-            [True],
-            [None],
-        )
-        for bad_list in ineligible:
-            with self.subTest(ineligible=bad_list):
-                self.assertFalse(wl.can_encode_string_list(bad_list))
-                with self.assertRaises(ValueError):
-                    wl.encode_string_list(bad_list)
+    def test_unquoted_s_bracket_and_quoted_j_strings_stay_strings(self) -> None:
+        """(d) With S[ dropped, unquoted S[... tokens are plain strings, as on #39."""
+        enc = RefsEncoder()
+        for value in ("S[x]", "S[", "S[x]y"):
+            with self.subTest(value=value):
+                s_enc, s_dec = fresh_session(), fresh_session()
+                msg = ("project.create", canonical_payload(
+                    "project.create", {"name": value, "description": "d", "repository": ""}))
+                line = enc.encode(msg[0], msg[1], s_enc)
+                self.assertIn(" " + value, line)  # emitted unquoted, exactly as #39 did
+                got = enc.decode(line, s_dec)
+                self.assertIs(type(got[1]["name"]), str)
+                self.assertEqual(got[1]["name"], value)
+        # Strings starting with J: are quoted on the wire and decode as strings.
+        s_enc, s_dec = fresh_session(), fresh_session()
+        msg = ("project.create", canonical_payload(
+            "project.create", {"name": "J:[1]", "description": "d", "repository": ""}))
+        line = enc.encode(msg[0], msg[1], s_enc)
+        self.assertIn('"J:[1]"', line)
+        self.assertEqual(enc.decode(line, s_dec)[1]["name"], "J:[1]")
 
-        # Bad sep on legacy encode_string_list & decode_string_list
+
+class StrictJRejectionTests(unittest.TestCase):
+    """(c) J: decoding is a strict inverse of encode_wire_list."""
+
+    def _rejects(self, token: str) -> None:
         with self.assertRaises(ValueError):
-            wl.encode_string_list(["a"], sep=" ")
-        self.assertIsNone(wl.decode_string_list("[a;b]", sep=" "))
-        self.assertIsNone(wl.decode_string_list(123))  # type: ignore[arg-type]
+            wl.decode_wire_list(token)
+        with self.assertRaises(ValueError):
+            wl.decode_j_list(token)
 
-        # Legacy decode_string_list rejects Bug 1, Bug 2, and invalid forms cleanly with None
-        none_cases = (
-            "[ ]",
-            "[\t]",
-            "[   ]",
-            "[1,2]",
-            "[true,false]",
-            "[-1]",
-            "[null]",
-            "notbracketed",
-            "[unclosed",
-            "unopened]",
-            "[a b]",
-            "[p]",
-            "[123]",
-            "[http://x]",
-            "[{a}]",
-            "[a\\]",
-            "J:[1,2]",
-            "J:notjson",
-            "S[]",
+    def test_each_guard_fires_before_the_canonical_check(self) -> None:
+        # Each rejection has its own guard; the canonical re-encode check is a second line of defence.
+        cases = (
+            ("J:[NaN]", "non-finite"),
+            ("J:[Infinity]", "non-finite"),
+            ("J:[1e999]", "non-finite"),
+            ('J:[{"a":1,"a":2}]', "duplicate key"),
+            ('J:["\\ud800"]', "lone surrogate in J:"),
+            ('J:["alpha"]', "non-canonical"),
         )
-        for tok in none_cases:
-            with self.subTest(none_tok=tok):
-                self.assertIsNone(wl.decode_string_list(tok))
+        for tok, msg in cases:
+            with self.subTest(token=tok):
+                with self.assertRaisesRegex(ValueError, msg):
+                    wl.decode_j_list(tok)
 
+    def test_rejects_nan(self) -> None:
+        self._rejects("J:[NaN]")
+
+    def test_rejects_infinity(self) -> None:
+        self._rejects("J:[Infinity]")
+        self._rejects("J:[-Infinity]")
+
+    def test_rejects_overflowing_number_1e999(self) -> None:
+        self._rejects("J:[1e999]")
+        self._rejects("J:[-1e999]")
+        self._rejects("J:[[1e999]]")
+
+    def test_rejects_duplicate_keys(self) -> None:
+        self._rejects('J:[{"a":1,"a":2}]')
+        self._rejects('J:[{"k":{"a":1,"a":1}}]')
+
+    def test_rejects_lone_surrogates(self) -> None:
+        self._rejects('J:["\\ud800"]')
+        self._rejects('J:["\\udc00x"]')
+        self._rejects('J:[{"\\ud800":1}]')
+        with self.assertRaises(ValueError):
+            wl.encode_wire_list(["\ud800"])
+
+    def test_rejects_non_canonical_forms(self) -> None:
+        for tok in (
+            'J:["alpha"]',        # bare [alpha] is the canonical form
+            'J:[""]',             # bare [\e]
+            "J:[]",               # empty list is []
+            "J:[1.0e0]",          # canonical is 1.0
+            "J:[1.50]",           # canonical is 1.5
+            "J:[1,%202]",         # a space between items
+            'J:[{"b":1,"a":2}]',  # keys not sorted
+            'J:["\\u0041",1]',  # ASCII written as an escape
+            "J:[-0]",             # canonical int is 0
+        ):
+            with self.subTest(token=tok):
+                self._rejects(tok)
+
+    def test_rejects_malformed_j_values(self) -> None:
+        for tok in ("J:", "J:bad", "J:[1", "J:%", "J:%2G", "J:42", 'J:{"a":1}', 'J:"x"', "J:[1]x"):
+            with self.subTest(token=tok):
+                self._rejects(tok)
+
+    def test_malformed_j_on_the_wire_raises(self) -> None:
+        enc = RefsEncoder()
+        s_dec = fresh_session()
+        fused = enc._refs_prefix("task.create", s_dec)
+        for bad in ("J:[NaN]", "J:[1e999]", 'J:["alpha"]', "J:bad"):
+            with self.subTest(token=bad):
+                with self.assertRaises(ValueError):
+                    enc.decode(f'{fused} {bad} [] d normal p [] "t"', fresh_session())
+
+    def test_canonical_j_tokens_accepted(self) -> None:
+        for items in ([1, 2], [" "], [None], [1.5], [{"a": [1, "x y"]}], ["see [1] now"], [-0.0]):
+            with self.subTest(items=items):
+                tok = wl.encode_wire_list(items)
+                self.assertTrue(tok.startswith("J:"))
+                self.assertTrue(_exact_typed_equal(wl.decode_wire_list(tok), items))
+
+
+class SeededEndToEndFuzzTests(unittest.TestCase):
+    def test_seeded_fuzz_through_split_line_and_refs_decode(self) -> None:
+        sys.path.insert(0, _ABIOS_DIR)
+        import fuzz_wire_lists
+
+        stats = fuzz_wire_lists.run(3000, seed=20261126)
+        self.assertGreater(stats["bare"], 300)
+        self.assertGreater(stats["j"], 300)
+        self.assertGreater(stats["second_with_ref"], 50)
+        self.assertEqual((stats["codec_fail"], stats["split_fail"], stats["line_fail"]), (0, 0, 0),
+                         stats["examples"])
 
 if __name__ == "__main__":
     unittest.main()
