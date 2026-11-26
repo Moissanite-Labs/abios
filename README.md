@@ -107,6 +107,12 @@ performs zero network calls and fails closed when the cache entry is absent.
 - The protocol's routing semantics are described here. The record schemas that
   carry routing state belong to `protean-ops`.
 
+## Research proposals
+
+- [State-transfer experiment proposal](docs/research/state-transfer-experiment.md)
+  defines a non-normative pilot and evidence requirements; it adds no protocol
+  channel or model runtime.
+
 ## License
 
 MIT. The committed `LICENSE` file is authoritative.
