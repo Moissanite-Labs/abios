@@ -9,6 +9,7 @@ bench/results/abios-bench.json: rules = refs_decode_rules_tokens, with-rules
 """
 import json
 import os
+import re
 import sys
 import unittest
 
@@ -16,10 +17,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RECEIPT = os.path.join(ROOT, "bench", "results", "abios-bench.json")
 sys.path.insert(0, os.path.join(ROOT, "scripts", "protean-abios"))
 
-# Published figures at this head (qalam, supersede-53): rules 374 -> 421.
-PUBLISHED = {"rules": 421, "refs_fixture": 765, "refs_random": 743,
-             "with_rules_fixture": 1186, "with_rules_random": 1164}
-OLD_FIGURES = ("1139", "1117")
+# Published figures at this head (qalam, supersede-53): rules 374 -> 425.
+PUBLISHED = {"rules": 425, "refs_fixture": 765, "refs_random": 743,
+             "with_rules_fixture": 1190, "with_rules_random": 1168}
+# Earlier refs-with-rules figures: #39 (374 rules), 0e91a57 (421), #39 at 378.
+OLD_FIGURES = ("1139", "1117", "1186", "1164", "1143", "1121")
 
 
 def receipt_figures():
@@ -58,7 +60,8 @@ def copy_problems(texts, figures):
     for path, quotes in expected_quotes(figures).items():
         text = texts[path]
         problems += [f"{path}: missing {q!r}" for q in quotes if q not in text]
-        problems += [f"{path}: stale {old}" for old in OLD_FIGURES if old in text]
+        problems += [f"{path}: stale {old}" for old in OLD_FIGURES
+                     if re.search(rf"(?<![\d.]){old}(?![\d.])", text)]
     return problems
 
 
@@ -83,12 +86,13 @@ class RulesReceiptTests(unittest.TestCase):
 
     def test_check_fails_on_stale_copy(self):
         texts = dict(self.texts)
-        texts["README.md"] = texts["README.md"].replace("**1186**", "**1139**")
+        wf = self.figures["with_rules_fixture"]
+        texts["README.md"] = texts["README.md"].replace(f"**{wf}**", "**1139**")
         self.assertNotEqual(texts["README.md"], self.texts["README.md"])
         problems = copy_problems(texts, self.figures)
         self.assertTrue(any("README.md" in p for p in problems), problems)
         texts = dict(self.texts)
-        texts["site/abios.html"] = texts["site/abios.html"].replace("rules: 1186", "rules: 1139")
+        texts["site/abios.html"] = texts["site/abios.html"].replace(f"rules: {wf}", "rules: 1139")
         self.assertTrue(copy_problems(texts, self.figures))
 
     def test_rules_text_token_count_matches_receipt(self):
