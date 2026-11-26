@@ -8,8 +8,8 @@ figures quoted next to the index table.
 """
 import json
 import os
-import re
 import unittest
+from html.parser import HTMLParser
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RECEIPT = os.path.join(ROOT, "bench", "results", "abios-bench.json")
@@ -24,9 +24,32 @@ PAGES = {
     "abios.template.html": ABIOS_COLS,
     "abios.html": ABIOS_COLS,
 }
-ROW_RE = re.compile(
-    r"<tr><t[hd][^>]*>(\d+) (?:msgs|messages)</t[hd]>((?:<td>.*?</td>)+)</tr>")
-CELL_RE = re.compile(r"<td>(?:<strong>)?(\d+)(?:</strong>)?</td>")
+class _TableRows(HTMLParser):
+    """Collect each <tr> as a list of its cell texts, with tags stripped."""
+
+    def __init__(self):
+        super().__init__()
+        self.rows = []
+        self._row = None
+        self._cell = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "tr":
+            self._row = []
+        elif tag in ("td", "th") and self._row is not None:
+            self._cell = []
+
+    def handle_endtag(self, tag):
+        if tag in ("td", "th") and self._cell is not None:
+            self._row.append("".join(self._cell).strip())
+            self._cell = None
+        elif tag == "tr" and self._row is not None:
+            self.rows.append(self._row)
+            self._row = None
+
+    def handle_data(self, data):
+        if self._cell is not None:
+            self._cell.append(data)
 
 
 def receipt_totals():
@@ -44,8 +67,16 @@ def receipt_totals():
 
 
 def site_rows(text):
-    return {int(m.group(1)): [int(c) for c in CELL_RE.findall(m.group(2))]
-            for m in ROW_RE.finditer(text)}
+    parser = _TableRows()
+    parser.feed(text)
+    out = {}
+    for row in parser.rows:
+        if not row:
+            continue
+        head = row[0].split()
+        if len(head) == 2 and head[0].isdigit() and head[1] in ("msgs", "messages"):
+            out[int(head[0])] = [int(c) for c in row[1:] if c.isdigit()]
+    return out
 
 
 class TestSiteMatchesReceipt(unittest.TestCase):
