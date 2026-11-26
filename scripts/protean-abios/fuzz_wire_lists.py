@@ -7,7 +7,11 @@ Each case builds a random JSON-native list, then checks three things:
      (``X <tok> Y`` splits into exactly three tokens, the middle one unchanged);
   3. line: a refs-encoded task.create carrying the list in ``criteria`` and
      ``scope`` decodes back to an equal message through RefsEncoder.decode
-     (which runs _split_line and coerce_wire_types).
+     (which runs _split_line and coerce_wire_types);
+  4. no unquoted J: string: ``title`` and ``description`` are random strings,
+     often J:-prefixed. Every unquoted token on the line that starts with J:
+     must be the wire form of one of the message's list fields, so a string
+     field is never sent as an unquoted J: token.
 
 Usage: python3 scripts/protean-abios/fuzz_wire_lists.py [--n 200000] [--seed 1]
 Exit status 0 means zero failures.
@@ -71,6 +75,11 @@ def rand_scalar_str(rng: random.Random) -> str:
     return v if rng.random() < 0.8 else v + rng.choice(ATOMS)
 
 
+def rand_field_str(rng: random.Random) -> str:
+    v = rand_scalar_str(rng)
+    return "J:" + v if rng.random() < 0.5 else v
+
+
 def exact(a, b) -> bool:
     if type(a) is not type(b):
         return False
@@ -86,7 +95,8 @@ def exact(a, b) -> bool:
 def run(n: int, seed: int) -> dict:
     rng = random.Random(seed)
     enc = RefsEncoder()
-    stats = {"cases": 0, "bare": 0, "j": 0, "empty": 0, "codec_fail": 0, "split_fail": 0, "line_fail": 0, "second_lines": 0, "second_with_ref": 0}
+    stats = {"cases": 0, "bare": 0, "j": 0, "empty": 0, "codec_fail": 0, "split_fail": 0, "line_fail": 0,
+             "second_lines": 0, "second_with_ref": 0, "j_strings": 0, "jstr_fail": 0}
     first = []
     for _ in range(n):
         items = rand_list(rng)
@@ -107,13 +117,21 @@ def run(n: int, seed: int) -> dict:
             first.append(("split", items, tok))
         crit = items
         scope = rand_list(rng)
+        title, description = rand_field_str(rng), rand_field_str(rng)
+        stats["j_strings"] += title.startswith("J:") + description.startswith("J:")
         msg = ("task.create", canonical_payload("task.create", {
-            "project_id": "a1" * 16, "title": "t", "description": "d", "criteria": crit,
+            "project_id": "a1" * 16, "title": title, "description": description, "criteria": crit,
             "scope": scope, "priority": "normal", "dependencies": [],
         }))
         try:
             s_enc, s_dec = fresh_session(), fresh_session()
             line = enc.encode(msg[0], msg[1], s_enc)
+            list_tokens = {wl.encode_wire_list(msg[1][k]) for k in ("criteria", "scope", "dependencies")}
+            stray = [p.text for p in _split_line(line)
+                     if not p.quoted and p.text.startswith("J:") and p.text not in list_tokens]
+            if stray:
+                stats["jstr_fail"] += 1
+                first.append(("unquoted J: string", (title, description), line))
             got = enc.decode(line, s_dec)
             ok = messages_equal(msg, got) and exact(got[1]["criteria"], crit) and exact(got[1]["scope"], scope)
             if ok and stats["cases"] % 4 == 0:
@@ -144,10 +162,11 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=1)
     args = ap.parse_args()
     s = run(args.n, args.seed)
-    fails = s["codec_fail"] + s["split_fail"] + s["line_fail"]
+    fails = s["codec_fail"] + s["split_fail"] + s["line_fail"] + s["jstr_fail"]
     print(f"seed={args.seed} cases={s['cases']} bare={s['bare']} j={s['j']} empty={s['empty']} "
           f"second_lines={s['second_lines']} second_with_ref={s['second_with_ref']} "
-          f"codec_fail={s['codec_fail']} split_fail={s['split_fail']} line_fail={s['line_fail']}")
+          f"j_strings={s['j_strings']} codec_fail={s['codec_fail']} split_fail={s['split_fail']} "
+          f"line_fail={s['line_fail']} jstr_fail={s['jstr_fail']}")
     for ex in s["examples"]:
         print("  example:", repr(ex)[:300])
     return 1 if fails else 0

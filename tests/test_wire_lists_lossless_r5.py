@@ -425,8 +425,9 @@ class SeededEndToEndFuzzTests(unittest.TestCase):
         self.assertGreater(stats["bare"], 300)
         self.assertGreater(stats["j"], 300)
         self.assertGreater(stats["second_with_ref"], 50)
-        self.assertEqual((stats["codec_fail"], stats["split_fail"], stats["line_fail"]), (0, 0, 0),
-                         stats["examples"])
+        self.assertGreater(stats["j_strings"], 1000)
+        self.assertEqual((stats["codec_fail"], stats["split_fail"], stats["line_fail"],
+                          stats["jstr_fail"]), (0, 0, 0, 0), stats["examples"])
 
 if __name__ == "__main__":
     unittest.main()
