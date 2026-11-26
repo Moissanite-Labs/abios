@@ -9,7 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts/protean-ab
 from canonical import SCHEMA_DEFAULTS, canonical_payload
 from content_store import ContentStore, content_digest, serialized_byte_length
 from decoder_context import (fixture_session_ids, full_positional_schema,
-                             parse_decoder_context, render_decoder_context)
+                             infer_hex_candidates, parse_decoder_context,
+                             plan_refs_wire, render_decoder_context)
 from encoders import all_encoders, decode_transcript, encode_transcript
 from lexicon import LEXICON_PATH
 from post import parse_post_handshake, render_post_handshake
@@ -39,19 +40,30 @@ class ContentIdentityTests(unittest.TestCase):
             self.assertEqual(content_digest(value) in store.digest_to_ref, size == 48)
 
     def test_collision_transcripts_decode_from_post(self):
-        context = render_decoder_context(
-            lexicon_payload=json.loads(LEXICON_PATH.read_text()),
-            schema=full_positional_schema(), session_ids=fixture_session_ids(),
-            schema_defaults=SCHEMA_DEFAULTS,
-        )
-        _, received_context = parse_post_handshake(render_post_handshake(context))
-        setup = parse_decoder_context(received_context)
+        lexicon_payload = json.loads(LEXICON_PATH.read_text())
+        ids = fixture_session_ids()
+
+        def setup_for(messages):
+            # The POST carries the wire plan the encoder used (fused refs
+            # commands, hex aliases), as setup_sizes does for the bench.
+            plan = plan_refs_wire(messages, ids, infer_hex_candidates(messages),
+                                  all_encoders()["refs"].lex)
+            context = render_decoder_context(
+                lexicon_payload=lexicon_payload,
+                schema=full_positional_schema(), session_ids=ids,
+                hex_aliases=plan.hex_aliases, schema_defaults=SCHEMA_DEFAULTS,
+                wire={"fused_refs_cmd": plan.fused_refs_cmd, "list_sep": ";"},
+            )
+            _, received_context = parse_post_handshake(render_post_handshake(context))
+            return parse_decoder_context(received_context)
+
         for value in (["x" * 60], ["é " * 30]):
             text = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
             structured = ("task.create", {"project_id": "p1", "title": "one", "criteria": value})
             literal = ("project.create", {"name": "two", "description": text})
             for first in ((structured, literal), (literal, structured)):
                 messages = list(first) * 3
+                setup = setup_for(messages)
                 for name in ("refs", "combined", "delta", "omit", "positional"):
                     with self.subTest(value=value, first=first[0][0], encoder=name):
                         lines = encode_transcript(all_encoders()[name], messages)
