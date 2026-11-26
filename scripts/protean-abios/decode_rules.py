@@ -19,9 +19,9 @@ Tokenization: ASCII space separates tokens. No empty tokens. Quoted strings use 
 
 Session handles: unquoted p/t/a/h/f expand to full ids from setup ids block. Optional setup hex block maps short tokens (e.g. v, g) to full hex strings; only tokens listed in hex expand.
 
-Wire string lists: unquoted [ ... ] with items separated by ; (setup wire.list_sep, committed profiles use ;). Empty list items encode as \\e. Use \\; and \\\\ inside items.
+Lists: [] is empty. Bare lists: unquoted [ ... ], string items split on ; (setup wire.list_sep), spaces allowed, empty item \\e, escapes \\; and \\\\. J: lists: unquoted J: + canonical JSON array (sorted keys, no spaces, ASCII) with %20 for space, %25 for %; any other list. Reject non-canonical J:, NaN, Infinity, 1e999, duplicate keys, lone surrogates.
 
-Inline JSON objects/arrays: unquoted token starting with { or [ when wire-list form does not apply; canonical JSON.
+Inline JSON objects: unquoted token starting with {; canonical JSON.
 
 Content refs: opaque #n labels resolve via session content store after the value was published inline (serialized length >= 48 bytes); unknown #n is an error.
 

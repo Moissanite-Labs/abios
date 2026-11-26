@@ -66,10 +66,13 @@ Tokens are space-separated except where noted. Parsing rules:
 | Null | `-` |
 | Boolean | unquoted `1` / `0` |
 | Integer | unquoted digit sequence |
-| Inline JSON | unquoted token starting with `[` or `{`, canonical JSON (lists/objects in payloads) |
-| Wire string list | unquoted `[` … `]` with items separated by `;` (declared in setup `wire.list_sep`, currently always `;` in committed profiles); `\;` and `\\` escapes inside items; empty string items encode as `\e`. Bracket characters inside items are literal. Falls back to canonical JSON when an item needs quoting or non-string elements appear. |
+| Inline JSON object | unquoted token starting with `{`, canonical JSON; quoted when it contains space, newline or carriage return |
+| Empty list | unquoted `[]` |
+| Bare string list | unquoted `[` … `]` with items separated by `;` (declared in setup `wire.list_sep`, currently always `;` in committed profiles); `\;` and `\\` escapes inside items; empty string items encode as `\e`. Items may contain spaces. Decoding is the #39 `decode_string_list` rule: canonical JSON string arrays are read as JSON, otherwise split on the separator. The encoder uses this form only when every item is a string that needs no fallback (no `"`, `[`, `]`, newline or carriage return; no trailing `\`; not starting with `{` or `http`; not a reserved session token `- p t a h f v g 0 1`; not all digits) **and** the decoder returns exactly the same list. |
+| `J:` list | unquoted `J:` + the list as canonical JSON (sorted keys, `,`/`:` separators, no spaces, `\uXXXX` escapes for non-ASCII, finite numbers only) with `%` written `%25` and space written `%20`, so the token has no whitespace. Used for every non-empty list the bare form cannot carry exactly: non-string items, nested lists or objects, whitespace-only strings, brackets, quotes, newlines. Decoders MUST reject a `J:` token that is not exactly what the encoder emits for the decoded value: other `%` escapes, non-printable or non-ASCII bytes, `NaN`, `Infinity`, numbers that overflow to infinity (e.g. `1e999`), duplicate object keys, lone surrogates, non-canonical spellings (`1.0e0`, `1.50`, unsorted keys, `\u0041`), `J:[]`, and lists the bare form carries (`J:["alpha"]`). In a list-typed field a malformed `J:` value is an error, never a string. A string value that starts with `J:` is always quoted. |
+| Precedence | for an unquoted token: `J:` list, then `[`-list (`[]` or bare), then `{` object. There is no `S[` form; an unquoted `S[...]` token is an ordinary string. |
 | Content ref | opaque `#n` label present in session `ref_to_digest` (e.g. `#1`) |
-| List in payload | string lists prefer wire form above; otherwise quoted canonical JSON unless refs encoder applies ref_if_published |
+| List in payload | `[]`, bare string list when it round-trips, else `J:`; the refs encoder may emit a content ref instead (ref_if_published) |
 
 Command lexeme follows the format tag immediately. Remaining tokens are positional values or omit metadata.
 
@@ -189,7 +192,7 @@ wire:
 {"fused_refs_cmd": true, "list_sep": ";"}
 ```
 
-`wire.fused_refs_cmd` selects fused `refs_cmd` lexemes versus `E`+cmd refs lines. `wire.list_sep` is the semicolon separator for `[a;b]` lists (committed profiles use `;`).
+`wire.fused_refs_cmd` selects fused `refs_cmd` lexemes versus `E`+cmd refs lines. `wire.list_sep` is the semicolon separator for bare `[a;b]` lists (committed profiles use `;`). `J:` lists do not use it.
 
 `schema` maps each command to ordered field name list. **Full schema** = all commands in profile. **Minimal schema** = only commands used in transcript (S-12).
 
