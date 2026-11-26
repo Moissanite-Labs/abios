@@ -23,7 +23,7 @@ class DecoderSetup:
     session_ids: dict[str, str]
     schema_defaults: dict[str, dict[str, Any]]
     hex_aliases: dict[str, str] = field(default_factory=dict)
-    fused_refs_cmd: bool = True
+    fused_refs_cmd: bool = False
     list_sep: str = ";"
     profile: str = "abios/3"
 
@@ -225,7 +225,8 @@ def parse_decoder_context(text: str) -> DecoderSetup:
     session_ids: dict[str, str] = {k: "" for k in SESSION_ID_KEYS}
     hex_aliases: dict[str, str] = {}
     schema_defaults: dict[str, dict[str, Any]] = {}
-    wire_fused_refs_cmd: bool | None = None
+    # Fused refs commands must be declared in wire:; without it, decode unfused.
+    wire_fused_refs_cmd = False
     wire_list_sep: str = ";"
     i = 1
     while i < len(lines):
@@ -268,8 +269,6 @@ def parse_decoder_context(text: str) -> DecoderSetup:
     concepts = lex_payload.get("concepts") or {}
     format_tags = lex_payload.get("format_tags") or {}
     refs_cmd = lex_payload.get("refs_cmd") or {}
-    if wire_fused_refs_cmd is None:
-        wire_fused_refs_cmd = bool(refs_cmd)
     if not schema:
         raise ValueError("decoder context missing schema block")
     if not session_ids or not any(session_ids.values()):
