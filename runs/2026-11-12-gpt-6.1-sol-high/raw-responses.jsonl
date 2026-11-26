@@ -1,0 +1,16 @@
+{"task": "t01", "form": "v1", "text": "cos\nbuilder\nassign\nSYM-2P/1.0 sections 3\u20135\nAny existing path", "ok": true, "error": null}
+{"task": "t01", "form": "v2", "text": "Cannot determine without the v2 schema.\nCannot determine without the v2 schema.\nCannot determine without the act-code mapping.\nSections 3 and 5.\nCannot determine without the constraint-code mapping.", "ok": true, "error": null}
+{"task": "t02", "form": "v1", "text": "verifier\nbuilder\ndispute\nopen", "ok": true, "error": null}
+{"task": "t02", "form": "v2", "text": "3\n2\n7\n5", "ok": true, "error": null}
+{"task": "t03", "form": "v1", "text": "75\n70\n6", "ok": true, "error": null}
+{"task": "t03", "form": "v2", "text": "62\n70\n6", "ok": true, "error": null}
+{"task": "t04", "form": "v1", "text": "swarm\nsections 3, 4, and 5\nimplement that section", "ok": true, "error": null}
+{"task": "t04", "form": "v2", "text": "Cannot determine without the v2 field schema.\nCannot determine without definitions for opcodes 32 and 33.\nCannot determine without a definition for opcode 20.", "ok": true, "error": null}
+{"task": "t05", "form": "v1", "text": "delegate\nbuilder\nb442\n7-9", "ok": true, "error": null}
+{"task": "t05", "form": "v2", "text": "40\n2\nb442\n7, 9", "ok": true, "error": null}
+{"task": "t06", "form": "v1", "text": "scout\ncos\nreport\nvalidator", "ok": true, "error": null}
+{"task": "t06", "form": "v2", "text": "r205\nmr1\n4\nvalidator", "ok": true, "error": null}
+{"task": "t07", "form": "v2", "text": "Expression 10 contains \u201csym-2p/1.0\u201d and a nested expression tagged 20 containing \u201csec\u201d and the list of values 3 and 5.\nExpression 11 contains a nested expression tagged 21 containing an asterisk.\nExpression 12 contains a nested expression tagged 22 containing \u201cvalidator\u201d followed by the values 0 and 1.", "ok": true, "error": null}
+{"task": "t08", "form": "v2", "text": "The first body expression applies operation 30 to \u201ccov\u201d and 62.\n\nThe second applies operation 31 to three arguments\u2014operation 34 on \u201c$cov\u201d and 70, operation 20 on \u201csec\u201d and the list [6, 6], and an empty list\u2014but the operations\u2019 meanings cannot be decoded reliably without an opcode key.", "ok": true, "error": null}
+{"task": "t09", "form": "v1", "text": "2|c901|mr1|1|2|1|1|80|60|(10 sym2p/1.0 (20 sec (1 2)))(11 (21 *))(12 (22 tester 0 1))|1|0|0", "ok": true, "error": null}
+{"task": "t10", "form": "v1", "text": "2|c902|mr1|1|2|1|1|85|70|(30 retries 3)(31 (34 $retries 5) (20 sec (4 4)) ())|1|0|0", "ok": true, "error": null}
