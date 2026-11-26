@@ -95,7 +95,7 @@ Only non-default fields appear. Keys list ends with `|`; values align to keys. D
 
 ### 5.3 `refs` (`E`)
 
-When setup **`wire.fused_refs_cmd`** is **true** (the sender declares it when the wire planner chooses fused refs), each line begins with a **single fused command lexeme** from setup `refs_cmd` (one tokenizer token under S-11, e.g. `Eb` for `project.create`), not a separate format tag plus command word. When **`wire.fused_refs_cmd`** is **false**, lines use format tag **`E`** immediately followed by the command lexeme from setup `concepts.cmd` (legacy `E`+cmd form). The sender sets `fused_refs_cmd` in the POST decoder context; receivers MUST NOT re-run the planner. Same positional values as §5.1, but structured/string values ≥48 serialized bytes use **content refs** after first inline publication (S-9). Revision and digest strings MAY compress to setup `hex` aliases (`v`, `g` by default in the Synbios fixtures).
+When setup **`wire.fused_refs_cmd`** is **true** (the sender declares it when the wire planner chooses fused refs), each line begins with a **single fused command lexeme** from setup `refs_cmd` (one tokenizer token under S-11, e.g. `Eb` for `project.create`), not a separate format tag plus command word. When **`wire.fused_refs_cmd`** is **false**, lines use format tag **`E`** immediately followed by the command lexeme from setup `concepts.cmd` (legacy `E`+cmd form). The sender sets `fused_refs_cmd` in the POST decoder context; receivers MUST NOT re-run the planner. Fused mode is never implicit: when the `wire:` block (§8) or its `fused_refs_cmd` key is absent, receivers MUST decode refs lines as unfused (`E`+cmd), even if setup carries `refs_cmd`. Same positional values as §5.1, but structured/string values ≥48 serialized bytes use **content refs** after first inline publication (S-9). Revision and digest strings MAY compress to setup `hex` aliases (`v`, `g` by default in the Synbios fixtures).
 
 ### 5.4 `delta` (`A`)
 
@@ -189,7 +189,7 @@ wire:
 {"fused_refs_cmd": true, "list_sep": ";"}
 ```
 
-`wire.fused_refs_cmd` selects fused `refs_cmd` lexemes versus `E`+cmd refs lines. Fused mode is never implicit: when the `wire:` block or its `fused_refs_cmd` key is absent, receivers MUST decode refs lines as unfused (`E`+cmd), even if setup carries `refs_cmd`. `wire.list_sep` is the semicolon separator for `[a;b]` lists (committed profiles use `;`).
+`wire.fused_refs_cmd` selects fused `refs_cmd` lexemes versus `E`+cmd refs lines. `wire.list_sep` is the semicolon separator for `[a;b]` lists (committed profiles use `;`).
 
 `schema` maps each command to ordered field name list. **Full schema** = all commands in profile. **Minimal schema** = only commands used in transcript (S-12).
 
